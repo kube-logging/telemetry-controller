@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
-  name: collectors.logging.kube-logging.dev
+  name: tenants.logging.kube-logging.dev
 spec:
   group: logging.kube-logging.dev
   names:
-    kind: Collector
-    listKind: CollectorList
-    plural: collectors
-    singular: collector
+    kind: Tenant
+    listKind: TenantList
+    plural: tenants
+    singular: tenant
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Collector is the Schema for the collectors API
+        description: Tenant is the Schema for the tenants API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,9 +32,11 @@ spec:
           metadata:
             type: object
           spec:
-            description: CollectorSpec defines the desired state of Collector
+            description: TenantSpec defines the desired state of Tenant
             properties:
-              tenantSelectors:
+              ottl:
+                type: string
+              resourceNamespaceSelectors:
                 items:
                   description: A label selector is a label query over a set of resources.
                     The result of matchLabels and matchExpressions are ANDed. An empty
@@ -86,7 +88,7 @@ spec:
                 type: array
             type: object
           status:
-            description: CollectorStatus defines the observed state of Collector
+            description: TenantStatus defines the observed state of Tenant
             type: object
         type: object
     served: true
