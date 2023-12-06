@@ -23,17 +23,17 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// CollectorSpec defines the desired state of Collector
-type CollectorSpec struct {
+// TenantSpec defines the desired state of Tenant
+type TenantSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Collector. Edit collector_types.go to remove/update
-	TenantSelector metav1.LabelSelector `json:"tenantSelector,omitempty"`
+	// Foo is an example field of Tenant. Edit tenant_types.go to remove/update
+	Foo string `json:"foo,omitempty"`
 }
 
-// CollectorStatus defines the observed state of Collector
-type CollectorStatus struct {
+// TenantStatus defines the observed state of Tenant
+type TenantStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -41,24 +41,24 @@ type CollectorStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// Collector is the Schema for the collectors API
-type Collector struct {
+// Tenant is the Schema for the tenants API
+type Tenant struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   CollectorSpec   `json:"spec,omitempty"`
-	Status CollectorStatus `json:"status,omitempty"`
+	Spec   TenantSpec   `json:"spec,omitempty"`
+	Status TenantStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// CollectorList contains a list of Collector
-type CollectorList struct {
+// TenantList contains a list of Tenant
+type TenantList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Collector `json:"items"`
+	Items           []Tenant `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Collector{}, &CollectorList{})
+	SchemeBuilder.Register(&Tenant{}, &TenantList{})
 }

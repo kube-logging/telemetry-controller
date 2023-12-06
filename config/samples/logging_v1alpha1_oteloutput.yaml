@@ -1,0 +1,12 @@
+apiVersion: logging.kube-logging.dev/v1alpha1
+kind: OtelOutput
+metadata:
+  labels:
+    app.kubernetes.io/name: oteloutput
+    app.kubernetes.io/instance: oteloutput-sample
+    app.kubernetes.io/part-of: subscription-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: subscription-operator
+  name: oteloutput-sample
+spec:
+  # TODO(user): Add fields here

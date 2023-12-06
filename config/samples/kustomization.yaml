@@ -1,4 +1,7 @@
 ## Append samples of your project ##
 resources:
 - logging_v1alpha1_collector.yaml
+- logging_v1alpha1_subscription.yaml
+- logging_v1alpha1_tenant.yaml
+- logging_v1alpha1_oteloutput.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
