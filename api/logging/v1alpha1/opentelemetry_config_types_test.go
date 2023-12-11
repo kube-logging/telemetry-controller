@@ -22,11 +22,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/go-yaml/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 // TODO move this to its appropiate place
 type OtelColConfigInput struct {
+	// Input
 	Tenants []string
 }
 
@@ -57,7 +58,34 @@ func generatePipeline(receivers, processors, exporters []string) Pipeline {
 	return result
 }
 
-func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() OtelColConfigIR {
+type RoutingConnectorTableItem struct {
+	Statement string   `yaml:"statement"`
+	Pipelines []string `yaml:"pipelines,flow"`
+}
+
+type RoutingConnector struct {
+	Name             string                      `yaml:"-,omitempty"`
+	DefaultPipelines []string                    `yaml:"default_pipelines"`
+	Table            []RoutingConnectorTableItem `yaml:"table"`
+}
+
+func (rc *RoutingConnector) AddRoutingConnectorTableElem(attribute string, value string, pipelines []string) {
+	newTableItem := RoutingConnectorTableItem{
+		Statement: fmt.Sprintf(`'route() where attributes[%q]' == %q`, attribute, value),
+		Pipelines: pipelines,
+	}
+	rc.Table = append(rc.Table, newTableItem)
+}
+
+func GenerateRoutingConnector(name string, defaultPipelines []string) RoutingConnector {
+	result := RoutingConnector{}
+
+	result.DefaultPipelines = defaultPipelines
+
+	return result
+}
+
+func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(receivers []string) OtelColConfigIR {
 	result := OtelColConfigIR{}
 
 	// Get file outputs based tenant names
@@ -65,12 +93,12 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() OtelColConfig
 
 	// Fill the service field
 	// Add pipelines
-	dummyReceivers := []string{"file/in"}
 	exporters := []string{}
 	for exporter := range result.Exporters {
 		exporters = append(exporters, exporter)
 	}
-	result.Services.Pipelines.Metrics = generatePipeline(dummyReceivers, []string{}, exporters)
+	result.Services.Pipelines.Metrics = generatePipeline(receivers, []string{}, exporters)
+	result.Connectors = map[string]interface{}{}
 
 	return result
 }
@@ -82,9 +110,10 @@ type Pipeline struct {
 }
 
 type Pipelines struct {
-	Traces  Pipeline `yaml:"traces,omitempty"`
-	Metrics Pipeline `yaml:"metrics,omitempty"`
-	Logs    Pipeline `yaml:"logs,omitempty"`
+	Traces         Pipeline            `yaml:"traces,omitempty"`
+	Metrics        Pipeline            `yaml:"metrics,omitempty"`
+	Logs           Pipeline            `yaml:"logs,omitempty"`
+	NamedPipelines map[string]Pipeline `yaml:",inline,omitempty"`
 }
 
 type Services struct {
@@ -94,9 +123,10 @@ type Services struct {
 }
 
 type OtelColConfigIR struct {
-	Receivers map[string]interface{} `yaml:"receivers,omitempty"`
-	Exporters map[string]interface{} `yaml:"exporters,omitempty"`
-	Services  Services               `yaml:"service,omitempty"`
+	Receivers  map[string]interface{} `yaml:"receivers,omitempty"`
+	Exporters  map[string]interface{} `yaml:"exporters,omitempty"`
+	Services   Services               `yaml:"service,omitempty"`
+	Connectors map[string]interface{} `yaml:"connectors,omitempty"`
 }
 
 func (cfg *OtelColConfigIR) ToYAML() (string, error) {
@@ -121,11 +151,12 @@ func (cfg *OtelColConfigIR) ToYAMLRepresentation() ([]byte, error) {
 //go:embed otel_col_conf_test_fixtures/minimal.yaml
 var otelColMinimalYaml string
 
-func TestTemplateMinimal(t *testing.T) {
+func TestOtelColConfMinimal(t *testing.T) {
 	inputCfg := OtelColConfigInput{
 		Tenants: []string{"tenantA", "tenantB"},
 	}
-	generatedIR := inputCfg.ToIntermediateRepresentation()
+	dummyReceivers := []string{"file/in"}
+	generatedIR := inputCfg.ToIntermediateRepresentation(dummyReceivers)
 
 	generatedIR.Receivers = map[string]interface{}{
 		"file/in": map[string]interface{}{
@@ -146,13 +177,73 @@ func TestTemplateMinimal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error %v", err)
 	}
+	var actualYAML map[string]interface{}
+	if err := yaml.Unmarshal(actualYAMLBytes, &actualYAML); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	var expectedYAML map[string]interface{}
+	if err := yaml.Unmarshal([]byte(otelColMinimalYaml), &expectedYAML); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	if !reflect.DeepEqual(actualYAML, expectedYAML) {
+		t.Fatalf(`yaml marshaling failed
+expected=
+---
+%v
+---,
+actual=
+---
+%v
+---`,
+			expectedYAML, actualYAML)
+	}
+}
+
+//go:embed otel_col_conf_test_fixtures/complex.yaml
+var otelColTargetYaml string
+
+func TestOtelColConfComplex(t *testing.T) {
+	// Required inputs
+	inputCfg := OtelColConfigInput{
+		Tenants: []string{"tenantA", "tenantB"},
+	}
+	rc := GenerateRoutingConnector("routing/tenants", []string{"logs/default"})
+	rc.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", "A", []string{"logs/tenant_A"})
+	rc.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", "B", []string{})
+
+	// IR
+	generatedIR := inputCfg.ToIntermediateRepresentation([]string{})
+
+	generatedIR.Receivers = map[string]interface{}{
+		"file/in": map[string]interface{}{
+			"path": "/dev/stdin",
+		},
+	}
+	generatedIR.Connectors[rc.Name] = rc
+
+	// Final YAML
+	generatedYAML, err := generatedIR.ToYAML()
+	if err != nil {
+		t.Fatalf("YAML formatting failed, err=%v", err)
+	}
+	t.Logf(`the generated YAML is:
+---
+%v
+---`, generatedYAML)
+
+	actualYAMLBytes, err := generatedIR.ToYAMLRepresentation()
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
 	var actualUniversalMap map[string]interface{}
 	if err := yaml.Unmarshal(actualYAMLBytes, &actualUniversalMap); err != nil {
 		t.Fatalf("error: %v", err)
 	}
 
 	var expectedUniversalMap map[string]interface{}
-	if err := yaml.Unmarshal([]byte(otelColMinimalYaml), &expectedUniversalMap); err != nil {
+	if err := yaml.Unmarshal([]byte(otelColTargetYaml), &expectedUniversalMap); err != nil {
 		t.Fatalf("error: %v", err)
 	}
 
