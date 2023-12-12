@@ -20,6 +20,7 @@ import (
 
 	"golang.org/x/exp/slices"
 	apiv1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kube-logging/subscription-operator/api/logging/v1alpha1"
-	loggingv1alpha1 "github.com/kube-logging/subscription-operator/api/logging/v1alpha1"
 )
 
 // CollectorReconciler reconciles a Collector object
@@ -61,7 +61,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	tenantSubscriptionMap := make(map[string][]loggingv1alpha1.Subscription)
+	tenantSubscriptionMap := make(map[string][]v1alpha1.Subscription)
 	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelectors)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -93,17 +93,80 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	}
 
+	otelConfigMap := generateOtelConfigFromTenantSubscriptionMap(tenantSubscriptionMap)
+
+	otelConfigInput := OtelColConfigInput{
+		TenantSubscriptionMap: otelConfigMap,
+	}
+
+	otelConfigIR := otelConfigInput.ToIntermediateRepresentation()
+
+	otelConfig, _ := otelConfigIR.ToYAML()
+
+	configMapData := make(map[string]string)
+
+	configMapData["collectorConfig"] = otelConfig
+
+	configMap := apiv1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-config", collector.Name),
+			Namespace: collector.Namespace,
+		},
+		Data: configMapData,
+	}
+
+	//controllerutil.SetOwnerReference(collector, &configMap, runtime.NewScheme())
+
+	foundConfigMap := apiv1.ConfigMap{}
+
+	err = r.Client.Get(ctx, client.ObjectKey{Namespace: configMap.Namespace, Name: configMap.Name}, &foundConfigMap)
+	if apierrors.IsNotFound(err) {
+		if err := r.Client.Create(ctx, &configMap); err != nil {
+			logger.Error(err, "failed to create ConfigMap resource")
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("created ConfigMap resource for Collector")
+		return ctrl.Result{}, nil
+	}
+	if err != nil {
+		logger.Error(err, "failed to get ConfigMap for Collector")
+		return ctrl.Result{}, err
+	}
+
+	if foundConfigMap.Data["collectorConfig"] != configMap.Data["collectorConfig"] {
+		if err := r.Client.Update(ctx, &configMap); err != nil {
+			logger.Error(err, "failed to update ConfigMap")
+			return ctrl.Result{}, err
+		}
+
+	}
+
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&loggingv1alpha1.Collector{}).
+		For(&v1alpha1.Collector{}).
 		Complete(r)
 }
 
-func getTenantNamesFromTenants(tenants []loggingv1alpha1.Tenant) []string {
+func generateOtelConfigFromTenantSubscriptionMap(tenantSubsMap map[string][]v1alpha1.Subscription) map[string][]string {
+
+	result := make(map[string][]string)
+
+	for tenant, subscriptions := range tenantSubsMap {
+		subscriptionNames := getSubscriptionNamesFromSubscription(subscriptions)
+		slices.Sort(subscriptionNames)
+		result[tenant] = subscriptionNames
+	}
+
+	return result
+}
+
+func getTenantNamesFromTenants(tenants []v1alpha1.Tenant) []string {
 	var tenantNames []string
 	for _, tenant := range tenants {
 		tenantNames = append(tenantNames, tenant.Name)
@@ -112,7 +175,7 @@ func getTenantNamesFromTenants(tenants []loggingv1alpha1.Tenant) []string {
 	return tenantNames
 }
 
-func getSubscriptionNamesFromSubscription(subscriptions []loggingv1alpha1.Subscription) []string {
+func getSubscriptionNamesFromSubscription(subscriptions []v1alpha1.Subscription) []string {
 	var subscriptionNames []string
 	for _, subscription := range subscriptions {
 		subscriptionNames = append(subscriptionNames, fmt.Sprintf("%s/%s", subscription.Namespace, subscription.Name))
@@ -121,7 +184,7 @@ func getSubscriptionNamesFromSubscription(subscriptions []loggingv1alpha1.Subscr
 	return subscriptionNames
 }
 
-func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, labelSelectorsList []metav1.LabelSelector) ([]loggingv1alpha1.Tenant, error) {
+func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, labelSelectorsList []metav1.LabelSelector) ([]v1alpha1.Tenant, error) {
 	var selectors []labels.Selector
 
 	for _, labelSelector := range labelSelectorsList {
@@ -132,10 +195,10 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 		selectors = append(selectors, selector)
 	}
 
-	var tenants []loggingv1alpha1.Tenant
+	var tenants []v1alpha1.Tenant
 
 	for _, selector := range selectors {
-		var tenantsForSelector loggingv1alpha1.TenantList
+		var tenantsForSelector v1alpha1.TenantList
 		listOpts := &client.ListOptions{
 			LabelSelector: selector,
 		}
@@ -150,7 +213,7 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 	return tenants, nil
 }
 
-func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]loggingv1alpha1.Subscription, error) {
+func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]v1alpha1.Subscription, error) {
 	var selectors []labels.Selector
 
 	for _, labelSelector := range tentant.Spec.ResourceNamespaceSelectors {
@@ -175,11 +238,11 @@ func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, ten
 		namespaces = append(namespaces, namespacesForSelector.Items...)
 	}
 
-	var subscriptions []loggingv1alpha1.Subscription
+	var subscriptions []v1alpha1.Subscription
 
 	for _, ns := range namespaces {
 
-		var subscriptionsForNS loggingv1alpha1.SubscriptionList
+		var subscriptionsForNS v1alpha1.SubscriptionList
 		listOpts := &client.ListOptions{
 			Namespace: ns.Name,
 		}
