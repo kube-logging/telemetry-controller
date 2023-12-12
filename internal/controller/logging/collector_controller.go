@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"golang.org/x/exp/slices"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -66,7 +67,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	collector.Status.Tenants = getTenantNamesFromTenants(tenants)
+	tenantNames := getTenantNamesFromTenants(tenants)
+	slices.Sort(tenantNames)
+
+	collector.Status.Tenants = tenantNames
 
 	r.Status().Update(ctx, collector)
 	logger.Info("Setting collector status")
@@ -79,7 +83,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		tenantSubscriptionMap[tenant.Name] = subscriptionsForTenant
 
-		tenant.Status.Subscriptions = getSubscriptionNamesFromSubscription(subscriptionsForTenant)
+		subscriptionNames := getSubscriptionNamesFromSubscription(subscriptionsForTenant)
+		slices.Sort(subscriptionNames)
+
+		tenant.Status.Subscriptions = subscriptionNames
 
 		r.Status().Update(ctx, &tenant)
 		logger.Info("Setting tenant status")
