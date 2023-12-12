@@ -1,0 +1,16 @@
+receivers:
+  file/in:
+    path:
+      /dev/stdin
+exporters:
+  file/tenantA:
+    path:
+      /foo/tenantA
+  file/tenantB:
+    path:
+      /foo/tenantB
+service:
+  pipelines:
+    metrics:
+      receivers: [file/in]
+      exporters: [file/tenantA, file/tenantB]
