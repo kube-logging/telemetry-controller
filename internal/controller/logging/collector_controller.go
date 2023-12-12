@@ -16,7 +16,9 @@ package logging
 
 import (
 	"context"
+	"fmt"
 
+	"golang.org/x/exp/slices"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -55,22 +57,40 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	logger.Info("Reconciling collector")
 
-	if err := r.Get(ctx, req.NamespacedName, collector); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+	if err := r.Get(ctx, req.NamespacedName, collector); client.IgnoreNotFound(err) != nil {
+		return ctrl.Result{}, err
 	}
 
 	tenantSubscriptionMap := make(map[string][]loggingv1alpha1.Subscription)
-	// TODO deduplicate tenant list
-	tenants, err := r.getTenantsMatchingSelector(ctx, collector.Spec.TenantSelectors)
+	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelectors)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
+	tenantNames := getTenantNamesFromTenants(tenants)
+	slices.Sort(tenantNames)
+
+	collector.Status.Tenants = tenantNames
+
+	r.Status().Update(ctx, collector)
+	logger.Info("Setting collector status")
 	for _, tenant := range tenants {
-		tenantSubscriptionMap[tenant.Name], err = r.getSubscriptionsForTenant(ctx, &tenant)
+
+		subscriptionsForTenant, err := r.getSubscriptionsForTenant(ctx, &tenant)
+
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		tenantSubscriptionMap[tenant.Name] = subscriptionsForTenant
+
+		subscriptionNames := getSubscriptionNamesFromSubscription(subscriptionsForTenant)
+		slices.Sort(subscriptionNames)
+
+		tenant.Status.Subscriptions = subscriptionNames
+
+		r.Status().Update(ctx, &tenant)
+		logger.Info("Setting tenant status")
+
 	}
 
 	return ctrl.Result{}, nil
@@ -83,7 +103,25 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *CollectorReconciler) getTenantsMatchingSelector(ctx context.Context, labelSelectorsList []metav1.LabelSelector) ([]loggingv1alpha1.Tenant, error) {
+func getTenantNamesFromTenants(tenants []loggingv1alpha1.Tenant) []string {
+	var tenantNames []string
+	for _, tenant := range tenants {
+		tenantNames = append(tenantNames, tenant.Name)
+	}
+
+	return tenantNames
+}
+
+func getSubscriptionNamesFromSubscription(subscriptions []loggingv1alpha1.Subscription) []string {
+	var subscriptionNames []string
+	for _, subscription := range subscriptions {
+		subscriptionNames = append(subscriptionNames, fmt.Sprintf("%s/%s", subscription.Namespace, subscription.Name))
+	}
+
+	return subscriptionNames
+}
+
+func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, labelSelectorsList []metav1.LabelSelector) ([]loggingv1alpha1.Tenant, error) {
 	var selectors []labels.Selector
 
 	for _, labelSelector := range labelSelectorsList {
