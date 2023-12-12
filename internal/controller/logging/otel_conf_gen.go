@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1alpha1
+package logging
 
 import (
-	_ "embed"
 	"fmt"
-	"reflect"
-	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v3"
 )
 
@@ -221,139 +217,4 @@ func (cfg *OtelColConfigIR) ToYAMLRepresentation() ([]byte, error) {
 		return bytes, nil
 	}
 	return []byte{}, nil
-}
-
-//go:embed otel_col_conf_test_fixtures/minimal.yaml
-var otelColMinimalYaml string
-
-func TestOtelColConfMinimal(t *testing.T) {
-	t.Skip()
-	inputCfg := OtelColConfigInput{
-		TenantSubscriptionMap: map[string][]string{
-			"tenantA": {},
-			"tenantB": {},
-		},
-	}
-	dummyReceivers := []string{"file/in"}
-	generatedIR := inputCfg.ToIntermediateRepresentation()
-	generatedIR.Services.Pipelines.Metrics = generatePipeline(dummyReceivers, []string{}, []string{"file/tenantA", "file/tenantB"})
-
-	generatedIR.Receivers = map[string]interface{}{
-		"file/in": map[string]interface{}{
-			"path": "/dev/stdin",
-		},
-	}
-
-	generatedYAML, err := generatedIR.ToYAML()
-	if err != nil {
-		t.Fatalf("YAML formatting failed, err=%v", err)
-	}
-	t.Logf(`the generated YAML is:
----
-%v
----`, generatedYAML)
-
-	actualYAMLBytes, err := generatedIR.ToYAMLRepresentation()
-	if err != nil {
-		t.Fatalf("error %v", err)
-	}
-	var actualYAML map[string]interface{}
-	if err := yaml.Unmarshal(actualYAMLBytes, &actualYAML); err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
-	var expectedYAML map[string]interface{}
-	if err := yaml.Unmarshal([]byte(otelColMinimalYaml), &expectedYAML); err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
-	if !reflect.DeepEqual(actualYAML, expectedYAML) {
-		t.Fatalf(`yaml marshaling failed
-expected=
----
-%v
----,
-actual=
----
-%v
----`,
-			expectedYAML, actualYAML)
-	}
-}
-
-//go:embed otel_col_conf_test_fixtures/complex.yaml
-var otelColTargetYaml string
-
-func TestOtelColConfComplex(t *testing.T) {
-	// Required inputs
-	inputCfg := OtelColConfigInput{
-		TenantSubscriptionMap: map[string][]string{
-			"A": {"S1", "S2"},
-			"B": {"S1", "S2"},
-		},
-	}
-
-	// IR
-	generatedIR := inputCfg.ToIntermediateRepresentation()
-
-	generatedIR.Receivers = map[string]interface{}{
-		"file/in": map[string]interface{}{
-			"path": "/dev/stdin",
-		},
-	}
-
-	// Final YAML
-	generatedYAML, err := generatedIR.ToYAML()
-	if err != nil {
-		t.Fatalf("YAML formatting failed, err=%v", err)
-	}
-	t.Logf(`the generated YAML is:
----
-%v
----`, generatedYAML)
-
-	actualYAMLBytes, err := generatedIR.ToYAMLRepresentation()
-	if err != nil {
-		t.Fatalf("error %v", err)
-	}
-	actualYAML, err := generatedIR.ToYAML()
-	if err != nil {
-		t.Fatalf("error %v", err)
-	}
-	var actualUniversalMap map[string]interface{}
-	if err := yaml.Unmarshal(actualYAMLBytes, &actualUniversalMap); err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
-	var expectedUniversalMap map[string]interface{}
-	if err := yaml.Unmarshal([]byte(otelColTargetYaml), &expectedUniversalMap); err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
-	// use dyff for YAML comparison
-	if diff := cmp.Diff(expectedUniversalMap, actualUniversalMap); diff != "" {
-		t.Logf("mismatch:\n---%s\n---\n", diff)
-	}
-
-	if !reflect.DeepEqual(actualUniversalMap, expectedUniversalMap) {
-		t.Logf(`yaml mismatch:
-expected=
----
-%s
----
-actual=
----
-%s
----`, otelColTargetYaml, actualYAML)
-		t.Fatalf(`yaml marshaling failed
-expected=
----
-%v
----,
-actual=
----
-%v
----`,
-			expectedUniversalMap, actualUniversalMap)
-	}
 }
