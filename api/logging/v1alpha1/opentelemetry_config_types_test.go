@@ -24,12 +24,14 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v3"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TODO move this to its appropiate place
 type OtelColConfigInput struct {
 	// Input
-	Tenants []string
+	// TODO: use Tenant struct here
+	Tenants []Tenant
 }
 
 func (cfgInput *OtelColConfigInput) generateExporters() map[string]interface{} {
@@ -37,9 +39,9 @@ func (cfgInput *OtelColConfigInput) generateExporters() map[string]interface{} {
 	common_prefix := "/foo"
 
 	// Create file outputs based on tenant names
-	for _, tenantName := range cfgInput.Tenants {
-		fileOutputName := fmt.Sprintf("file/%s", tenantName)
-		fileOutputPath := fmt.Sprintf("%s/%s", common_prefix, tenantName)
+	for _, tenant := range cfgInput.Tenants {
+		fileOutputName := fmt.Sprintf("file/%s", tenant.Name)
+		fileOutputPath := fmt.Sprintf("%s/%s", common_prefix, tenant.Name)
 
 		result[fileOutputName] = map[string]interface{}{
 			"path": fileOutputPath,
@@ -153,7 +155,18 @@ var otelColMinimalYaml string
 
 func TestOtelColConfMinimal(t *testing.T) {
 	inputCfg := OtelColConfigInput{
-		Tenants: []string{"tenantA", "tenantB"},
+		Tenants: []Tenant{
+			Tenant{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "tenantA",
+				},
+			},
+			Tenant{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "tenantB",
+				},
+			},
+		},
 	}
 	dummyReceivers := []string{"file/in"}
 	generatedIR := inputCfg.ToIntermediateRepresentation(map[string]interface{}{})
@@ -208,7 +221,18 @@ var otelColTargetYaml string
 func TestOtelColConfComplex(t *testing.T) {
 	// Required inputs
 	inputCfg := OtelColConfigInput{
-		Tenants: []string{"tenantA", "tenantB"},
+		Tenants: []Tenant{
+			Tenant{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "tenantA",
+				},
+			},
+			Tenant{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "tenantB",
+				},
+			},
+		},
 	}
 	rcTenants := GenerateRoutingConnector("routing/tenants", []string{"logs/default"})
 	rcTenants.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", "A", []string{"logs/tenant_A"})
@@ -264,6 +288,7 @@ func TestOtelColConfComplex(t *testing.T) {
 		t.Fatalf("error: %v", err)
 	}
 
+	// use dyff for YAML comparison
 	if diff := cmp.Diff(expectedUniversalMap, actualUniversalMap); diff != "" {
 		t.Logf("mismatch:\n---%s\n---\n", diff)
 	}
