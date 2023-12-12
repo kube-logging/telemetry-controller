@@ -21,7 +21,7 @@ import (
 // +kubebuilder:object:generate=true
 
 type OtelColConfig struct {
-	stringifiedYAML string
+	StringifiedYAML string `json:"config,omitempty"`
 }
 
 func PrettifyYAML(input string) (string, error) {

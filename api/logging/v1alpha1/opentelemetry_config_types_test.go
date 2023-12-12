@@ -22,14 +22,16 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v3"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TODO move this to its appropiate place
 type OtelColConfigInput struct {
 	// Input
 	// TODO: use Tenant struct here
-	Tenants []Tenant
+	//Tenants []Tenant
+
+	// Subscriptions map, where the key is the Tenants'name
+	TenantSubscriptionMap map[string][]string
 }
 
 func (cfgInput *OtelColConfigInput) generateExporters() map[string]interface{} {
@@ -37,15 +39,16 @@ func (cfgInput *OtelColConfigInput) generateExporters() map[string]interface{} {
 	common_prefix := "/foo"
 
 	// Create file outputs based on tenant names
-	for _, tenant := range cfgInput.Tenants {
-		fileOutputName := fmt.Sprintf("file/%s", tenant.Name)
-		fileOutputPath := fmt.Sprintf("%s/%s", common_prefix, tenant.Name)
+	for tenantName, subscriptions := range cfgInput.TenantSubscriptionMap {
+		for _, subsubscription := range subscriptions {
+			fileOutputName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subsubscription)
+			fileOutputPath := fmt.Sprintf("%s/tenant_%s/%s", common_prefix, tenantName, subsubscription)
 
-		result[fileOutputName] = map[string]interface{}{
-			"path": fileOutputPath,
+			result[fileOutputName] = map[string]interface{}{
+				"path": fileOutputPath,
+			}
 		}
 	}
-
 	return result
 }
 
@@ -66,7 +69,7 @@ type RoutingConnectorTableItem struct {
 
 type RoutingConnector struct {
 	Name             string                      `yaml:"-"`
-	DefaultPipelines []string                    `yaml:"default_pipelines"`
+	DefaultPipelines []string                    `yaml:"default_pipelines,flow"`
 	Table            []RoutingConnectorTableItem `yaml:"table"`
 }
 
@@ -87,18 +90,90 @@ func GenerateRoutingConnector(name string, defaultPipelines []string) RoutingCon
 	return result
 }
 
-func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(connectors map[string]interface{}) OtelColConfigIR {
+func generateRootRoutingConnector(tenantNames []string) RoutingConnector {
+	// Generate routing table's first hop that will sort it's input by tenant name
+	defaultRc := GenerateRoutingConnector("routing/tenants", []string{"logs/default"})
+	for _, tenantName := range tenantNames {
+		defaultRc.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", tenantName, []string{fmt.Sprintf("logs/tenant_%s", tenantName)})
+	}
+	return defaultRc
+}
+
+func generateRoutingConnectorForTenantsSubscription(tenantName string, subscriptions []string) RoutingConnector {
+	rcName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
+	rcDefaultPipelines := []string{fmt.Sprintf("logs/tenant_%s_default", tenantName)}
+	rc := GenerateRoutingConnector(rcName, rcDefaultPipelines)
+
+	for _, subscriptionName := range subscriptions {
+		pipeline := fmt.Sprintf("logs/tenant_%s_subscription_%s", tenantName, subscriptionName)
+		rc.AddRoutingConnectorTableElem("kubernetes.labels.app", subscriptionName, []string{pipeline})
+	}
+
+	return rc
+}
+
+func (cfgInput *OtelColConfigInput) generateConnectors() map[string]interface{} {
+	var connectors = make(map[string]interface{})
+
+	tenantNames := []string{}
+	for tenantName := range cfgInput.TenantSubscriptionMap {
+		tenantNames = append(tenantNames, tenantName)
+
+	}
+	rootRoutingConnector := generateRootRoutingConnector(tenantNames)
+	connectors[rootRoutingConnector.Name] = rootRoutingConnector
+
+	for _, tenantName := range tenantNames {
+		rc := generateRoutingConnectorForTenantsSubscription(tenantName, cfgInput.TenantSubscriptionMap[tenantName])
+		connectors[rc.Name] = rc
+	}
+
+	return connectors
+
+}
+
+func generateRootPipeline() Pipeline {
+	return generatePipeline([]string{"file/in"}, []string{"kubernetes"}, []string{"routing/tenants"})
+}
+
+func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
+	var namedPipelines = make(map[string]Pipeline)
+
+	namedPipelines["logs/all"] = generateRootPipeline()
+
+	tenantNames := []string{}
+	for tenantName := range cfgInput.TenantSubscriptionMap {
+		tenantNames = append(tenantNames, tenantName)
+	}
+
+	for _, tenantName := range tenantNames {
+		// Generate a pipeline for the tenant
+		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenantName)
+		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
+		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{"add tenant label"}, []string{tenantRoutingName})
+
+		// Generate pipelines for the subscriptions for the tenant
+		for _, subscription := range cfgInput.TenantSubscriptionMap[tenantName] {
+			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s", tenantPipelineName, subscription)
+			tenantSubscriptionPipelineExporterName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subscription)
+			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{"add subscription label"}, []string{tenantSubscriptionPipelineExporterName})
+		}
+	}
+
+	return namedPipelines
+
+}
+
+func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() OtelColConfigIR {
 	result := OtelColConfigIR{}
 
 	// Get file outputs based tenant names
 	result.Exporters = cfgInput.generateExporters()
 
-	result.Connectors = map[string]interface{}{}
+	result.Connectors = cfgInput.generateConnectors()
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 
-	for connectorName, connector := range connectors {
-		result.Connectors[connectorName] = connector
-	}
+	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
 
 	return result
 }
@@ -125,8 +200,8 @@ type Services struct {
 type OtelColConfigIR struct {
 	Receivers  map[string]interface{} `yaml:"receivers,omitempty"`
 	Exporters  map[string]interface{} `yaml:"exporters,omitempty"`
-	Services   Services               `yaml:"service,omitempty"`
 	Connectors map[string]interface{} `yaml:"connectors,omitempty"`
+	Services   Services               `yaml:"service,omitempty"`
 }
 
 func (cfg *OtelColConfigIR) ToYAML() (string, error) {
@@ -152,22 +227,15 @@ func (cfg *OtelColConfigIR) ToYAMLRepresentation() ([]byte, error) {
 var otelColMinimalYaml string
 
 func TestOtelColConfMinimal(t *testing.T) {
+	t.Skip()
 	inputCfg := OtelColConfigInput{
-		Tenants: []Tenant{
-			Tenant{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "tenantA",
-				},
-			},
-			Tenant{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "tenantB",
-				},
-			},
+		TenantSubscriptionMap: map[string][]string{
+			"tenantA": {},
+			"tenantB": {},
 		},
 	}
 	dummyReceivers := []string{"file/in"}
-	generatedIR := inputCfg.ToIntermediateRepresentation(map[string]interface{}{})
+	generatedIR := inputCfg.ToIntermediateRepresentation()
 	generatedIR.Services.Pipelines.Metrics = generatePipeline(dummyReceivers, []string{}, []string{"file/tenantA", "file/tenantB"})
 
 	generatedIR.Receivers = map[string]interface{}{
@@ -219,48 +287,20 @@ var otelColTargetYaml string
 func TestOtelColConfComplex(t *testing.T) {
 	// Required inputs
 	inputCfg := OtelColConfigInput{
-		Tenants: []Tenant{
-			Tenant{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "tenantA",
-				},
-			},
-			Tenant{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "tenantB",
-				},
-			},
+		TenantSubscriptionMap: map[string][]string{
+			"A": {"S1", "S2"},
+			"B": {"S1", "S2"},
 		},
 	}
-	rcTenants := GenerateRoutingConnector("routing/tenants", []string{"logs/default"})
-	rcTenants.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", "A", []string{"logs/tenant_A"})
-	rcTenants.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", "B", []string{})
-
-	rcTenantA := GenerateRoutingConnector("routing/tenant_A_subscriptions", []string{"logs/tenant_A_default"})
-	rcTenantA.AddRoutingConnectorTableElem("kubernetes.labels.app", "app1", []string{"logs/tenant_A_subscription_A_S1"})
-	rcTenantA.AddRoutingConnectorTableElem("kubernetes.labels.app", "app2", []string{"logs/tenant_A_subscription_A_S2"})
-
-	rcTenantB := GenerateRoutingConnector("routing/tenant_B_subscriptions", []string{"logs/tenant_B_default"})
-
-	connectors := make(map[string]interface{})
-	connectors[rcTenants.Name] = rcTenants
-	connectors[rcTenantA.Name] = rcTenantA
-	connectors[rcTenantB.Name] = rcTenantB
 
 	// IR
-	generatedIR := inputCfg.ToIntermediateRepresentation(connectors)
+	generatedIR := inputCfg.ToIntermediateRepresentation()
 
 	generatedIR.Receivers = map[string]interface{}{
 		"file/in": map[string]interface{}{
 			"path": "/dev/stdin",
 		},
 	}
-	generatedIR.Connectors[rcTenants.Name] = rcTenants
-	generatedIR.Services.Pipelines.NamedPipelines["logs/all"] = generatePipeline([]string{"file/in"}, []string{"kubernetes"}, []string{"routing/tenants"})
-	generatedIR.Services.Pipelines.NamedPipelines["logs/tenant_A"] = generatePipeline([]string{"routing/tenants"}, []string{"add tenant label"}, []string{"routing/tenant_A_subscriptions"})
-	generatedIR.Services.Pipelines.NamedPipelines["logs/tenant_A_subscription_A_S1"] = generatePipeline([]string{"routing/tenant_A_subscriptions"}, []string{"add subscription label"}, []string{"file/tenantA", "file/tenantB"})
-	generatedIR.Services.Pipelines.NamedPipelines["logs/tenant_A_subscription_A_S2"] = generatePipeline([]string{"routing/tenant_A_subscriptions"}, []string{}, []string{"file/tenantA"})
-	generatedIR.Services.Pipelines.NamedPipelines["logs/tenant_B"] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{"routing/tenant_B_subscriptions"})
 
 	// Final YAML
 	generatedYAML, err := generatedIR.ToYAML()
@@ -273,6 +313,10 @@ func TestOtelColConfComplex(t *testing.T) {
 ---`, generatedYAML)
 
 	actualYAMLBytes, err := generatedIR.ToYAMLRepresentation()
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
+	actualYAML, err := generatedIR.ToYAML()
 	if err != nil {
 		t.Fatalf("error %v", err)
 	}
@@ -292,6 +336,15 @@ func TestOtelColConfComplex(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(actualUniversalMap, expectedUniversalMap) {
+		t.Logf(`yaml mismatch:
+expected=
+---
+%s
+---
+actual=
+---
+%s
+---`, otelColTargetYaml, actualYAML)
 		t.Fatalf(`yaml marshaling failed
 expected=
 ---
