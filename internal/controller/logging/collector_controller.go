@@ -57,19 +57,13 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	logger.Info("Reconciling collector")
 
 	if err := r.Get(ctx, req.NamespacedName, collector); client.IgnoreNotFound(err) != nil {
-		return ctrl.Result{
-			Requeue:      true,
-			RequeueAfter: 10,
-		}, err
+		return ctrl.Result{}, err
 	}
 
 	tenantSubscriptionMap := make(map[string][]loggingv1alpha1.Subscription)
 	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelectors)
 	if err != nil {
-		return ctrl.Result{
-			Requeue:      true,
-			RequeueAfter: 10,
-		}, err
+		return ctrl.Result{}, err
 	}
 
 	collector.Status.Tenants = getTenantNamesFromTenants(tenants)
@@ -81,10 +75,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		subscriptionsForTenant, err := r.getSubscriptionsForTenant(ctx, &tenant)
 
 		if err != nil {
-			return ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: 10,
-			}, err
+			return ctrl.Result{}, err
 		}
 		tenantSubscriptionMap[tenant.Name] = subscriptionsForTenant
 
