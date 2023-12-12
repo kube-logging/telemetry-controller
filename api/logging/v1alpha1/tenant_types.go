@@ -18,26 +18,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // TenantSpec defines the desired state of Tenant
 type TenantSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	ResourceNamespaceSelectors []metav1.LabelSelector `json:"resourceNamespaceSelectors,omitempty"`
 	OTTL                       string                 `json:"ottl,omitempty"`
 }
 
 // TenantStatus defines the observed state of Tenant
 type TenantStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Subscriptions []string `json:"subscriptions"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Subscriptions",type=string,JSONPath=`.status.subscriptions`
 
 // Tenant is the Schema for the tenants API
 type Tenant struct {

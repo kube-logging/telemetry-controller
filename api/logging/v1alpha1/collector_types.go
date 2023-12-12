@@ -18,25 +18,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // CollectorSpec defines the desired state of Collector
 type CollectorSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	TenantSelectors []metav1.LabelSelector `json:"tenantSelectors,omitempty"`
 }
 
 // CollectorStatus defines the observed state of Collector
 type CollectorStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Tenants []string `json:"tenants"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Tenants",type=string,JSONPath=`.status.tenants`
 
 // Collector is the Schema for the collectors API
 type Collector struct {

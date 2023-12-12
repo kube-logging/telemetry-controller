@@ -14,7 +14,11 @@ spec:
     singular: collector
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.tenants
+      name: Tenants
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Collector is the Schema for the collectors API
@@ -87,6 +91,13 @@ spec:
             type: object
           status:
             description: CollectorStatus defines the observed state of Collector
+            properties:
+              tenants:
+                items:
+                  type: string
+                type: array
+            required:
+            - tenants
             type: object
         type: object
     served: true

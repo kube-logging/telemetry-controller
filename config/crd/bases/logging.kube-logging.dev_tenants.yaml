@@ -14,7 +14,11 @@ spec:
     singular: tenant
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.subscriptions
+      name: Subscriptions
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Tenant is the Schema for the tenants API
@@ -89,6 +93,13 @@ spec:
             type: object
           status:
             description: TenantStatus defines the observed state of Tenant
+            properties:
+              subscriptions:
+                items:
+                  type: string
+                type: array
+            required:
+            - subscriptions
             type: object
         type: object
     served: true
