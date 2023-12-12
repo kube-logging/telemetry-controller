@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/cisco-open/operator-tools/pkg/utils"
 	"github.com/kube-logging/subscription-operator/api/logging/v1alpha1"
 )
 
@@ -116,8 +117,14 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Data: configMapData,
 	}
 
-	//controllerutil.SetOwnerReference(collector, &configMap, runtime.NewScheme())
-
+	configMap.SetOwnerReferences([]metav1.OwnerReference{{
+		APIVersion:         collector.APIVersion,
+		Kind:               collector.Kind,
+		Name:               collector.Name,
+		UID:                collector.UID,
+		Controller:         utils.BoolPointer(true),
+		BlockOwnerDeletion: utils.BoolPointer(true),
+	}})
 	foundConfigMap := apiv1.ConfigMap{}
 
 	err = r.Client.Get(ctx, client.ObjectKey{Namespace: configMap.Namespace, Name: configMap.Name}, &foundConfigMap)
@@ -150,6 +157,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Collector{}).
+		Owns(&apiv1.ConfigMap{}).
 		Complete(r)
 }
 
