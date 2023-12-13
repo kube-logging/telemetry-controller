@@ -177,3 +177,8 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: run-delve
+run-delve: generate fmt vet manifests
+	go build -gcflags "all=-trimpath=$(shell go env GOPATH)" -o bin/manager cmd/main.go
+	dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec ./bin/manager
