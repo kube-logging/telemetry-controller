@@ -1,0 +1,101 @@
+receivers:
+  file/in:
+    path:
+      /dev/stdin
+
+exporters:
+  file/tenant_A_S1:
+    path:
+      /foo/tenant_A/S1
+  file/tenant_A_S2:
+    path:
+      /foo/tenant_A/S2
+  file/tenant_B_S1:
+    path:
+      /foo/tenant_B/S1
+  file/tenant_B_S2:
+    path:
+      /foo/tenant_B/S2
+
+connectors:
+  routing/tenants:
+    default_pipelines: [logs/default]
+    table:
+      - statement: 'route() where attributes["kubernetes.namespace.labels.tenant"] == "A"'
+        pipelines: [logs/tenant_A]
+      - statement: 'route() where attributes["kubernetes.namespace.labels.tenant"] == "B"'
+        pipelines: [logs/tenant_B]
+
+  routing/tenant_A_subscriptions:
+    default_pipelines: [logs/tenant_A_default]
+    table:
+      - statement: 'route() where attributes["kubernetes.labels.app"] == "S1"'
+        pipelines: [logs/tenant_A_subscription_S1]
+      - statement: 'route() where attributes["kubernetes.labels.app"] == "S2"'
+        pipelines: [logs/tenant_A_subscription_S2]
+
+  routing/tenant_B_subscriptions:
+    default_pipelines: [logs/tenant_B_default]
+    table:
+      - statement: 'route() where attributes["kubernetes.labels.app"] == "S1"'
+        pipelines: [logs/tenant_B_subscription_S1]
+      - statement: 'route() where attributes["kubernetes.labels.app"] == "S2"'
+        pipelines: [logs/tenant_B_subscription_S2]
+
+service:
+  pipelines:
+    logs/all:
+      receivers:
+      - file/in
+      processors:
+      - kubernetes
+      exporters:
+      - routing/tenants
+
+    logs/tenant_A:
+      receivers:
+      - routing/tenants
+      processors:
+      - "add tenant label"
+      exporters:
+      - routing/tenant_A_subscriptions
+
+    logs/tenant_A_subscription_S1:
+      receivers:
+      - routing/tenant_A_subscriptions
+      processors:
+      - "add subscription label"    
+      exporters:
+      - file/tenant_A_S1
+      
+    logs/tenant_A_subscription_S2:
+      receivers:
+      - routing/tenant_A_subscriptions
+      processors:
+      - "add subscription label"
+      exporters:
+      - file/tenant_A_S2
+
+    logs/tenant_B:
+      receivers:
+      - routing/tenants
+      processors:
+      - "add tenant label"
+      exporters:
+      - routing/tenant_B_subscriptions
+
+    logs/tenant_B_subscription_S1:
+      receivers:
+      - routing/tenant_B_subscriptions
+      processors:
+      - "add subscription label"
+      exporters:
+      - file/tenant_B_S1
+    
+    logs/tenant_B_subscription_S2:
+      receivers:
+      - routing/tenant_B_subscriptions
+      processors:
+      - "add subscription label"
+      exporters:
+      - file/tenant_B_S2
