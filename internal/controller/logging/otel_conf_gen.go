@@ -181,18 +181,20 @@ func generateKubernetesProcessor() map[string]any {
 		{"sources": defaultSources},
 	}
 
+	var defaultMetadata = []string{
+		"k8s.pod.name",
+		"k8s.pod.uid",
+		"k8s.deployment.name",
+		"k8s.namespace.name",
+		"k8s.node.name",
+		"k8s.pod.start_time",
+	}
+
 	k8sProcessor := map[string]any{
 		"auth_type":   "serviceAccount",
 		"passthrough": false,
 		"extract": map[string]any{
-			"metadata": []string{
-				"k8s.pod.name",
-				"k8s.pod.uid",
-				"k8s.deployment.name",
-				"k8s.namespace.name",
-				"k8s.node.name",
-				"k8s.pod.start_time",
-			},
+			"metadata": defaultMetadata,
 			"labels": []any{
 				map[string]any{
 					"tag_name": "app.label.example",
