@@ -34,17 +34,33 @@ func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
 	var result = make(map[string]any)
 	common_prefix := "/foo"
 
+	// Add a global default catch all
+	fileOutputName := "file/default"
+	fileOutputPath := fmt.Sprintf("%s/default", common_prefix)
+	result[fileOutputName] = map[string]any{
+		"path": fileOutputPath,
+	}
+
 	// Create file outputs based on tenant names
 	for tenantName, subscriptions := range cfgInput.TenantSubscriptionMap {
-		for _, subsubscription := range subscriptions {
-			fileOutputName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subsubscription)
-			fileOutputPath := fmt.Sprintf("%s/tenant_%s_%s", common_prefix, tenantName, subsubscription)
+		for _, subscription := range subscriptions {
+			fileOutputName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subscription)
+			fileOutputPath := fmt.Sprintf("%s/tenant_%s_%s", common_prefix, tenantName, subscription)
 
 			result[fileOutputName] = map[string]any{
 				"path": fileOutputPath,
 			}
 		}
+		// Add default catch all
+		fileOutputName := fmt.Sprintf("file/tenant_%s_default", tenantName)
+		fileOutputPath := fmt.Sprintf("%s/tenant_%s_default", common_prefix, tenantName)
+
+		result[fileOutputName] = map[string]any{
+			"path": fileOutputPath,
+		}
+
 	}
+
 	return result
 }
 
@@ -135,6 +151,9 @@ func generateRootPipeline() Pipeline {
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
 	var namedPipelines = make(map[string]Pipeline)
 
+	// Default pipeline
+	namedPipelines["logs/default"] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{"file/default"})
+
 	namedPipelines["logs/all"] = generateRootPipeline()
 
 	tenantNames := []string{}
@@ -153,7 +172,14 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s", tenantPipelineName, subscription)
 			tenantSubscriptionPipelineExporterName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subscription)
 			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, []string{tenantSubscriptionPipelineExporterName})
+
 		}
+
+		// Add default (catch all) pipelines
+		tenantDefaultCatchAllPipelineName := fmt.Sprintf("%s_default", tenantPipelineName)
+		tenantDefaultCatchAllPipelineExporterName := fmt.Sprintf("file/tenant_%s_default", tenantName)
+		namedPipelines[tenantDefaultCatchAllPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, []string{tenantDefaultCatchAllPipelineExporterName})
+
 	}
 
 	return namedPipelines

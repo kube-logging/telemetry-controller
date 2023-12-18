@@ -4,18 +4,27 @@ receivers:
       /dev/stdin
 
 exporters:
+  file/default:
+    path:
+      /foo/default
   file/tenant_A_S1:
     path:
       /foo/tenant_A_S1
   file/tenant_A_S2:
     path:
       /foo/tenant_A_S2
+  file/tenant_A_default:
+    path:
+      /foo/tenant_A_default
   file/tenant_B_S1:
     path:
       /foo/tenant_B_S1
   file/tenant_B_S2:
     path:
       /foo/tenant_B_S2
+  file/tenant_B_default:
+    path:
+      /foo/tenant_B_default
 
 
 processors:
@@ -71,6 +80,12 @@ connectors:
 
 service:
   pipelines:
+    logs/default:
+      receivers:
+      - routing/tenants
+      exporters:
+      - file/default
+
     logs/all:
       receivers:
       - file/in
@@ -84,6 +99,12 @@ service:
       - routing/tenants
       exporters:
       - routing/tenant_A_subscriptions
+    
+    logs/tenant_A_default:
+      receivers:
+      - routing/tenant_A_subscriptions
+      exporters:
+      - file/tenant_A_default
 
     logs/tenant_A_subscription_S1:
       receivers:
@@ -102,6 +123,12 @@ service:
       - routing/tenants
       exporters:
       - routing/tenant_B_subscriptions
+
+    logs/tenant_B_default:
+      receivers:
+      - routing/tenant_B_subscriptions
+      exporters:
+      - file/tenant_B_default
 
     logs/tenant_B_subscription_S1:
       receivers:
