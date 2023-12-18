@@ -26,7 +26,7 @@ type OtelColConfig struct {
 
 func PrettifyYAML(input string) (string, error) {
 
-	var universalMap map[string]interface{}
+	var universalMap map[string]any
 	err := yaml.Unmarshal([]byte(input), &universalMap)
 	if err != nil {
 		return "", err

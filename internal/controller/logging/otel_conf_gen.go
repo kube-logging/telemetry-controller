@@ -30,8 +30,8 @@ type OtelColConfigInput struct {
 	TenantSubscriptionMap map[string][]string
 }
 
-func (cfgInput *OtelColConfigInput) generateExporters() map[string]interface{} {
-	var result = make(map[string]interface{})
+func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
+	var result = make(map[string]any)
 	common_prefix := "/foo"
 
 	// Create file outputs based on tenant names
@@ -40,7 +40,7 @@ func (cfgInput *OtelColConfigInput) generateExporters() map[string]interface{} {
 			fileOutputName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subsubscription)
 			fileOutputPath := fmt.Sprintf("%s/tenant_%s/%s", common_prefix, tenantName, subsubscription)
 
-			result[fileOutputName] = map[string]interface{}{
+			result[fileOutputName] = map[string]any{
 				"path": fileOutputPath,
 			}
 		}
@@ -108,8 +108,8 @@ func generateRoutingConnectorForTenantsSubscription(tenantName string, subscript
 	return rc
 }
 
-func (cfgInput *OtelColConfigInput) generateConnectors() map[string]interface{} {
-	var connectors = make(map[string]interface{})
+func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
+	var connectors = make(map[string]any)
 
 	tenantNames := []string{}
 	for tenantName := range cfgInput.TenantSubscriptionMap {
@@ -160,7 +160,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 
 }
 
-func generateKubernetesProcessor() map[string]interface{} {
+func generateKubernetesProcessor() map[string]any {
 	type Source struct {
 		Name string `yaml:"name,omitempty"`
 		From string `yaml:"from,omitempty"`
@@ -177,14 +177,14 @@ func generateKubernetesProcessor() map[string]interface{} {
 		},
 	}
 
-	var defaultPodAssociation = []map[string]interface{}{
+	var defaultPodAssociation = []map[string]any{
 		{"sources": defaultSources},
 	}
 
-	k8sProcessor := map[string]interface{}{
+	k8sProcessor := map[string]any{
 		"auth_type":   "serviceAccount",
 		"passthrough": false,
-		"extract": map[string]interface{}{
+		"extract": map[string]any{
 			"metadata": []string{
 				"k8s.pod.name",
 				"k8s.pod.uid",
@@ -193,8 +193,8 @@ func generateKubernetesProcessor() map[string]interface{} {
 				"k8s.node.name",
 				"k8s.pod.start_time",
 			},
-			"labels": []interface{}{
-				map[string]interface{}{
+			"labels": []any{
+				map[string]any{
 					"tag_name": "app.label.example",
 					"key":      "example",
 					"from":     "pod",
@@ -214,7 +214,7 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() OtelColConfig
 	result.Exporters = cfgInput.generateExporters()
 
 	// Add k8s processor
-	result.Processors = make(map[string]interface{})
+	result.Processors = make(map[string]any)
 	k8sProcessorName := "k8sattributes" //only one instance for now
 	result.Processors[k8sProcessorName] = generateKubernetesProcessor()
 
@@ -240,17 +240,17 @@ type Pipelines struct {
 }
 
 type Services struct {
-	Extensions map[string]interface{} `yaml:"extensions,omitempty"`
-	Pipelines  Pipelines              `yaml:"pipelines,omitempty"`
-	Telemetry  map[string]interface{} `yaml:"telemetry,omitempty"`
+	Extensions map[string]any `yaml:"extensions,omitempty"`
+	Pipelines  Pipelines      `yaml:"pipelines,omitempty"`
+	Telemetry  map[string]any `yaml:"telemetry,omitempty"`
 }
 
 type OtelColConfigIR struct {
-	Receivers  map[string]interface{} `yaml:"receivers,omitempty"`
-	Exporters  map[string]interface{} `yaml:"exporters,omitempty"`
-	Processors map[string]interface{} `yaml:"processors,omitempty"`
-	Connectors map[string]interface{} `yaml:"connectors,omitempty"`
-	Services   Services               `yaml:"service,omitempty"`
+	Receivers  map[string]any `yaml:"receivers,omitempty"`
+	Exporters  map[string]any `yaml:"exporters,omitempty"`
+	Processors map[string]any `yaml:"processors,omitempty"`
+	Connectors map[string]any `yaml:"connectors,omitempty"`
+	Services   Services       `yaml:"service,omitempty"`
 }
 
 func (cfg *OtelColConfigIR) ToYAML() (string, error) {
