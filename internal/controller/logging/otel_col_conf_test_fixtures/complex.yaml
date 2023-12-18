@@ -6,16 +6,16 @@ receivers:
 exporters:
   file/tenant_A_S1:
     path:
-      /foo/tenant_A/S1
+      /foo/tenant_A_S1
   file/tenant_A_S2:
     path:
-      /foo/tenant_A/S2
+      /foo/tenant_A_S2
   file/tenant_B_S1:
     path:
-      /foo/tenant_B/S1
+      /foo/tenant_B_S1
   file/tenant_B_S2:
     path:
-      /foo/tenant_B/S2
+      /foo/tenant_B_S2
 
 
 processors:

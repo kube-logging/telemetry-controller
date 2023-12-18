@@ -38,7 +38,7 @@ func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
 	for tenantName, subscriptions := range cfgInput.TenantSubscriptionMap {
 		for _, subsubscription := range subscriptions {
 			fileOutputName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subsubscription)
-			fileOutputPath := fmt.Sprintf("%s/tenant_%s/%s", common_prefix, tenantName, subsubscription)
+			fileOutputPath := fmt.Sprintf("%s/tenant_%s_%s", common_prefix, tenantName, subsubscription)
 
 			result[fileOutputName] = map[string]any{
 				"path": fileOutputPath,
