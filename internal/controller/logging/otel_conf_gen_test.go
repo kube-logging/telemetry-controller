@@ -38,8 +38,8 @@ func TestOtelColConfComplex(t *testing.T) {
 	// IR
 	generatedIR := inputCfg.ToIntermediateRepresentation()
 
-	generatedIR.Receivers = map[string]interface{}{
-		"file/in": map[string]interface{}{
+	generatedIR.Receivers = map[string]any{
+		"file/in": map[string]any{
 			"path": "/dev/stdin",
 		},
 	}
@@ -62,12 +62,12 @@ func TestOtelColConfComplex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error %v", err)
 	}
-	var actualUniversalMap map[string]interface{}
+	var actualUniversalMap map[string]any
 	if err := yaml.Unmarshal(actualYAMLBytes, &actualUniversalMap); err != nil {
 		t.Fatalf("error: %v", err)
 	}
 
-	var expectedUniversalMap map[string]interface{}
+	var expectedUniversalMap map[string]any
 	if err := yaml.Unmarshal([]byte(otelColTargetYaml), &expectedUniversalMap); err != nil {
 		t.Fatalf("error: %v", err)
 	}

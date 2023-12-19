@@ -30,21 +30,37 @@ type OtelColConfigInput struct {
 	TenantSubscriptionMap map[string][]string
 }
 
-func (cfgInput *OtelColConfigInput) generateExporters() map[string]interface{} {
-	var result = make(map[string]interface{})
+func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
+	var result = make(map[string]any)
 	common_prefix := "/foo"
+
+	// Add a global default catch all
+	fileOutputName := "file/default"
+	fileOutputPath := fmt.Sprintf("%s/default", common_prefix)
+	result[fileOutputName] = map[string]any{
+		"path": fileOutputPath,
+	}
 
 	// Create file outputs based on tenant names
 	for tenantName, subscriptions := range cfgInput.TenantSubscriptionMap {
-		for _, subsubscription := range subscriptions {
-			fileOutputName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subsubscription)
-			fileOutputPath := fmt.Sprintf("%s/tenant_%s/%s", common_prefix, tenantName, subsubscription)
+		for _, subscription := range subscriptions {
+			fileOutputName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subscription)
+			fileOutputPath := fmt.Sprintf("%s/tenant_%s_%s", common_prefix, tenantName, subscription)
 
-			result[fileOutputName] = map[string]interface{}{
+			result[fileOutputName] = map[string]any{
 				"path": fileOutputPath,
 			}
 		}
+		// Add default catch all
+		fileOutputName := fmt.Sprintf("file/tenant_%s_default", tenantName)
+		fileOutputPath := fmt.Sprintf("%s/tenant_%s_default", common_prefix, tenantName)
+
+		result[fileOutputName] = map[string]any{
+			"path": fileOutputPath,
+		}
+
 	}
+
 	return result
 }
 
@@ -108,8 +124,8 @@ func generateRoutingConnectorForTenantsSubscription(tenantName string, subscript
 	return rc
 }
 
-func (cfgInput *OtelColConfigInput) generateConnectors() map[string]interface{} {
-	var connectors = make(map[string]interface{})
+func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
+	var connectors = make(map[string]any)
 
 	tenantNames := []string{}
 	for tenantName := range cfgInput.TenantSubscriptionMap {
@@ -129,11 +145,14 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]interface{} 
 }
 
 func generateRootPipeline() Pipeline {
-	return generatePipeline([]string{"file/in"}, []string{"kubernetes"}, []string{"routing/tenants"})
+	return generatePipeline([]string{"file/in"}, []string{"k8sattributes"}, []string{"routing/tenants"})
 }
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
 	var namedPipelines = make(map[string]Pipeline)
+
+	// Default pipeline
+	namedPipelines["logs/default"] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{"file/default"})
 
 	namedPipelines["logs/all"] = generateRootPipeline()
 
@@ -146,18 +165,74 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 		// Generate a pipeline for the tenant
 		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenantName)
 		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
-		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{"add tenant label"}, []string{tenantRoutingName})
+		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{tenantRoutingName})
 
 		// Generate pipelines for the subscriptions for the tenant
 		for _, subscription := range cfgInput.TenantSubscriptionMap[tenantName] {
 			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s", tenantPipelineName, subscription)
 			tenantSubscriptionPipelineExporterName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subscription)
-			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{"add subscription label"}, []string{tenantSubscriptionPipelineExporterName})
+			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, []string{tenantSubscriptionPipelineExporterName})
+
 		}
+
+		// Add default (catch all) pipelines
+		tenantDefaultCatchAllPipelineName := fmt.Sprintf("%s_default", tenantPipelineName)
+		tenantDefaultCatchAllPipelineExporterName := fmt.Sprintf("file/tenant_%s_default", tenantName)
+		namedPipelines[tenantDefaultCatchAllPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, []string{tenantDefaultCatchAllPipelineExporterName})
+
 	}
 
 	return namedPipelines
 
+}
+
+func generateKubernetesProcessor() map[string]any {
+	type Source struct {
+		Name string `yaml:"name,omitempty"`
+		From string `yaml:"from,omitempty"`
+	}
+
+	defaultSources := []Source{
+		Source{
+			Name: "k8s.namespace.name",
+			From: "resource_attribute",
+		},
+		Source{
+			Name: "k8s.pod.name",
+			From: "resource_attribute",
+		},
+	}
+
+	var defaultPodAssociation = []map[string]any{
+		{"sources": defaultSources},
+	}
+
+	var defaultMetadata = []string{
+		"k8s.pod.name",
+		"k8s.pod.uid",
+		"k8s.deployment.name",
+		"k8s.namespace.name",
+		"k8s.node.name",
+		"k8s.pod.start_time",
+	}
+
+	k8sProcessor := map[string]any{
+		"auth_type":   "serviceAccount",
+		"passthrough": false,
+		"extract": map[string]any{
+			"metadata": defaultMetadata,
+			"labels": []any{
+				map[string]any{
+					"tag_name": "app.label.example",
+					"key":      "example",
+					"from":     "pod",
+				},
+			},
+		},
+		"pod_association": defaultPodAssociation,
+	}
+
+	return k8sProcessor
 }
 
 func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() OtelColConfigIR {
@@ -165,6 +240,11 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() OtelColConfig
 
 	// Get file outputs based tenant names
 	result.Exporters = cfgInput.generateExporters()
+
+	// Add k8s processor
+	result.Processors = make(map[string]any)
+	k8sProcessorName := "k8sattributes" //only one instance for now
+	result.Processors[k8sProcessorName] = generateKubernetesProcessor()
 
 	result.Connectors = cfgInput.generateConnectors()
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
@@ -188,16 +268,17 @@ type Pipelines struct {
 }
 
 type Services struct {
-	Extensions map[string]interface{} `yaml:"extensions,omitempty"`
-	Pipelines  Pipelines              `yaml:"pipelines,omitempty"`
-	Telemetry  map[string]interface{} `yaml:"telemetry,omitempty"`
+	Extensions map[string]any `yaml:"extensions,omitempty"`
+	Pipelines  Pipelines      `yaml:"pipelines,omitempty"`
+	Telemetry  map[string]any `yaml:"telemetry,omitempty"`
 }
 
 type OtelColConfigIR struct {
-	Receivers  map[string]interface{} `yaml:"receivers,omitempty"`
-	Exporters  map[string]interface{} `yaml:"exporters,omitempty"`
-	Connectors map[string]interface{} `yaml:"connectors,omitempty"`
-	Services   Services               `yaml:"service,omitempty"`
+	Receivers  map[string]any `yaml:"receivers,omitempty"`
+	Exporters  map[string]any `yaml:"exporters,omitempty"`
+	Processors map[string]any `yaml:"processors,omitempty"`
+	Connectors map[string]any `yaml:"connectors,omitempty"`
+	Services   Services       `yaml:"service,omitempty"`
 }
 
 func (cfg *OtelColConfigIR) ToYAML() (string, error) {
