@@ -145,7 +145,7 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 }
 
 func generateRootPipeline() Pipeline {
-	return generatePipeline([]string{"file/in"}, []string{"k8sattributes"}, []string{"routing/tenants"})
+	return generatePipeline([]string{"filelog/kubernetes"}, []string{"k8sattributes"}, []string{"routing/tenants"})
 }
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
@@ -186,7 +186,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 
 }
 
-func generateKubernetesProcessor() map[string]any {
+func generateDefaultKubernetesProcessor() map[string]any {
 	type Source struct {
 		Name string `yaml:"name,omitempty"`
 		From string `yaml:"from,omitempty"`
@@ -235,7 +235,117 @@ func generateKubernetesProcessor() map[string]any {
 	return k8sProcessor
 }
 
-func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() OtelColConfigIR {
+func generateDefaultKubernetesReceiver() map[string]any {
+
+	operators := []map[string]any{
+		{
+			"type": "router",
+			"id":   "get-format",
+			"routes": []map[string]string{
+				{
+					"output": "parser-docker",
+					"expr":   `body matches "^\\{"`,
+				},
+				{
+					"output": "parser-crio",
+					"expr":   `body matches "^[^ Z]+ "`,
+				},
+				{
+					"output": "parser-containerd",
+					"expr":   `body matches "^[^ Z]+Z"`,
+				},
+			},
+		},
+		{
+			"type":   "regex_parser",
+			"id":     "parser-crio",
+			"regex":  `^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$`,
+			"output": "extract_metadata_from_filepath",
+			"timestamp": map[string]string{
+				"parse_from":  "attributes.time",
+				"layout_type": "gotime",
+				"layout":      "2006-01-02T15:04:05.999999999Z07:00",
+			},
+		},
+		{
+			"type":   "regex_parser",
+			"id":     "parser-containerd",
+			"regex":  `^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$`,
+			"output": "extract_metadata_from_filepath",
+			"timestamp": map[string]string{
+				"parse_from": "attributes.time",
+				"layout":     "%Y-%m-%dT%H:%M:%S.%LZ",
+			},
+		},
+		{
+			"type":   "json_parser",
+			"id":     "parser-docker",
+			"output": "extract_metadata_from_filepath",
+			"timestamp": map[string]string{
+				"parse_from": "attributes.time",
+				"layout":     "%Y-%m-%dT%H:%M:%S.%LZ",
+			},
+		},
+		{
+			"type":       "regex_parser",
+			"id":         "parser-containerd",
+			"regex":      `^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9\-]{36})\/(?P<container_name>[^\._]+)\/(?P<restart_count>\d+)\.log$`,
+			"parse_from": `attributes["log.file.path"]`,
+			"cache": map[string]int{
+				"size": 128,
+			},
+		},
+		{
+			"type": "move",
+			"from": "attributes.log",
+			"to":   "body",
+		},
+		{
+			"type": "move",
+			"from": "attributes.stream",
+			"to":   `attributes["log.iostream"]`,
+		},
+		{
+			"type": "move",
+			"from": "attributes.container_name",
+			"to":   `attributes["k8s.container.name"]`,
+		},
+		{
+			"type": "move",
+			"from": "attributes.namespace",
+			"to":   `attributes["k8s.namespace.name"]`,
+		},
+		{
+			"type": "move",
+			"from": "attributes.pod_name",
+			"to":   `attributes["k8s.pod.name"]`,
+		},
+		{
+			"type": "move",
+			"from": "attributes.restart_count",
+			"to":   `attributes["k8s.container.restart_count"]`,
+		},
+		{
+			"type": "move",
+			"from": "attributes.uid",
+			"to":   `attributes["k8s.pod.uid"]`,
+		},
+	}
+
+	k8sReceiver := map[string]any{
+		"include":           []string{"/var/log/pods/*/*/*.log"},
+		"exclude":           []string{"/var/log/pods/*/otc-container/*.log"},
+		"start_at":          "end",
+		"include_file_path": true,
+		"include_file_name": false,
+		"operators":         operators,
+	}
+
+	return k8sReceiver
+
+}
+
+func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfigIR {
 	result := OtelColConfigIR{}
 
 	// Get file outputs based tenant names
@@ -244,14 +354,18 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() OtelColConfig
 	// Add k8s processor
 	result.Processors = make(map[string]any)
 	k8sProcessorName := "k8sattributes" //only one instance for now
-	result.Processors[k8sProcessorName] = generateKubernetesProcessor()
+	result.Processors[k8sProcessorName] = generateDefaultKubernetesProcessor()
+
+	result.Receivers = make(map[string]any)
+	k8sReceiverName := "filelog/kubernetes" //only one instance for now
+	result.Receivers[k8sReceiverName] = generateDefaultKubernetesReceiver()
 
 	result.Connectors = cfgInput.generateConnectors()
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
 
-	return result
+	return &result
 }
 
 type Pipeline struct {

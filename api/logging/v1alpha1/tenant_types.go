@@ -20,8 +20,9 @@ import (
 
 // TenantSpec defines the desired state of Tenant
 type TenantSpec struct {
-	ResourceNamespaceSelectors []metav1.LabelSelector `json:"resourceNamespaceSelectors,omitempty"`
-	OTTL                       string                 `json:"ottl,omitempty"`
+	SubscriptionNamespaceSelector []metav1.LabelSelector `json:"subscriptionNamespaceSelectors,omitempty"`
+	// LogsourceNamespaceSelector    []metav1.LabelSelector `json:"logsourceNamespaceSelectors,omitempty"`
+	// OTTL string `json:"ottl,omitempty"`
 }
 
 // TenantStatus defines the observed state of Tenant
