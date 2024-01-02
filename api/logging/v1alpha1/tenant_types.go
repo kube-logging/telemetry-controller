@@ -55,3 +55,7 @@ type TenantList struct {
 func init() {
 	SchemeBuilder.Register(&Tenant{}, &TenantList{})
 }
+
+func (t *Tenant) NamespacedName() NamespacedName {
+	return NamespacedName{Namespace: t.Namespace, Name: t.Name}
+}

@@ -155,22 +155,6 @@ spec:
                   tls:
                     description: TLSSetting struct exposes TLS client configuration.
                     properties:
-                      ca_file:
-                        description: Path to the CA cert. For a client this verifies
-                          the server certificate. For a server this verifies client
-                          certificates. If empty uses system root CA. (optional)
-                        type: string
-                      ca_pem:
-                        description: In memory PEM encoded cert. (optional)
-                        type: string
-                      cert_file:
-                        description: Path to the TLS cert to use for TLS required
-                          connections. (optional)
-                        type: string
-                      cert_pem:
-                        description: In memory PEM encoded TLS cert to use for TLS
-                          required connections. (optional)
-                        type: string
                       insecure:
                         description: In gRPC when set to true, this is used to disable
                           the client transport security. See https://godoc.org/google.golang.org/grpc#WithInsecure.
@@ -183,29 +167,6 @@ spec:
                         description: InsecureSkipVerify will enable TLS but not verify
                           the certificate.
                         type: boolean
-                      key_file:
-                        description: Path to the TLS key to use for TLS required connections.
-                          (optional)
-                        type: string
-                      key_pem:
-                        description: In memory PEM encoded TLS key to use for TLS
-                          required connections. (optional)
-                        type: string
-                      max_version:
-                        description: MaxVersion sets the maximum TLS version that
-                          is acceptable. If not set, refer to crypto/tls for defaults.
-                          (optional)
-                        type: string
-                      min_version:
-                        description: MinVersion sets the minimum TLS version that
-                          is acceptable. If not set, TLS 1.2 will be used. (optional)
-                        type: string
-                      reload_interval:
-                        description: ReloadInterval specifies the duration after which
-                          the certificate will be reloaded If not set, it will never
-                          be reloaded (optional)
-                        format: int64
-                        type: integer
                       server_name_override:
                         description: ServerName requested by client for virtual hosting.
                           This sets the ServerName in the TLSConfig. Please refer
@@ -223,8 +184,6 @@ spec:
                     type: integer
                 required:
                 - endpoint
-                - retry_on_failure
-                - sending_queue
                 type: object
             type: object
           status:

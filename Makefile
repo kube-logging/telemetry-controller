@@ -180,5 +180,5 @@ $(ENVTEST): $(LOCALBIN)
 
 .PHONY: run-delve
 run-delve: generate fmt vet manifests
-	go build -gcflags "all=-trimpath=$(shell go env GOPATH)" -o bin/manager cmd/main.go
+	go build -o bin/manager cmd/main.go
 	dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec ./bin/manager

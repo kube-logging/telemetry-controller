@@ -16,49 +16,55 @@ package logging
 
 import (
 	"fmt"
+	"slices"
 
+	"github.com/kube-logging/subscription-operator/api/logging/v1alpha1"
 	"gopkg.in/yaml.v3"
 )
 
 // TODO move this to its appropiate place
 type OtelColConfigInput struct {
-	// Input
-	// TODO: use Tenant struct here
-	//Tenants []Tenant
+	Tenants       []v1alpha1.Tenant
+	Subscriptions []v1alpha1.Subscription
+	Outputs       []v1alpha1.OtelOutput
 
-	// Subscriptions map, where the key is the Tenants'name
-	TenantSubscriptionMap map[string][]string
+	// Subscriptions map, where the key is the Tenants' namespaced name, value is a slice of subscriptions' namespaced name
+	TenantSubscriptionMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
+	SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
 }
 
 func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
-	var result = make(map[string]any)
-	common_prefix := "/foo"
+	exporters := cfgInput.generateOTLPExporters()
+	return exporters
+}
 
-	// Add a global default catch all
-	fileOutputName := "file/default"
-	fileOutputPath := fmt.Sprintf("%s/default", common_prefix)
-	result[fileOutputName] = map[string]any{
-		"path": fileOutputPath,
+func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
+	var result = make(map[string]any)
+
+	for _, output := range cfgInput.Outputs {
+		name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
+		result[name] = map[string]any{
+			"endpoint": output.Spec.OTLP.GRPCClientSettings.Endpoint,
+			"tls": map[string]any{
+				"insecure": output.Spec.OTLP.TLSSetting.Insecure,
+			},
+		}
 	}
 
-	// Create file outputs based on tenant names
-	for tenantName, subscriptions := range cfgInput.TenantSubscriptionMap {
-		for _, subscription := range subscriptions {
-			fileOutputName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subscription)
-			fileOutputPath := fmt.Sprintf("%s/tenant_%s_%s", common_prefix, tenantName, subscription)
+	return result
+}
 
-			result[fileOutputName] = map[string]any{
-				"path": fileOutputPath,
-			}
+func (cfgInput *OtelColConfigInput) generateDefaultExporters() map[string]any {
+	var result = make(map[string]any)
+
+	for _, output := range cfgInput.Outputs {
+		name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
+		result[name] = map[string]any{
+			"endpoint": output.Spec.OTLP.GRPCClientSettings.Endpoint,
+			"tls": map[string]any{
+				"insecure": output.Spec.OTLP.TLSSetting.Insecure,
+			},
 		}
-		// Add default catch all
-		fileOutputName := fmt.Sprintf("file/tenant_%s_default", tenantName)
-		fileOutputPath := fmt.Sprintf("%s/tenant_%s_default", common_prefix, tenantName)
-
-		result[fileOutputName] = map[string]any{
-			"path": fileOutputPath,
-		}
-
 	}
 
 	return result
@@ -102,23 +108,23 @@ func GenerateRoutingConnector(name string, defaultPipelines []string) RoutingCon
 	return result
 }
 
-func generateRootRoutingConnector(tenantNames []string) RoutingConnector {
+func generateRootRoutingConnector(tenantNames []v1alpha1.NamespacedName) RoutingConnector {
 	// Generate routing table's first hop that will sort it's input by tenant name
-	defaultRc := GenerateRoutingConnector("routing/tenants", []string{"logs/default"})
-	for _, tenantName := range tenantNames {
-		defaultRc.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", tenantName, []string{fmt.Sprintf("logs/tenant_%s", tenantName)})
+	defaultRc := GenerateRoutingConnector("routing/tenants", []string{})
+	for _, tenant := range tenantNames {
+		defaultRc.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", tenant.Name, []string{fmt.Sprintf("logs/tenant_%s", tenant.Name)})
 	}
 	return defaultRc
 }
 
-func generateRoutingConnectorForTenantsSubscription(tenantName string, subscriptions []string) RoutingConnector {
+func generateRoutingConnectorForTenantsSubscription(tenantName string, subscriptions []v1alpha1.NamespacedName) RoutingConnector {
 	rcName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
-	rcDefaultPipelines := []string{fmt.Sprintf("logs/tenant_%s_default", tenantName)}
-	rc := GenerateRoutingConnector(rcName, rcDefaultPipelines)
+	//rcDefaultPipelines := []string{fmt.Sprintf("logs/tenant_%s_default", tenantName)}
+	rc := GenerateRoutingConnector(rcName, []string{})
 
-	for _, subscriptionName := range subscriptions {
-		pipeline := fmt.Sprintf("logs/tenant_%s_subscription_%s", tenantName, subscriptionName)
-		rc.AddRoutingConnectorTableElem("kubernetes.labels.app", subscriptionName, []string{pipeline})
+	for _, subscription := range subscriptions {
+		pipeline := fmt.Sprintf("logs/tenant_%s_subscription_%s", tenantName, subscription.Name)
+		rc.AddRoutingConnectorTableElem("kubernetes.labels.app", subscription.Name, []string{pipeline})
 	}
 
 	return rc
@@ -127,16 +133,16 @@ func generateRoutingConnectorForTenantsSubscription(tenantName string, subscript
 func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	var connectors = make(map[string]any)
 
-	tenantNames := []string{}
-	for tenantName := range cfgInput.TenantSubscriptionMap {
-		tenantNames = append(tenantNames, tenantName)
+	tenants := []v1alpha1.NamespacedName{}
+	for tenant := range cfgInput.TenantSubscriptionMap {
+		tenants = append(tenants, tenant)
 
 	}
-	rootRoutingConnector := generateRootRoutingConnector(tenantNames)
+	rootRoutingConnector := generateRootRoutingConnector(tenants)
 	connectors[rootRoutingConnector.Name] = rootRoutingConnector
 
-	for _, tenantName := range tenantNames {
-		rc := generateRoutingConnectorForTenantsSubscription(tenantName, cfgInput.TenantSubscriptionMap[tenantName])
+	for _, tenant := range tenants {
+		rc := generateRoutingConnectorForTenantsSubscription(tenant.Name, cfgInput.TenantSubscriptionMap[tenant])
 		connectors[rc.Name] = rc
 	}
 
@@ -152,33 +158,48 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 	var namedPipelines = make(map[string]Pipeline)
 
 	// Default pipeline
-	namedPipelines["logs/default"] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{"file/default"})
+	//namedPipelines["logs/default"] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{"debug/default"})
 
 	namedPipelines["logs/all"] = generateRootPipeline()
 
-	tenantNames := []string{}
-	for tenantName := range cfgInput.TenantSubscriptionMap {
-		tenantNames = append(tenantNames, tenantName)
+	tenants := []v1alpha1.NamespacedName{}
+	for tenant := range cfgInput.TenantSubscriptionMap {
+		tenants = append(tenants, tenant)
 	}
 
-	for _, tenantName := range tenantNames {
+	for _, tenant := range tenants {
 		// Generate a pipeline for the tenant
-		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenantName)
-		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
+		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenant.Name)
+		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenant.Name)
 		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{tenantRoutingName})
 
 		// Generate pipelines for the subscriptions for the tenant
-		for _, subscription := range cfgInput.TenantSubscriptionMap[tenantName] {
-			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s", tenantPipelineName, subscription)
-			tenantSubscriptionPipelineExporterName := fmt.Sprintf("file/tenant_%s_%s", tenantName, subscription)
-			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, []string{tenantSubscriptionPipelineExporterName})
+		for _, subscription := range cfgInput.TenantSubscriptionMap[tenant] {
+			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s", tenantPipelineName, subscription.Name)
+
+			targetOutputNames := []string{}
+			for _, outputRef := range cfgInput.SubscriptionOutputMap[subscription] {
+				outputIdx := slices.IndexFunc(cfgInput.Outputs, func(output v1alpha1.OtelOutput) bool {
+					return output.Name == outputRef.Name && output.Namespace == outputRef.Namespace
+				})
+
+				if outputIdx == -1 {
+					continue
+				}
+
+				targetOutputName := fmt.Sprintf("otlp/%s_%s", outputRef.Namespace, outputRef.Name)
+
+				targetOutputNames = append(targetOutputNames, targetOutputName)
+
+			}
+			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, targetOutputNames)
 
 		}
 
 		// Add default (catch all) pipelines
-		tenantDefaultCatchAllPipelineName := fmt.Sprintf("%s_default", tenantPipelineName)
-		tenantDefaultCatchAllPipelineExporterName := fmt.Sprintf("file/tenant_%s_default", tenantName)
-		namedPipelines[tenantDefaultCatchAllPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, []string{tenantDefaultCatchAllPipelineExporterName})
+		//tenantDefaultCatchAllPipelineName := fmt.Sprintf("%s_default", tenantPipelineName)
+		//tenantDefaultCatchAllPipelineExporterName := fmt.Sprintf("debug/tenant_%s_default", tenant.Name)
+		//namedPipelines[tenantDefaultCatchAllPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, []string{})
 
 	}
 
@@ -193,11 +214,11 @@ func generateDefaultKubernetesProcessor() map[string]any {
 	}
 
 	defaultSources := []Source{
-		Source{
+		{
 			Name: "k8s.namespace.name",
 			From: "resource_attribute",
 		},
-		Source{
+		{
 			Name: "k8s.pod.name",
 			From: "resource_attribute",
 		},
@@ -288,7 +309,7 @@ func generateDefaultKubernetesReceiver() map[string]any {
 		},
 		{
 			"type":       "regex_parser",
-			"id":         "parser-containerd",
+			"id":         "extract_metadata_from_filepath",
 			"regex":      `^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9\-]{36})\/(?P<container_name>[^\._]+)\/(?P<restart_count>\d+)\.log$`,
 			"parse_from": `attributes["log.file.path"]`,
 			"cache": map[string]int{
@@ -348,7 +369,7 @@ func generateDefaultKubernetesReceiver() map[string]any {
 func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfigIR {
 	result := OtelColConfigIR{}
 
-	// Get file outputs based tenant names
+	// Get  outputs based tenant names
 	result.Exporters = cfgInput.generateExporters()
 
 	// Add k8s processor

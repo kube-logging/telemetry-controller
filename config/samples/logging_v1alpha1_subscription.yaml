@@ -9,4 +9,6 @@ metadata:
     app.kubernetes.io/created-by: subscription-operator
   name: subscription-sample
 spec:
-  # TODO(user): Add fields here
+  outputs:
+    - name: oteloutput-sample
+      namespace: collector

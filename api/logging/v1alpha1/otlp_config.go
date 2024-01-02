@@ -103,7 +103,7 @@ type GRPCClientSettings struct {
 // components configuring TLS client connections.
 type TLSClientSetting struct {
 	// squash ensures fields are correctly decoded in embedded struct.
-	TLSSetting `json:",inline"`
+	//TLSSetting `json:",inline"`
 
 	// These are config options specific to client connections.
 

@@ -34,10 +34,10 @@ type OtelOutputSpec struct {
 
 // OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
 type OTLPgrpc struct {
-	QueueConfig        QueueSettings      `json:"sending_queue"`
-	RetryConfig        BackOffConfig      `json:"retry_on_failure"`
-	TimeoutSettings    TimeoutSettings    `json:",inline"`
-	GRPCClientSettings GRPCClientSettings `json:",inline"`
+	QueueConfig        QueueSettings `json:"sending_queue,omitempty"`
+	RetryConfig        BackOffConfig `json:"retry_on_failure,omitempty"`
+	TimeoutSettings    `json:",inline"`
+	GRPCClientSettings `json:",inline"`
 }
 
 // OtelOutputStatus defines the observed state of OtelOutput
