@@ -32,7 +32,10 @@ import (
 
 	loggingv1alpha1 "github.com/kube-logging/subscription-operator/api/logging/v1alpha1"
 	controller "github.com/kube-logging/subscription-operator/internal/controller/logging"
+
 	//+kubebuilder:scaffold:imports
+
+	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
 )
 
 var (
@@ -42,6 +45,8 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+
+	utilruntime.Must(otelv1alpha1.AddToScheme(scheme))
 
 	utilruntime.Must(loggingv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme

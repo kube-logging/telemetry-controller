@@ -28,8 +28,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/cisco-open/operator-tools/pkg/utils"
 	"github.com/kube-logging/subscription-operator/api/logging/v1alpha1"
+
+	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
 )
 
 // CollectorReconciler reconciles a Collector object
@@ -100,50 +101,46 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		TenantSubscriptionMap: otelConfigMap,
 	}
 
-	otelConfigIR := otelConfigInput.ToIntermediateRepresentation()
-
-	otelConfig, _ := otelConfigIR.ToYAML()
-
-	configMapData := make(map[string]string)
-
-	configMapData["collectorConfig"] = otelConfig
-
-	configMap := apiv1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-config", collector.Name),
-			Namespace: collector.Namespace,
-		},
-		Data: configMapData,
-	}
-
-	configMap.SetOwnerReferences([]metav1.OwnerReference{{
-		APIVersion:         collector.APIVersion,
-		Kind:               collector.Kind,
-		Name:               collector.Name,
-		UID:                collector.UID,
-		Controller:         utils.BoolPointer(true),
-		BlockOwnerDeletion: utils.BoolPointer(true),
-	}})
-	foundConfigMap := apiv1.ConfigMap{}
-
-	err = r.Client.Get(ctx, client.ObjectKey{Namespace: configMap.Namespace, Name: configMap.Name}, &foundConfigMap)
-	if apierrors.IsNotFound(err) {
-		if err := r.Client.Create(ctx, &configMap); err != nil {
-			logger.Error(err, "failed to create ConfigMap resource")
-			return ctrl.Result{}, err
-		}
-
-		logger.Info("created ConfigMap resource for Collector")
-		return ctrl.Result{}, nil
-	}
+	otelConfig, err := otelConfigInput.ToIntermediateRepresentation().ToYAML()
 	if err != nil {
-		logger.Error(err, "failed to get ConfigMap for Collector")
 		return ctrl.Result{}, err
 	}
 
-	if foundConfigMap.Data["collectorConfig"] != configMap.Data["collectorConfig"] {
-		if err := r.Client.Update(ctx, &configMap); err != nil {
+	otelCollector := otelv1alpha1.OpenTelemetryCollector{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("otelcollector-%s", collector.Name),
+			Namespace: collector.Namespace,
+		},
+		Spec: otelv1alpha1.OpenTelemetryCollectorSpec{
+			Config: otelConfig,
+			Mode:   otelv1alpha1.ModeDaemonSet,
+			Image:  "otel/opentelemetry-collector-contrib:0.86.0",
+		},
+	}
+
+	ctrl.SetControllerReference(collector, &otelCollector, r.Scheme)
+
+	foundOtelCollector := otelv1alpha1.OpenTelemetryCollector{}
+
+	err = r.Client.Get(ctx, client.ObjectKey{Namespace: otelCollector.Namespace, Name: otelCollector.Name}, &foundOtelCollector)
+	if apierrors.IsNotFound(err) {
+		if err := r.Client.Create(ctx, &otelCollector); err != nil {
+			logger.Error(err, "failed to create OpentelemetryCollector resource")
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("created OpentelemetryCollector resource for Collector")
+		return ctrl.Result{}, nil
+	}
+	if err != nil {
+		logger.Error(err, "failed to get OpentelemetryCollector for Collector")
+		return ctrl.Result{}, err
+	}
+
+	if foundOtelCollector.Spec.Config != otelCollector.Spec.Config || foundOtelCollector.Spec.Mode != otelCollector.Spec.Mode || foundOtelCollector.Spec.Image != otelCollector.Spec.Image {
+		otelCollector.SetResourceVersion(foundOtelCollector.GetResourceVersion())
+		if err := r.Client.Update(ctx, &otelCollector); err != nil {
 			logger.Error(err, "failed to update ConfigMap")
 			return ctrl.Result{}, err
 		}
@@ -157,7 +154,6 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Collector{}).
-		Owns(&apiv1.ConfigMap{}).
 		Complete(r)
 }
 
@@ -224,7 +220,7 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]v1alpha1.Subscription, error) {
 	var selectors []labels.Selector
 
-	for _, labelSelector := range tentant.Spec.ResourceNamespaceSelectors {
+	for _, labelSelector := range tentant.Spec.SubscriptionNamespaceSelector {
 		selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
 		if err != nil {
 			return nil, err

@@ -38,9 +38,7 @@ spec:
           spec:
             description: TenantSpec defines the desired state of Tenant
             properties:
-              ottl:
-                type: string
-              resourceNamespaceSelectors:
+              subscriptionNamespaceSelectors:
                 items:
                   description: A label selector is a label query over a set of resources.
                     The result of matchLabels and matchExpressions are ANDed. An empty
