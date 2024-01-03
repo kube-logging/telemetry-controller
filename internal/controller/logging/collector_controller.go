@@ -63,7 +63,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	tenantSubscriptionMap := make(map[string][]v1alpha1.Subscription)
+	tenantSubscriptionMap := make(map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName)
 	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelectors)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -76,6 +76,9 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	r.Status().Update(ctx, collector)
 	logger.Info("Setting collector status")
+
+	subscriptions := []v1alpha1.Subscription{}
+
 	for _, tenant := range tenants {
 
 		subscriptionsForTenant, err := r.getSubscriptionsForTenant(ctx, &tenant)
@@ -83,22 +86,45 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		tenantSubscriptionMap[tenant.Name] = subscriptionsForTenant
+
+		subscriptions = append(subscriptions, subscriptionsForTenant...)
 
 		subscriptionNames := getSubscriptionNamesFromSubscription(subscriptionsForTenant)
-		slices.Sort(subscriptionNames)
 
-		tenant.Status.Subscriptions = subscriptionNames
+		tenantSubscriptionMap[tenant.NamespacedName()] = subscriptionNames
+
+		stringSubscriptionNames := []string{}
+
+		for _, name := range subscriptionNames {
+			stringSubscriptionNames = append(stringSubscriptionNames, name.String())
+		}
+
+		slices.Sort(stringSubscriptionNames)
+
+		tenant.Status.Subscriptions = stringSubscriptionNames
 
 		r.Status().Update(ctx, &tenant)
 		logger.Info("Setting tenant status")
 
 	}
 
-	otelConfigMap := generateOtelConfigFromTenantSubscriptionMap(tenantSubscriptionMap)
+	outputs, err := r.getAllOutputs(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	subscriptionOutputMap := map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{}
+
+	for _, subscription := range subscriptions {
+		subscriptionOutputMap[subscription.NamespacedName()] = subscription.Spec.Outputs
+	}
 
 	otelConfigInput := OtelColConfigInput{
-		TenantSubscriptionMap: otelConfigMap,
+		Tenants:               tenants,
+		Subscriptions:         subscriptions,
+		Outputs:               outputs,
+		TenantSubscriptionMap: tenantSubscriptionMap,
+		SubscriptionOutputMap: subscriptionOutputMap,
 	}
 
 	otelConfig, err := otelConfigInput.ToIntermediateRepresentation().ToYAML()
@@ -115,7 +141,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Spec: otelv1alpha1.OpenTelemetryCollectorSpec{
 			Config: otelConfig,
 			Mode:   otelv1alpha1.ModeDaemonSet,
-			Image:  "otel/opentelemetry-collector-contrib:0.86.0",
+			Image:  "otel/opentelemetry-collector-contrib:0.91.0",
 		},
 	}
 
@@ -157,19 +183,6 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func generateOtelConfigFromTenantSubscriptionMap(tenantSubsMap map[string][]v1alpha1.Subscription) map[string][]string {
-
-	result := make(map[string][]string)
-
-	for tenant, subscriptions := range tenantSubsMap {
-		subscriptionNames := getSubscriptionNamesFromSubscription(subscriptions)
-		slices.Sort(subscriptionNames)
-		result[tenant] = subscriptionNames
-	}
-
-	return result
-}
-
 func getTenantNamesFromTenants(tenants []v1alpha1.Tenant) []string {
 	var tenantNames []string
 	for _, tenant := range tenants {
@@ -179,10 +192,10 @@ func getTenantNamesFromTenants(tenants []v1alpha1.Tenant) []string {
 	return tenantNames
 }
 
-func getSubscriptionNamesFromSubscription(subscriptions []v1alpha1.Subscription) []string {
-	var subscriptionNames []string
+func getSubscriptionNamesFromSubscription(subscriptions []v1alpha1.Subscription) []v1alpha1.NamespacedName {
+	var subscriptionNames []v1alpha1.NamespacedName
 	for _, subscription := range subscriptions {
-		subscriptionNames = append(subscriptionNames, fmt.Sprintf("%s/%s", subscription.Namespace, subscription.Name))
+		subscriptionNames = append(subscriptionNames, subscription.NamespacedName())
 	}
 
 	return subscriptionNames
@@ -215,6 +228,17 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 	}
 
 	return tenants, nil
+}
+
+func (r *CollectorReconciler) getAllOutputs(ctx context.Context) ([]v1alpha1.OtelOutput, error) {
+
+	var outputList v1alpha1.OtelOutputList
+
+	if err := r.List(ctx, &outputList); client.IgnoreNotFound(err) != nil {
+		return nil, err
+	}
+
+	return outputList.Items, nil
 }
 
 func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]v1alpha1.Subscription, error) {

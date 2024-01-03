@@ -60,3 +60,7 @@ type SubscriptionList struct {
 func init() {
 	SchemeBuilder.Register(&Subscription{}, &SubscriptionList{})
 }
+
+func (s *Subscription) NamespacedName() NamespacedName {
+	return NamespacedName{Namespace: s.Namespace, Name: s.Name}
+}

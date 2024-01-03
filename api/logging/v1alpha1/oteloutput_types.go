@@ -29,7 +29,15 @@ type OtelOutputSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of OtelOutput. Edit oteloutput_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	OTLP OTLPgrpc `json:"otlp,omitempty"`
+}
+
+// OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
+type OTLPgrpc struct {
+	QueueConfig        QueueSettings `json:"sending_queue,omitempty"`
+	RetryConfig        BackOffConfig `json:"retry_on_failure,omitempty"`
+	TimeoutSettings    `json:",inline"`
+	GRPCClientSettings `json:",inline"`
 }
 
 // OtelOutputStatus defines the observed state of OtelOutput
