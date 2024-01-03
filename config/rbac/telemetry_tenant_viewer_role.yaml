@@ -12,7 +12,7 @@ metadata:
   name: tenant-viewer-role
 rules:
 - apiGroups:
-  - logging.kube-logging.dev
+  - telemetry.kube-logging.dev
   resources:
   - tenants
   verbs:
@@ -20,7 +20,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - logging.kube-logging.dev
+  - telemetry.kube-logging.dev
   resources:
   - tenants/status
   verbs:

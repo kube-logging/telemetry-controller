@@ -14,32 +14,32 @@ resources:
     namespaced: true
   controller: true
   domain: kube-logging.dev
-  group: logging
+  group: telemetry
   kind: Collector
-  path: github.com/kube-logging/subscription-operator/api/logging/v1alpha1
+  path: github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
   domain: kube-logging.dev
-  group: logging
+  group: telemetry
   kind: Subscription
-  path: github.com/kube-logging/subscription-operator/api/logging/v1alpha1
+  path: github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
   domain: kube-logging.dev
-  group: logging
+  group: telemetry
   kind: Tenant
-  path: github.com/kube-logging/subscription-operator/api/logging/v1alpha1
+  path: github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
   domain: kube-logging.dev
-  group: logging
+  group: telemetry
   kind: OtelOutput
-  path: github.com/kube-logging/subscription-operator/api/logging/v1alpha1
+  path: github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1
   version: v1alpha1
 version: "3"

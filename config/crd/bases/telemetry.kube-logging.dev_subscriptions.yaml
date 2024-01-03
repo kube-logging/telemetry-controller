@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
-  name: subscriptions.logging.kube-logging.dev
+  name: subscriptions.telemetry.kube-logging.dev
 spec:
-  group: logging.kube-logging.dev
+  group: telemetry.kube-logging.dev
   names:
     kind: Subscription
     listKind: SubscriptionList

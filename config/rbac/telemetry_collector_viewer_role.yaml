@@ -1,27 +1,27 @@
-# permissions for end users to view subscriptions.
+# permissions for end users to view collectors.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: subscription-viewer-role
+    app.kubernetes.io/instance: collector-viewer-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: subscription-operator
     app.kubernetes.io/part-of: subscription-operator
     app.kubernetes.io/managed-by: kustomize
-  name: subscription-viewer-role
+  name: collector-viewer-role
 rules:
 - apiGroups:
-  - logging.kube-logging.dev
+  - telemetry.kube-logging.dev
   resources:
-  - subscriptions
+  - collectors
   verbs:
   - get
   - list
   - watch
 - apiGroups:
-  - logging.kube-logging.dev
+  - telemetry.kube-logging.dev
   resources:
-  - subscriptions/status
+  - collectors/status
   verbs:
   - get

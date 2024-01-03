@@ -1,20 +1,20 @@
-# permissions for end users to edit oteloutputs.
+# permissions for end users to edit subscriptions.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: oteloutput-editor-role
+    app.kubernetes.io/instance: subscription-editor-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: subscription-operator
     app.kubernetes.io/part-of: subscription-operator
     app.kubernetes.io/managed-by: kustomize
-  name: oteloutput-editor-role
+  name: subscription-editor-role
 rules:
 - apiGroups:
-  - logging.kube-logging.dev
+  - telemetry.kube-logging.dev
   resources:
-  - oteloutputs
+  - subscriptions
   verbs:
   - create
   - delete
@@ -24,8 +24,8 @@ rules:
   - update
   - watch
 - apiGroups:
-  - logging.kube-logging.dev
+  - telemetry.kube-logging.dev
   resources:
-  - oteloutputs/status
+  - subscriptions/status
   verbs:
   - get

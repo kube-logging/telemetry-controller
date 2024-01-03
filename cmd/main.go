@@ -30,8 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	loggingv1alpha1 "github.com/kube-logging/subscription-operator/api/logging/v1alpha1"
-	controller "github.com/kube-logging/subscription-operator/internal/controller/logging"
+	telemetryv1alpha1 "github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
+	controller "github.com/kube-logging/subscription-operator/internal/controller/telemetry"
 
 	//+kubebuilder:scaffold:imports
 
@@ -48,7 +48,7 @@ func init() {
 
 	utilruntime.Must(otelv1alpha1.AddToScheme(scheme))
 
-	utilruntime.Must(loggingv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(telemetryv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
