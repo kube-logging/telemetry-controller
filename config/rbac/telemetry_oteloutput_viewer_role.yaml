@@ -1,31 +1,27 @@
-# permissions for end users to edit tenants.
+# permissions for end users to view oteloutputs.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: tenant-editor-role
+    app.kubernetes.io/instance: oteloutput-viewer-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: subscription-operator
     app.kubernetes.io/part-of: subscription-operator
     app.kubernetes.io/managed-by: kustomize
-  name: tenant-editor-role
+  name: oteloutput-viewer-role
 rules:
 - apiGroups:
-  - logging.kube-logging.dev
+  - telemetry.kube-logging.dev
   resources:
-  - tenants
+  - oteloutputs
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
-  - logging.kube-logging.dev
+  - telemetry.kube-logging.dev
   resources:
-  - tenants/status
+  - oteloutputs/status
   verbs:
   - get

@@ -1,4 +1,4 @@
-apiVersion: logging.kube-logging.dev/v1alpha1
+apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Collector
 metadata:
   labels:

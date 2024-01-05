@@ -182,3 +182,7 @@ $(ENVTEST): $(LOCALBIN)
 run-delve: generate fmt vet manifests
 	go build -o bin/manager cmd/main.go
 	dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec ./bin/manager
+
+.PHONY: tidy
+tidy: ## Tidy Go modules
+	find . -iname "go.mod" -not -path "./.devcontainer/*" | xargs -L1 sh -c 'cd $$(dirname $$0); go mod tidy'
