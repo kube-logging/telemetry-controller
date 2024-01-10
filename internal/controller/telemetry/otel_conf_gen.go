@@ -310,7 +310,7 @@ func generateDefaultKubernetesReceiver() map[string]any {
 		{
 			"type":       "regex_parser",
 			"id":         "extract_metadata_from_filepath",
-			"regex":      `^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9\-]{36})\/(?P<container_name>[^\._]+)\/(?P<restart_count>\d+)\.log$`,
+			"regex":      `^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9-]+)\/(?P<container_name>[^\/]+)\/(?P<restart_count>\d+)\.log$`,
 			"parse_from": `attributes["log.file.path"]`,
 			"cache": map[string]int{
 				"size": 128,
@@ -329,27 +329,27 @@ func generateDefaultKubernetesReceiver() map[string]any {
 		{
 			"type": "move",
 			"from": "attributes.container_name",
-			"to":   `attributes["k8s.container.name"]`,
+			"to":   `resource["k8s.container.name"]`,
 		},
 		{
 			"type": "move",
 			"from": "attributes.namespace",
-			"to":   `attributes["k8s.namespace.name"]`,
+			"to":   `resource["k8s.namespace.name"]`,
 		},
 		{
 			"type": "move",
 			"from": "attributes.pod_name",
-			"to":   `attributes["k8s.pod.name"]`,
+			"to":   `resource["k8s.pod.name"]`,
 		},
 		{
 			"type": "move",
 			"from": "attributes.restart_count",
-			"to":   `attributes["k8s.container.restart_count"]`,
+			"to":   `resource["k8s.container.restart_count"]`,
 		},
 		{
 			"type": "move",
 			"from": "attributes.uid",
-			"to":   `attributes["k8s.pod.uid"]`,
+			"to":   `resource["k8s.pod.uid"]`,
 		},
 	}
 
