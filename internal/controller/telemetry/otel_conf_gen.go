@@ -33,6 +33,44 @@ type OtelColConfigInput struct {
 	SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
 }
 
+type RoutingConnectorTableItem struct {
+	Statement string   `yaml:"statement"`
+	Pipelines []string `yaml:"pipelines,flow"`
+}
+
+type RoutingConnector struct {
+	Name             string                      `yaml:"-"`
+	DefaultPipelines []string                    `yaml:"default_pipelines,flow"`
+	Table            []RoutingConnectorTableItem `yaml:"table"`
+}
+
+type Pipeline struct {
+	Receivers  []string `yaml:"receivers,omitempty,flow"`
+	Processors []string `yaml:"processors,omitempty,flow"`
+	Exporters  []string `yaml:"exporters,omitempty,flow"`
+}
+
+type Pipelines struct {
+	Traces         Pipeline            `yaml:"traces,omitempty"`
+	Metrics        Pipeline            `yaml:"metrics,omitempty"`
+	Logs           Pipeline            `yaml:"logs,omitempty"`
+	NamedPipelines map[string]Pipeline `yaml:",inline,omitempty"`
+}
+
+type Services struct {
+	Extensions map[string]any `yaml:"extensions,omitempty"`
+	Pipelines  Pipelines      `yaml:"pipelines,omitempty"`
+	Telemetry  map[string]any `yaml:"telemetry,omitempty"`
+}
+
+type OtelColConfigIR struct {
+	Receivers  map[string]any `yaml:"receivers,omitempty"`
+	Exporters  map[string]any `yaml:"exporters,omitempty"`
+	Processors map[string]any `yaml:"processors,omitempty"`
+	Connectors map[string]any `yaml:"connectors,omitempty"`
+	Services   Services       `yaml:"service,omitempty"`
+}
+
 func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
 	exporters := cfgInput.generateOTLPExporters()
 	return exporters
@@ -80,17 +118,6 @@ func generatePipeline(receivers, processors, exporters []string) Pipeline {
 	return result
 }
 
-type RoutingConnectorTableItem struct {
-	Statement string   `yaml:"statement"`
-	Pipelines []string `yaml:"pipelines,flow"`
-}
-
-type RoutingConnector struct {
-	Name             string                      `yaml:"-"`
-	DefaultPipelines []string                    `yaml:"default_pipelines,flow"`
-	Table            []RoutingConnectorTableItem `yaml:"table"`
-}
-
 func (rc *RoutingConnector) AddRoutingConnectorTableElem(attribute string, value string, pipelines []string) {
 	newTableItem := RoutingConnectorTableItem{
 		Statement: fmt.Sprintf(`route() where attributes[%q] == %q`, attribute, value),
@@ -99,7 +126,7 @@ func (rc *RoutingConnector) AddRoutingConnectorTableElem(attribute string, value
 	rc.Table = append(rc.Table, newTableItem)
 }
 
-func GenerateRoutingConnector(name string, defaultPipelines []string) RoutingConnector {
+func generateRoutingConnector(name string, defaultPipelines []string) RoutingConnector {
 	result := RoutingConnector{}
 
 	result.DefaultPipelines = defaultPipelines
@@ -110,7 +137,7 @@ func GenerateRoutingConnector(name string, defaultPipelines []string) RoutingCon
 
 func generateRootRoutingConnector(tenantNames []v1alpha1.NamespacedName) RoutingConnector {
 	// Generate routing table's first hop that will sort it's input by tenant name
-	defaultRc := GenerateRoutingConnector("routing/tenants", []string{})
+	defaultRc := generateRoutingConnector("routing/tenants", []string{})
 	for _, tenant := range tenantNames {
 		defaultRc.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", tenant.Name, []string{fmt.Sprintf("logs/tenant_%s", tenant.Name)})
 	}
@@ -120,7 +147,7 @@ func generateRootRoutingConnector(tenantNames []v1alpha1.NamespacedName) Routing
 func generateRoutingConnectorForTenantsSubscription(tenantName string, subscriptions []v1alpha1.NamespacedName) RoutingConnector {
 	rcName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
 	//rcDefaultPipelines := []string{fmt.Sprintf("logs/tenant_%s_default", tenantName)}
-	rc := GenerateRoutingConnector(rcName, []string{})
+	rc := generateRoutingConnector(rcName, []string{})
 
 	for _, subscription := range subscriptions {
 		pipeline := fmt.Sprintf("logs/tenant_%s_subscription_%s", tenantName, subscription.Name)
@@ -280,7 +307,7 @@ func generateDefaultKubernetesReceiver() map[string]any {
 		{
 			"type":   "regex_parser",
 			"id":     "parser-crio",
-			"regex":  `^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$`,
+			"regex":  `'^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'`,
 			"output": "extract_metadata_from_filepath",
 			"timestamp": map[string]string{
 				"parse_from":  "attributes.time",
@@ -291,7 +318,7 @@ func generateDefaultKubernetesReceiver() map[string]any {
 		{
 			"type":   "regex_parser",
 			"id":     "parser-containerd",
-			"regex":  `^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$`,
+			"regex":  `'^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'`,
 			"output": "extract_metadata_from_filepath",
 			"timestamp": map[string]string{
 				"parse_from": "attributes.time",
@@ -387,33 +414,6 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
 
 	return &result
-}
-
-type Pipeline struct {
-	Receivers  []string `yaml:"receivers,omitempty,flow"`
-	Processors []string `yaml:"processors,omitempty,flow"`
-	Exporters  []string `yaml:"exporters,omitempty,flow"`
-}
-
-type Pipelines struct {
-	Traces         Pipeline            `yaml:"traces,omitempty"`
-	Metrics        Pipeline            `yaml:"metrics,omitempty"`
-	Logs           Pipeline            `yaml:"logs,omitempty"`
-	NamedPipelines map[string]Pipeline `yaml:",inline,omitempty"`
-}
-
-type Services struct {
-	Extensions map[string]any `yaml:"extensions,omitempty"`
-	Pipelines  Pipelines      `yaml:"pipelines,omitempty"`
-	Telemetry  map[string]any `yaml:"telemetry,omitempty"`
-}
-
-type OtelColConfigIR struct {
-	Receivers  map[string]any `yaml:"receivers,omitempty"`
-	Exporters  map[string]any `yaml:"exporters,omitempty"`
-	Processors map[string]any `yaml:"processors,omitempty"`
-	Connectors map[string]any `yaml:"connectors,omitempty"`
-	Services   Services       `yaml:"service,omitempty"`
 }
 
 func (cfg *OtelColConfigIR) ToYAML() (string, error) {

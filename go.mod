@@ -1,10 +1,14 @@
 module github.com/kube-logging/subscription-operator
 
-go 1.20
+go 1.21
+
+toolchain go1.21.5
 
 require (
-	github.com/onsi/ginkgo/v2 v2.11.0
-	github.com/onsi/gomega v1.27.10
+	emperror.dev/errors v0.8.1
+	github.com/cisco-open/operator-tools v0.34.0
+	github.com/onsi/ginkgo/v2 v2.13.0
+	github.com/onsi/gomega v1.29.0
 	github.com/open-telemetry/opentelemetry-operator v0.90.0
 	k8s.io/apimachinery v0.28.4
 	k8s.io/client-go v0.28.4
@@ -12,7 +16,18 @@ require (
 )
 
 require (
+	github.com/briandowns/spinner v1.23.0 // indirect
+	github.com/cisco-open/k8s-objectmatcher v1.9.0 // indirect
+	github.com/cppforlife/go-patch v0.2.0 // indirect
+	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
+	github.com/fatih/color v1.16.0 // indirect
+	github.com/iancoleman/orderedmap v0.3.0 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/nxadm/tail v1.4.8 // indirect
+	github.com/spf13/cast v1.6.0 // indirect
+	github.com/wayneashleyberry/terminal-dimensions v1.1.0 // indirect
 	go.opentelemetry.io/collector/featuregate v0.77.0 // indirect
 )
 
@@ -34,7 +49,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
 	github.com/google/uuid v1.4.0 // indirect
@@ -73,9 +88,9 @@ require (
 	k8s.io/apiextensions-apiserver v0.28.4 // indirect
 	k8s.io/component-base v0.28.4 // indirect
 	k8s.io/klog/v2 v2.110.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
+	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
 	k8s.io/utils v0.0.0-20231127182322-b307cd553661 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
 )

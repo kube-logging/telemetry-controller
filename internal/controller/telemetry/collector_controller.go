@@ -18,9 +18,10 @@ import (
 	"context"
 	"fmt"
 
+	"emperror.dev/errors"
 	"golang.org/x/exp/slices"
 	apiv1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
 
+	"github.com/cisco-open/operator-tools/pkg/reconciler"
 	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
 )
 
@@ -132,6 +134,11 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	saName, err := r.reconcileRBAC(ctx, collector)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("%+v", err)
+	}
+
 	otelCollector := otelv1alpha1.OpenTelemetryCollector{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -139,38 +146,20 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Namespace: collector.Namespace,
 		},
 		Spec: otelv1alpha1.OpenTelemetryCollectorSpec{
-			Config: otelConfig,
-			Mode:   otelv1alpha1.ModeDaemonSet,
-			Image:  "otel/opentelemetry-collector-contrib:0.91.0",
+			Config:         otelConfig,
+			Mode:           otelv1alpha1.ModeDaemonSet,
+			Image:          "otel/opentelemetry-collector-contrib:0.91.0",
+			ServiceAccount: saName.Name,
 		},
 	}
 
 	ctrl.SetControllerReference(collector, &otelCollector, r.Scheme)
 
-	foundOtelCollector := otelv1alpha1.OpenTelemetryCollector{}
+	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 
-	err = r.Client.Get(ctx, client.ObjectKey{Namespace: otelCollector.Namespace, Name: otelCollector.Name}, &foundOtelCollector)
-	if apierrors.IsNotFound(err) {
-		if err := r.Client.Create(ctx, &otelCollector); err != nil {
-			logger.Error(err, "failed to create OpentelemetryCollector resource")
-			return ctrl.Result{}, err
-		}
-
-		logger.Info("created OpentelemetryCollector resource for Collector")
-		return ctrl.Result{}, nil
-	}
+	_, err = resourceReconciler.ReconcileResource(&otelCollector, reconciler.StatePresent)
 	if err != nil {
-		logger.Error(err, "failed to get OpentelemetryCollector for Collector")
 		return ctrl.Result{}, err
-	}
-
-	if foundOtelCollector.Spec.Config != otelCollector.Spec.Config || foundOtelCollector.Spec.Mode != otelCollector.Spec.Mode || foundOtelCollector.Spec.Image != otelCollector.Spec.Image {
-		otelCollector.SetResourceVersion(foundOtelCollector.GetResourceVersion())
-		if err := r.Client.Update(ctx, &otelCollector); err != nil {
-			logger.Error(err, "failed to update ConfigMap")
-			return ctrl.Result{}, err
-		}
-
 	}
 
 	return ctrl.Result{}, nil
@@ -181,6 +170,101 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Collector{}).
 		Complete(r)
+}
+
+func (r *CollectorReconciler) reconcileRBAC(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
+
+	errCR := r.reconcileClusterRole(ctx, collector)
+
+	sa, errSA := r.reconcileServiceAccount(ctx, collector)
+
+	errCRB := r.reconcileClusterRoleBinding(ctx, collector)
+
+	if allErr := errors.Combine(errCR, errSA, errCRB); allErr != nil {
+		return v1alpha1.NamespacedName{}, allErr
+	}
+
+	return sa, nil
+}
+
+func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
+	logger := log.FromContext(ctx)
+
+	serviceAccount := apiv1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-sa", collector.Name),
+			Namespace: collector.Namespace,
+		},
+	}
+
+	ctrl.SetControllerReference(collector, &serviceAccount, r.Scheme)
+
+	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
+
+	_, err := resourceReconciler.ReconcileResource(&serviceAccount, reconciler.StatePresent)
+	if err != nil {
+		return v1alpha1.NamespacedName{}, err
+	}
+
+	return v1alpha1.NamespacedName{Namespace: serviceAccount.Namespace, Name: serviceAccount.Name}, nil
+}
+func (r *CollectorReconciler) reconcileClusterRoleBinding(ctx context.Context, collector *v1alpha1.Collector) error {
+	logger := log.FromContext(ctx)
+
+	clusterRoleBinding := rbacv1.ClusterRoleBinding{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-crb", collector.Name),
+		},
+		Subjects: []rbacv1.Subject{{
+			Kind:      "ServiceAccount",
+			Name:      fmt.Sprintf("%s-sa", collector.Name),
+			Namespace: collector.Namespace,
+		}},
+		RoleRef: rbacv1.RoleRef{
+			Kind: "ClusterRole",
+			Name: fmt.Sprintf("%s-pod-association-reader", collector.Name),
+		},
+	}
+
+	ctrl.SetControllerReference(collector, &clusterRoleBinding, r.Scheme)
+
+	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
+
+	_, err := resourceReconciler.ReconcileResource(&clusterRoleBinding, reconciler.StatePresent)
+	return err
+}
+
+func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collector *v1alpha1.Collector) error {
+	logger := log.FromContext(ctx)
+
+	clusterRole := rbacv1.ClusterRole{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-pod-association-reader", collector.Name),
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				Verbs:     []string{"get", "watch", "list"},
+				APIGroups: []string{""},
+				Resources: []string{"pods", "namespaces"},
+			},
+			{
+				Verbs:     []string{"get", "watch", "list"},
+				APIGroups: []string{"apps"},
+				Resources: []string{"replicasets"},
+			},
+		},
+	}
+
+	ctrl.SetControllerReference(collector, &clusterRole, r.Scheme)
+
+	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
+
+	_, err := resourceReconciler.ReconcileResource(&clusterRole, reconciler.StatePresent)
+
+	return err
 }
 
 func getTenantNamesFromTenants(tenants []v1alpha1.Tenant) []string {
