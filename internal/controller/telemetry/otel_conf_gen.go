@@ -256,7 +256,7 @@ func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) 
 }
 
 func generateRootPipeline() Pipeline {
-	return generatePipeline([]string{"filelog/kubernetes"}, []string{"k8sattributes"}, []string{"routing/tenants", "logging/debug"})
+	return generatePipeline([]string{"filelog/kubernetes"}, []string{"k8sattributes"}, []string{"routing/tenants"})
 }
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
