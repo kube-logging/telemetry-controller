@@ -186,3 +186,7 @@ run-delve: generate fmt vet manifests
 .PHONY: tidy
 tidy: ## Tidy Go modules
 	find . -iname "go.mod" -not -path "./.devcontainer/*" | xargs -L1 sh -c 'cd $$(dirname $$0); go mod tidy'
+
+.PHONY: e2e-test
+e2e-test: ## Run e2e tests, make sure subscription operator is running somewhere
+	cd e2e && timeout --foreground 15m ./e2e_test.sh || echo "E2E test failed"; return 1

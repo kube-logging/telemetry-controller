@@ -1,0 +1,14 @@
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  labels:
+    app.kubernetes.io/name: tenant
+    app.kubernetes.io/instance: tenant-sample
+    app.kubernetes.io/part-of: subscription-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: subscription-operator
+    tenant: tenantA
+  name: tenant-sample
+spec:
+  subscriptionNamespaceSelectors:
+    - {}
