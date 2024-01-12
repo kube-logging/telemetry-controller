@@ -41,7 +41,7 @@ type RoutingConnectorTableItem struct {
 
 type RoutingConnector struct {
 	Name             string                      `yaml:"-"`
-	DefaultPipelines []string                    `yaml:"default_pipelines,flow"`
+	DefaultPipelines []string                    `yaml:"default_pipelines,flow,omitempty"`
 	Table            []RoutingConnectorTableItem `yaml:"table"`
 }
 
