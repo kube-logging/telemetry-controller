@@ -356,6 +356,7 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[str
 
 func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[string]any {
 
+	// TODO: fix parser-crio
 	operators := []map[string]any{
 		{
 			"type": "router",
