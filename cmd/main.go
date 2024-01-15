@@ -32,6 +32,7 @@ import (
 
 	telemetryv1alpha1 "github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
 	controller "github.com/kube-logging/subscription-operator/internal/controller/telemetry"
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	//+kubebuilder:scaffold:imports
 
@@ -48,6 +49,7 @@ func init() {
 
 	utilruntime.Must(otelv1alpha1.AddToScheme(scheme))
 
+	utilruntime.Must(rbacv1.AddToScheme(scheme))
 	utilruntime.Must(telemetryv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
