@@ -84,6 +84,9 @@ type OtelColConfigIR struct {
 
 func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
 	exporters := cfgInput.generateOTLPExporters()
+	exporters["logging/debug"] = map[string]any{
+		"verbosity": "detailed",
+	}
 	return exporters
 }
 
@@ -253,7 +256,7 @@ func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) 
 }
 
 func generateRootPipeline() Pipeline {
-	return generatePipeline([]string{"filelog/kubernetes"}, []string{"k8sattributes"}, []string{"routing/tenants"})
+	return generatePipeline([]string{"filelog/kubernetes"}, []string{"k8sattributes"}, []string{"routing/tenants", "logging/debug"})
 }
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
@@ -363,24 +366,9 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 					"expr":   `body matches "^\\{"`,
 				},
 				{
-					"output": "parser-crio",
-					"expr":   `body matches "^[^ Z]+ "`,
-				},
-				{
 					"output": "parser-containerd",
 					"expr":   `body matches "^[^ Z]+Z"`,
 				},
-			},
-		},
-		{
-			"type":   "regex_parser",
-			"id":     "parser-crio",
-			"regex":  `'^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'`,
-			"output": "extract_metadata_from_filepath",
-			"timestamp": map[string]string{
-				"parse_from":  "attributes.time",
-				"layout_type": "gotime",
-				"layout":      "2006-01-02T15:04:05.999999999Z07:00",
 			},
 		},
 		{
@@ -478,6 +466,8 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
+
+	result.Services.Telemetry = make(map[string]any)
 
 	return &result
 }
