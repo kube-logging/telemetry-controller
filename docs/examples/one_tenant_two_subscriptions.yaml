@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: collector
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    nsSelector: example-tenant
+  name: example-tenant-ns
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Collector
+metadata:
+  name: example-collector
+  namespace: collector
+spec:
+  tenantSelector:
+    matchLabels:
+      collectorLabel: example-collector
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  labels:
+    collectorLabel: example-collector
+  name: example-tenant
+  namespace: collector
+spec:
+  subscriptionNamespaceSelector:
+    matchLabels:
+      nsSelector: example-tenant
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: subscription-sample
+  namespace: example-tenant-ns
+spec:
+#  ottl: 'set(attributes["subscription"], "subscriptionA")'
+  ottl: 'route()'
+  outputs:
+    - name: otlp-test-output
+      namespace: collector
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: another-subscription-sample
+  namespace: example-tenant-ns
+spec:
+#  ottl: 'set(attributes["subscription"], "subscriptionA")'
+  ottl: 'route()'
+  outputs:
+    - name: otlp-test-output
+      namespace: collector
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: OtelOutput
+metadata:
+  name: otlp-test-output
+  namespace: collector
+spec:
+  otlp:
+    endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
+    tls:
+      insecure: true

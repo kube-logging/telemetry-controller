@@ -101,8 +101,15 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		slices.Sort(stringSubscriptionNames)
-
 		tenant.Status.Subscriptions = stringSubscriptionNames
+
+		logsourceNamespacesForTenant, err := r.getLogsourceNamespaceNamesForTenant(ctx, &tenant)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		slices.Sort(logsourceNamespacesForTenant)
+		tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
 		r.Status().Update(ctx, &tenant)
 		logger.Info("Setting tenant status")
@@ -149,6 +156,36 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Mode:           otelv1alpha1.ModeDaemonSet,
 			Image:          "otel/opentelemetry-collector-contrib:0.91.0",
 			ServiceAccount: saName.Name,
+			VolumeMounts: []apiv1.VolumeMount{
+				{
+					Name:      "varlog",
+					ReadOnly:  true,
+					MountPath: "/var/log",
+				},
+				{
+					Name:      "varlibdockercontainers",
+					ReadOnly:  true,
+					MountPath: "/var/lib/docker/containers",
+				},
+			},
+			Volumes: []apiv1.Volume{
+				{
+					Name: "varlog",
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: "/var/log",
+						},
+					},
+				},
+				{
+					Name: "varlibdockercontainers",
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: "/var/lib/docker/containers",
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -340,4 +377,41 @@ func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, ten
 	}
 
 	return subscriptions, nil
+}
+
+func (r *CollectorReconciler) getNamespacesForSelector(ctx context.Context, labelSelector *metav1.LabelSelector) ([]apiv1.Namespace, error) {
+	var namespaces apiv1.NamespaceList
+
+	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+
+	if err != nil {
+		return nil, err
+	}
+
+	listOpts := &client.ListOptions{
+		LabelSelector: selector,
+	}
+
+	if err := r.List(ctx, &namespaces, listOpts); client.IgnoreNotFound(err) != nil {
+		return nil, err
+	}
+
+	return namespaces.Items, nil
+}
+
+func (r *CollectorReconciler) getLogsourceNamespaceNamesForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]string, error) {
+
+	namespaces, err := r.getNamespacesForSelector(ctx, &tentant.Spec.SubscriptionNamespaceSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	var namespaceNames []string
+
+	for _, namespace := range namespaces {
+		namespaceNames = append(namespaceNames, namespace.Name)
+	}
+
+	return namespaceNames, nil
+
 }

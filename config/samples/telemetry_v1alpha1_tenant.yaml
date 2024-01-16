@@ -10,7 +10,7 @@ metadata:
     tenant: tenantA
   name: tenant-sample
 spec:
-  subscriptionNamespaceSelectors:
-  - matchLabels:
+  subscriptionNamespaceSelector:
+    matchLabels:
       nsTenant: tenantA
 
