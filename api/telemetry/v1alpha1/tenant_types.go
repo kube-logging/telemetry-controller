@@ -20,19 +20,21 @@ import (
 
 // TenantSpec defines the desired state of Tenant
 type TenantSpec struct {
-	SubscriptionNamespaceSelector []metav1.LabelSelector `json:"subscriptionNamespaceSelectors,omitempty"`
-	// LogsourceNamespaceSelector    []metav1.LabelSelector `json:"logsourceNamespaceSelectors,omitempty"`
+	SubscriptionNamespaceSelector metav1.LabelSelector `json:"subscriptionNamespaceSelector,omitempty"`
+	// LogsourceNamespaceSelector    metav1.LabelSelector `json:"logsourceNamespaceSelectors,omitempty"`
 	// OTTL string `json:"ottl,omitempty"`
 }
 
 // TenantStatus defines the observed state of Tenant
 type TenantStatus struct {
-	Subscriptions []string `json:"subscriptions"`
+	Subscriptions       []string `json:"subscriptions"`
+	LogSourceNamespaces []string `json:"logsourceNamespaces"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Subscriptions",type=string,JSONPath=`.status.subscriptions`
+//+kubebuilder:printcolumn:name="Subscriptions",type=string,JSONPath=`.status.subscriptions`
+//+kubebuilder:printcolumn:name="Logsource namespaces",type=string,JSONPath=`.status.logsourceNamespaces`
 
 // Tenant is the Schema for the tenants API
 type Tenant struct {
