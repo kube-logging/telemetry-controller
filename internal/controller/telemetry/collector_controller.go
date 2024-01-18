@@ -25,9 +25,12 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
 
@@ -41,9 +44,9 @@ type CollectorReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/finalizers,verbs=update
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -82,6 +85,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	subscriptions := []v1alpha1.Subscription{}
 
 	for _, tenant := range tenants {
+		// check if tenant is owned by us, or make it ours only if orphan
+		// this update will connect the tenant and collector exclusively
+		tenant.Status.Collector = collector
+		err := r.Status().Update(ctx, &tenant)
 
 		subscriptionsForTenant, err := r.getSubscriptionsForTenant(ctx, &tenant)
 
@@ -91,6 +98,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		subscriptions = append(subscriptions, subscriptionsForTenant...)
 
+		// Todo implement subscription locking similarly to how we do with tenants
 		subscriptionNames := getSubscriptionNamesFromSubscription(subscriptionsForTenant)
 
 		tenantSubscriptionMap[tenant.NamespacedName()] = subscriptionNames
@@ -206,6 +214,32 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Collector{}).
+		Watches(&v1alpha1.Tenant{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
+			requests := []reconcile.Request{}
+			tenant, _ := object.(*v1alpha1.Tenant)
+
+			collectors := v1alpha1.CollectorList{}
+			r.List(context.TODO(), collectors)
+
+			for _, c := range collectors.Items {
+				tenantsForCollector := &v1alpha1.TenantList{}
+				r.List(context.TODO(), tenantsForCollector, c.Spec.TenantSelector)
+				for _, t := range tenantsForCollector.Items {
+					if t.Name == tenant.Name {
+						// optionally we might discard the notification if the tenant is
+						// owned by another controller
+						// t.Status.Collector != c.Name
+						requests = append(requests, reconcile.Request{
+							NamespacedName: types.NamespacedName{
+								Name: c.Name,
+							},
+						})
+					}
+				}
+			}
+
+			return requests
+		})).
 		Complete(r)
 }
 

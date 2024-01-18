@@ -34,10 +34,11 @@ type SubscriptionSpec struct {
 type SubscriptionStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Tenant string
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // Subscription is the Schema for the subscriptions API
 type Subscription struct {
@@ -48,7 +49,7 @@ type Subscription struct {
 	Status SubscriptionStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // SubscriptionList contains a list of Subscription
 type SubscriptionList struct {

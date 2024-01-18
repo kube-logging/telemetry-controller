@@ -28,6 +28,7 @@ type TenantSpec struct {
 type TenantStatus struct {
 	Subscriptions       []string `json:"subscriptions"`
 	LogSourceNamespaces []string `json:"logSourceNamespaces"`
+	Collector           string   `json:"collector"`
 }
 
 //+kubebuilder:object:root=true
@@ -45,7 +46,7 @@ type Tenant struct {
 	Status TenantStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // TenantList contains a list of Tenant
 type TenantList struct {
