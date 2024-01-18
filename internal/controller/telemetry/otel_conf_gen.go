@@ -155,12 +155,14 @@ func generateRootRoutingConnector(tenants []v1alpha1.Tenant) RoutingConnector {
 	return defaultRc
 }
 
-func buildRoutingTableItemForSubscription(tenantName string, subscription v1alpha1.Subscription) RoutingConnectorTableItem {
+func buildRoutingTableItemForSubscription(tenantName string, subscription v1alpha1.Subscription, index int) RoutingConnectorTableItem {
 
 	pipelineName := fmt.Sprintf("logs/tenant_%s_subscription_%s", tenantName, subscription.Name)
 
+	appendedSpaces := strings.Repeat(" ", index)
+
 	newItem := RoutingConnectorTableItem{
-		Statement: subscription.Spec.OTTL,
+		Statement: fmt.Sprintf("%s%s", subscription.Spec.OTTL, appendedSpaces),
 		Pipelines: []string{pipelineName},
 	}
 
@@ -171,7 +173,7 @@ func (cfgInput *OtelColConfigInput) generateRoutingConnectorForTenantsSubscripti
 	rcName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
 	rc := newRoutingConnector(rcName, []string{})
 
-	for _, subscriptionRef := range subscriptionNames {
+	for index, subscriptionRef := range subscriptionNames {
 
 		subscriptionIdx := slices.IndexFunc(cfgInput.Subscriptions, func(output v1alpha1.Subscription) bool {
 			return output.Name == subscriptionRef.Name && output.Namespace == subscriptionRef.Namespace
@@ -183,7 +185,7 @@ func (cfgInput *OtelColConfigInput) generateRoutingConnectorForTenantsSubscripti
 
 		subscription := cfgInput.Subscriptions[subscriptionIdx]
 
-		tableItem := buildRoutingTableItemForSubscription(tenantName, subscription)
+		tableItem := buildRoutingTableItemForSubscription(tenantName, subscription, index)
 		rc.AddRoutingConnectorTableElem(tableItem)
 	}
 
