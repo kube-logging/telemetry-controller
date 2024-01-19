@@ -20,7 +20,8 @@ import (
 
 // CollectorSpec defines the desired state of Collector
 type CollectorSpec struct {
-	TenantSelector metav1.LabelSelector `json:"tenantSelector,omitempty"`
+	TenantSelector   metav1.LabelSelector `json:"tenantSelector,omitempty"`
+	ControlNamespace string               `json:"controlNamespace"`
 }
 
 // CollectorStatus defines the observed state of Collector
@@ -29,6 +30,7 @@ type CollectorStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:scope=Cluster
 //+kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Tenants",type=string,JSONPath=`.status.tenants`
 

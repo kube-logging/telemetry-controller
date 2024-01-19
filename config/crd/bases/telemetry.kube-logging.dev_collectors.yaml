@@ -12,7 +12,7 @@ spec:
     listKind: CollectorList
     plural: collectors
     singular: collector
-  scope: Namespaced
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.tenants
@@ -38,6 +38,8 @@ spec:
           spec:
             description: CollectorSpec defines the desired state of Collector
             properties:
+              controlNamespace:
+                type: string
               tenantSelector:
                 description: A label selector is a label query over a set of resources.
                   The result of matchLabels and matchExpressions are ANDed. An empty
@@ -86,6 +88,8 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
+            required:
+            - controlNamespace
             type: object
           status:
             description: CollectorStatus defines the observed state of Collector

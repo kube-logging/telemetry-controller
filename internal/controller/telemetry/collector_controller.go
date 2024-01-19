@@ -17,6 +17,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"emperror.dev/errors"
 	"golang.org/x/exp/slices"
@@ -149,12 +150,12 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("otelcollector-%s", collector.Name),
-			Namespace: collector.Namespace,
+			Namespace: collector.Spec.ControlNamespace,
 		},
 		Spec: otelv1alpha1.OpenTelemetryCollectorSpec{
 			Config:         otelConfig,
 			Mode:           otelv1alpha1.ModeDaemonSet,
-			Image:          "otel/opentelemetry-collector-contrib:0.91.0",
+			Image:          "otel/opentelemetry-collector-contrib:0.92.0",
 			ServiceAccount: saName.Name,
 			VolumeMounts: []apiv1.VolumeMount{
 				{
@@ -230,7 +231,7 @@ func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, colle
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-sa", collector.Name),
-			Namespace: collector.Namespace,
+			Namespace: collector.Spec.ControlNamespace,
 		},
 	}
 
@@ -256,7 +257,7 @@ func (r *CollectorReconciler) reconcileClusterRoleBinding(ctx context.Context, c
 		Subjects: []rbacv1.Subject{{
 			Kind:      "ServiceAccount",
 			Name:      fmt.Sprintf("%s-sa", collector.Name),
-			Namespace: collector.Namespace,
+			Namespace: collector.Spec.ControlNamespace,
 		}},
 		RoleRef: rbacv1.RoleRef{
 			Kind: "ClusterRole",
@@ -353,7 +354,7 @@ func (r *CollectorReconciler) getAllOutputs(ctx context.Context) ([]v1alpha1.Ote
 
 func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]v1alpha1.Subscription, error) {
 
-	namespaces, err := r.getNamespacesForSelector(ctx, &tentant.Spec.SubscriptionNamespaceSelector)
+	namespaces, err := r.getNamespacesForSelectorSlice(ctx, tentant.Spec.SubscriptionNamespaceSelectors)
 
 	if err != nil {
 		return nil, err
@@ -379,29 +380,56 @@ func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, ten
 	return subscriptions, nil
 }
 
-func (r *CollectorReconciler) getNamespacesForSelector(ctx context.Context, labelSelector *metav1.LabelSelector) ([]apiv1.Namespace, error) {
-	var namespaces apiv1.NamespaceList
+func (r *CollectorReconciler) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
 
-	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+	var namespaces []apiv1.Namespace
 
-	if err != nil {
-		return nil, err
+	for _, ls := range labelSelectors {
+		var namespacesForSelector apiv1.NamespaceList
+
+		selector, err := metav1.LabelSelectorAsSelector(&ls)
+
+		if err != nil {
+			return nil, err
+		}
+
+		listOpts := &client.ListOptions{
+			LabelSelector: selector,
+		}
+
+		if err := r.List(ctx, &namespacesForSelector, listOpts); client.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+
+		namespaces = append(namespaces, namespacesForSelector.Items...)
 	}
 
-	listOpts := &client.ListOptions{
-		LabelSelector: selector,
+	normalizeNamespaceSlice(namespaces)
+
+	return namespaces, nil
+}
+
+func normalizeNamespaceSlice(inputList []apiv1.Namespace) []apiv1.Namespace {
+	allKeys := make(map[string]bool)
+	uniqueList := []apiv1.Namespace{}
+	for _, item := range inputList {
+		if _, value := allKeys[item.Name]; !value {
+			allKeys[item.Name] = true
+			uniqueList = append(uniqueList, item)
+		}
 	}
 
-	if err := r.List(ctx, &namespaces, listOpts); client.IgnoreNotFound(err) != nil {
-		return nil, err
+	cmp := func(a, b apiv1.Namespace) int {
+		return strings.Compare(a.Name, b.Name)
 	}
 
-	return namespaces.Items, nil
+	slices.SortFunc(uniqueList, cmp)
+	return uniqueList
 }
 
 func (r *CollectorReconciler) getLogsourceNamespaceNamesForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]string, error) {
 
-	namespaces, err := r.getNamespacesForSelector(ctx, &tentant.Spec.SubscriptionNamespaceSelector)
+	namespaces, err := r.getNamespacesForSelectorSlice(ctx, tentant.Spec.LogSourceNamespaceSelectors)
 	if err != nil {
 		return nil, err
 	}
