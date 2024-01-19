@@ -1,12 +1,9 @@
 #!/bin/env bash
 
-create_namespace() {
-  local namespace_name=$1
-  kubectl get namespace ${namespace_name} > /dev/null 2>&1
-
-  if [[ $? -ne 0 ]]; then
-    kubectl create namespace ${namespace_name}
-  fi
+create_if_does_not_exist() {
+  local resource_type=$1
+  local resource_name=$2
+  kubectl create  "${resource_type}" "${resource_name}" --dry-run=client -o yaml | kubectl apply -f-
 }
 
 KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME_E2E:-so-e2e}
@@ -18,12 +15,11 @@ kind create cluster --name ${KIND_CLUSTER_NAME} --wait 5m
 kubectl config set-context kind-${KIND_CLUSTER_NAME}
 
 # Install prerequisites
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
 
 helm upgrade \
   --install \
-  cert-manager jetstack/cert-manager \
+  --repo https://charts.jetstack.io \
+  cert-manager cert-manager \
   --namespace cert-manager \
   --create-namespace \
   --version v1.13.3 \
@@ -32,12 +28,11 @@ helm upgrade \
 
 kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml --wait
 echo "Wait until otel operator pod is in ready state..."
-OTEL_COL_OPERATOR_POD="$(kubectl get pods -A --no-headers -o custom-columns=':metadata.name' | grep opentelemetry-operator)"
-kubectl wait --namespace opentelemetry-operator-system --for=condition=Ready pod/${OTEL_COL_OPERATOR_POD}
+kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
 
 # Create receivers
-create_namespace "otlp-receiver-1"
-create_namespace "otlp-receiver-2"
+create_if_does_not_exist "namespace" "otlp-receiver-1"
+create_if_does_not_exist "namespace" "otlp-receiver-2"
 
 kubectl apply -f otlp_receiver.yaml
 
@@ -45,10 +40,10 @@ kubectl apply -f otlp_receiver.yaml
 # Create subscription operator resources
 cd .. && make manifests generate install && cd -
 
-create_namespace "outputs"
+create_if_does_not_exist "namespace" "outputs"
 kubectl apply -f telemetry_v1alpha1_oteloutputs.yaml
 
-create_namespace "subscriptions"
+create_if_does_not_exist "namespace" "subscriptions"
 kubectl label namespace subscriptions subscription=subscription-sample
 kubectl apply -f telemetry_v1alpha1_subscriptions.yaml
 
@@ -72,18 +67,17 @@ kubectl label --namespace log-generator-2 pod ${LOG_GENERATOR_POD_2} tenant=tena
 kubectl label --namespace log-generator-2 pod ${LOG_GENERATOR_POD_2} subscription=subscription-sample-2
 
 # Check for received messages - subscription-sample-1
-OTLP_RECEIVER_POD_1="$(kubectl get pods -A --no-headers -o custom-columns=':metadata.name' | grep receiver-1)"
 while
-  echo "Checking for subscription-sample-1 in ${OTLP_RECEIVER_POD_1} pod logs"
-  kubectl logs --namespace otlp-receiver-1 pods/"${OTLP_RECEIVER_POD_1}" | grep -q "subscription-sample-1"
+  echo "Checking for subscription-sample-1 in deployments/test-otlp-receiver-1-collector logs"
+  kubectl logs --namespace otlp-receiver-1 deployments/test-otlp-receiver-1-collector | grep -q "subscription-sample-1"
   [[ $? -ne 0 ]]
 do true; done
 
 # Check for received messages - subscription-sample-2
-OTLP_RECEIVER_POD_2="$(kubectl get pods -A --no-headers -o custom-columns=':metadata.name' | grep receiver-2)"
 while
-  echo "Checking for subscription-sample-2 in ${OTLP_RECEIVER_POD_2} pod logs"
-  kubectl logs --namespace otlp-receiver-2 pods/"${OTLP_RECEIVER_POD_2}" | grep -q "subscription-sample-2"
+  echo "Checking for subscription-sample-2 in deployments/test-otlp-receiver-2-collector logs"
+  kubectl logs --namespace otlp-receiver-2 deployments/test-otlp-receiver-2-collector | grep -q "subscription-sample-2"
+
   [[ $? -ne 0 ]]
 do true; done
 
