@@ -9,6 +9,6 @@ metadata:
     app.kubernetes.io/created-by: subscription-operator
   name: collector-sample
 spec:
-  tenantSelectors:
-  - matchLabels:
+  tenantSelector:
+    matchLabels:
       tenant: tenantA

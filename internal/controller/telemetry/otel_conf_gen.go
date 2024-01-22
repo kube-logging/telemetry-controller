@@ -17,6 +17,7 @@ package telemetry
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
 	"gopkg.in/yaml.v3"
@@ -42,6 +43,16 @@ type RoutingConnector struct {
 	Name             string                      `yaml:"-"`
 	DefaultPipelines []string                    `yaml:"default_pipelines,flow"`
 	Table            []RoutingConnectorTableItem `yaml:"table"`
+}
+
+type AttributesProcessor struct {
+	Actions []AttributesProcessorAction `yaml:"actions"`
+}
+
+type AttributesProcessorAction struct {
+	Action string `yaml:"action"`
+	Key    string `yaml:"key"`
+	Value  string `yaml:"value"`
 }
 
 type Pipeline struct {
@@ -92,22 +103,6 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
 	return result
 }
 
-func (cfgInput *OtelColConfigInput) generateDefaultExporters() map[string]any {
-	var result = make(map[string]any)
-
-	for _, output := range cfgInput.Outputs {
-		name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
-		result[name] = map[string]any{
-			"endpoint": output.Spec.OTLP.GRPCClientSettings.Endpoint,
-			"tls": map[string]any{
-				"insecure": output.Spec.OTLP.TLSSetting.Insecure,
-			},
-		}
-	}
-
-	return result
-}
-
 func generatePipeline(receivers, processors, exporters []string) Pipeline {
 	var result = Pipeline{}
 
@@ -118,15 +113,11 @@ func generatePipeline(receivers, processors, exporters []string) Pipeline {
 	return result
 }
 
-func (rc *RoutingConnector) AddRoutingConnectorTableElem(attribute string, value string, pipelines []string) {
-	newTableItem := RoutingConnectorTableItem{
-		Statement: fmt.Sprintf(`route() where attributes[%q] == %q`, attribute, value),
-		Pipelines: pipelines,
-	}
+func (rc *RoutingConnector) AddRoutingConnectorTableElem(newTableItem RoutingConnectorTableItem) {
 	rc.Table = append(rc.Table, newTableItem)
 }
 
-func generateRoutingConnector(name string, defaultPipelines []string) RoutingConnector {
+func newRoutingConnector(name string, defaultPipelines []string) RoutingConnector {
 	result := RoutingConnector{}
 
 	result.DefaultPipelines = defaultPipelines
@@ -135,23 +126,67 @@ func generateRoutingConnector(name string, defaultPipelines []string) RoutingCon
 	return result
 }
 
-func generateRootRoutingConnector(tenantNames []v1alpha1.NamespacedName) RoutingConnector {
+func buildRoutingTableItemForTenant(tenant v1alpha1.Tenant) RoutingConnectorTableItem {
+
+	var conditions []string
+
+	for _, namespace := range tenant.Status.LogSourceNamespaces {
+		conditions = append(conditions, fmt.Sprintf(`IsMatch(attributes["k8s.namespace.name"], %q)`, namespace))
+	}
+
+	conditionString := strings.Join(conditions, " or ")
+
+	newItem := RoutingConnectorTableItem{
+		//Statement: fmt.Sprintf(`set(attributes["tenant"], %q) where %s`, tenant.Name, conditionString),
+		Statement: fmt.Sprintf(`route() where %s`, conditionString),
+		Pipelines: []string{fmt.Sprintf("logs/tenant_%s", tenant.Name)},
+	}
+
+	return newItem
+}
+
+func generateRootRoutingConnector(tenants []v1alpha1.Tenant) RoutingConnector {
 	// Generate routing table's first hop that will sort it's input by tenant name
-	defaultRc := generateRoutingConnector("routing/tenants", []string{})
-	for _, tenant := range tenantNames {
-		defaultRc.AddRoutingConnectorTableElem("kubernetes.namespace.labels.tenant", tenant.Name, []string{fmt.Sprintf("logs/tenant_%s", tenant.Name)})
+	defaultRc := newRoutingConnector("routing/tenants", []string{})
+	for _, tenant := range tenants {
+		tableItem := buildRoutingTableItemForTenant(tenant)
+		defaultRc.AddRoutingConnectorTableElem(tableItem)
 	}
 	return defaultRc
 }
 
-func generateRoutingConnectorForTenantsSubscription(tenantName string, subscriptions []v1alpha1.NamespacedName) RoutingConnector {
-	rcName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
-	//rcDefaultPipelines := []string{fmt.Sprintf("logs/tenant_%s_default", tenantName)}
-	rc := generateRoutingConnector(rcName, []string{})
+func buildRoutingTableItemForSubscription(tenantName string, subscription v1alpha1.Subscription, index int) RoutingConnectorTableItem {
 
-	for _, subscription := range subscriptions {
-		pipeline := fmt.Sprintf("logs/tenant_%s_subscription_%s", tenantName, subscription.Name)
-		rc.AddRoutingConnectorTableElem("kubernetes.labels.app", subscription.Name, []string{pipeline})
+	pipelineName := fmt.Sprintf("logs/tenant_%s_subscription_%s", tenantName, subscription.Name)
+
+	appendedSpaces := strings.Repeat(" ", index)
+
+	newItem := RoutingConnectorTableItem{
+		Statement: fmt.Sprintf("%s%s", subscription.Spec.OTTL, appendedSpaces),
+		Pipelines: []string{pipelineName},
+	}
+
+	return newItem
+}
+
+func (cfgInput *OtelColConfigInput) generateRoutingConnectorForTenantsSubscription(tenantName string, subscriptionNames []v1alpha1.NamespacedName) RoutingConnector {
+	rcName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
+	rc := newRoutingConnector(rcName, []string{})
+
+	for index, subscriptionRef := range subscriptionNames {
+
+		subscriptionIdx := slices.IndexFunc(cfgInput.Subscriptions, func(output v1alpha1.Subscription) bool {
+			return output.Name == subscriptionRef.Name && output.Namespace == subscriptionRef.Namespace
+		})
+
+		if subscriptionIdx == -1 {
+			continue
+		}
+
+		subscription := cfgInput.Subscriptions[subscriptionIdx]
+
+		tableItem := buildRoutingTableItemForSubscription(tenantName, subscription, index)
+		rc.AddRoutingConnectorTableElem(tableItem)
 	}
 
 	return rc
@@ -160,20 +195,60 @@ func generateRoutingConnectorForTenantsSubscription(tenantName string, subscript
 func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	var connectors = make(map[string]any)
 
-	tenants := []v1alpha1.NamespacedName{}
-	for tenant := range cfgInput.TenantSubscriptionMap {
-		tenants = append(tenants, tenant)
-
-	}
-	rootRoutingConnector := generateRootRoutingConnector(tenants)
+	rootRoutingConnector := generateRootRoutingConnector(cfgInput.Tenants)
 	connectors[rootRoutingConnector.Name] = rootRoutingConnector
 
-	for _, tenant := range tenants {
-		rc := generateRoutingConnectorForTenantsSubscription(tenant.Name, cfgInput.TenantSubscriptionMap[tenant])
+	for _, tenant := range cfgInput.Tenants {
+		rc := cfgInput.generateRoutingConnectorForTenantsSubscription(tenant.Name, cfgInput.TenantSubscriptionMap[tenant.NamespacedName()])
 		connectors[rc.Name] = rc
 	}
 
 	return connectors
+
+}
+
+func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
+	var processors = make(map[string]any)
+
+	k8sProcessorName := "k8sattributes"
+	processors[k8sProcessorName] = cfgInput.generateDefaultKubernetesProcessor()
+
+	for _, tenant := range cfgInput.Tenants {
+		processors[fmt.Sprintf("attributes/tenant_%s", tenant.Name)] = generateTenantAttributeProcessor(tenant)
+	}
+
+	for _, subscription := range cfgInput.Subscriptions {
+		processors[fmt.Sprintf("attributes/subscription_%s", subscription.Name)] = generateSubscriptionAttributeProcessor(subscription)
+	}
+	return processors
+
+}
+
+func generateTenantAttributeProcessor(tenant v1alpha1.Tenant) AttributesProcessor {
+	processor := AttributesProcessor{
+		Actions: []AttributesProcessorAction{
+			{
+				Action: "insert",
+				Key:    "tenant_name",
+				Value:  tenant.Name,
+			},
+		},
+	}
+	return processor
+
+}
+
+func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) AttributesProcessor {
+	processor := AttributesProcessor{
+		Actions: []AttributesProcessorAction{
+			{
+				Action: "insert",
+				Key:    "subscription_name",
+				Value:  subscription.Name,
+			},
+		},
+	}
+	return processor
 
 }
 
@@ -198,7 +273,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 		// Generate a pipeline for the tenant
 		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenant.Name)
 		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenant.Name)
-		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{tenantRoutingName})
+		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{fmt.Sprintf("attributes/tenant_%s", tenant.Name)}, []string{tenantRoutingName})
 
 		// Generate pipelines for the subscriptions for the tenant
 		for _, subscription := range cfgInput.TenantSubscriptionMap[tenant] {
@@ -219,7 +294,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 				targetOutputNames = append(targetOutputNames, targetOutputName)
 
 			}
-			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, targetOutputNames)
+			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{fmt.Sprintf("attributes/subscription_%s", subscription.Name)}, targetOutputNames)
 
 		}
 
@@ -234,7 +309,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 
 }
 
-func generateDefaultKubernetesProcessor() map[string]any {
+func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[string]any {
 	type Source struct {
 		Name string `yaml:"name,omitempty"`
 		From string `yaml:"from,omitempty"`
@@ -269,13 +344,6 @@ func generateDefaultKubernetesProcessor() map[string]any {
 		"passthrough": false,
 		"extract": map[string]any{
 			"metadata": defaultMetadata,
-			"labels": []any{
-				map[string]any{
-					"tag_name": "app.label.example",
-					"key":      "example",
-					"from":     "pod",
-				},
-			},
 		},
 		"pod_association": defaultPodAssociation,
 	}
@@ -283,7 +351,7 @@ func generateDefaultKubernetesProcessor() map[string]any {
 	return k8sProcessor
 }
 
-func generateDefaultKubernetesReceiver() map[string]any {
+func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[string]any {
 
 	operators := []map[string]any{
 		{
@@ -399,14 +467,12 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	// Get  outputs based tenant names
 	result.Exporters = cfgInput.generateExporters()
 
-	// Add k8s processor
-	result.Processors = make(map[string]any)
-	k8sProcessorName := "k8sattributes" //only one instance for now
-	result.Processors[k8sProcessorName] = generateDefaultKubernetesProcessor()
+	// Add processors
+	result.Processors = cfgInput.generateProcessors()
 
 	result.Receivers = make(map[string]any)
 	k8sReceiverName := "filelog/kubernetes" //only one instance for now
-	result.Receivers[k8sReceiverName] = generateDefaultKubernetesReceiver()
+	result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver()
 
 	result.Connectors = cfgInput.generateConnectors()
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)

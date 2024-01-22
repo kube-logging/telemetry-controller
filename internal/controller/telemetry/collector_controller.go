@@ -17,13 +17,13 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"emperror.dev/errors"
 	"golang.org/x/exp/slices"
 	apiv1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -66,7 +66,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	tenantSubscriptionMap := make(map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName)
-	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelectors)
+	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelector)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -102,8 +102,15 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		slices.Sort(stringSubscriptionNames)
-
 		tenant.Status.Subscriptions = stringSubscriptionNames
+
+		logsourceNamespacesForTenant, err := r.getLogsourceNamespaceNamesForTenant(ctx, &tenant)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		slices.Sort(logsourceNamespacesForTenant)
+		tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
 		r.Status().Update(ctx, &tenant)
 		logger.Info("Setting tenant status")
@@ -143,13 +150,43 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("otelcollector-%s", collector.Name),
-			Namespace: collector.Namespace,
+			Namespace: collector.Spec.ControlNamespace,
 		},
 		Spec: otelv1alpha1.OpenTelemetryCollectorSpec{
 			Config:         otelConfig,
 			Mode:           otelv1alpha1.ModeDaemonSet,
-			Image:          "otel/opentelemetry-collector-contrib:0.91.0",
+			Image:          "otel/opentelemetry-collector-contrib:0.92.0",
 			ServiceAccount: saName.Name,
+			VolumeMounts: []apiv1.VolumeMount{
+				{
+					Name:      "varlog",
+					ReadOnly:  true,
+					MountPath: "/var/log",
+				},
+				{
+					Name:      "varlibdockercontainers",
+					ReadOnly:  true,
+					MountPath: "/var/lib/docker/containers",
+				},
+			},
+			Volumes: []apiv1.Volume{
+				{
+					Name: "varlog",
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: "/var/log",
+						},
+					},
+				},
+				{
+					Name: "varlibdockercontainers",
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: "/var/lib/docker/containers",
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -194,7 +231,7 @@ func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, colle
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-sa", collector.Name),
-			Namespace: collector.Namespace,
+			Namespace: collector.Spec.ControlNamespace,
 		},
 	}
 
@@ -220,7 +257,7 @@ func (r *CollectorReconciler) reconcileClusterRoleBinding(ctx context.Context, c
 		Subjects: []rbacv1.Subject{{
 			Kind:      "ServiceAccount",
 			Name:      fmt.Sprintf("%s-sa", collector.Name),
-			Namespace: collector.Namespace,
+			Namespace: collector.Spec.ControlNamespace,
 		}},
 		RoleRef: rbacv1.RoleRef{
 			Kind: "ClusterRole",
@@ -285,33 +322,23 @@ func getSubscriptionNamesFromSubscription(subscriptions []v1alpha1.Subscription)
 	return subscriptionNames
 }
 
-func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, labelSelectorsList []metav1.LabelSelector) ([]v1alpha1.Tenant, error) {
-	var selectors []labels.Selector
+func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, labelSelector metav1.LabelSelector) ([]v1alpha1.Tenant, error) {
 
-	for _, labelSelector := range labelSelectorsList {
-		selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
-		if err != nil {
-			return nil, err
-		}
-		selectors = append(selectors, selector)
+	selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
+	if err != nil {
+		return nil, err
 	}
 
-	var tenants []v1alpha1.Tenant
-
-	for _, selector := range selectors {
-		var tenantsForSelector v1alpha1.TenantList
-		listOpts := &client.ListOptions{
-			LabelSelector: selector,
-		}
-
-		if err := r.Client.List(ctx, &tenantsForSelector, listOpts); client.IgnoreNotFound(err) != nil {
-			return nil, err
-		}
-
-		tenants = append(tenants, tenantsForSelector.Items...)
+	var tenantsForSelector v1alpha1.TenantList
+	listOpts := &client.ListOptions{
+		LabelSelector: selector,
 	}
 
-	return tenants, nil
+	if err := r.Client.List(ctx, &tenantsForSelector, listOpts); client.IgnoreNotFound(err) != nil {
+		return nil, err
+	}
+
+	return tenantsForSelector.Items, nil
 }
 
 func (r *CollectorReconciler) getAllOutputs(ctx context.Context) ([]v1alpha1.OtelOutput, error) {
@@ -326,28 +353,11 @@ func (r *CollectorReconciler) getAllOutputs(ctx context.Context) ([]v1alpha1.Ote
 }
 
 func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]v1alpha1.Subscription, error) {
-	var selectors []labels.Selector
 
-	for _, labelSelector := range tentant.Spec.SubscriptionNamespaceSelector {
-		selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
-		if err != nil {
-			return nil, err
-		}
-		selectors = append(selectors, selector)
-	}
+	namespaces, err := r.getNamespacesForSelectorSlice(ctx, tentant.Spec.SubscriptionNamespaceSelectors)
 
-	var namespaces []apiv1.Namespace
-	for _, selector := range selectors {
-		var namespacesForSelector apiv1.NamespaceList
-		listOpts := &client.ListOptions{
-			LabelSelector: selector,
-		}
-
-		if err := r.List(ctx, &namespacesForSelector, listOpts); client.IgnoreNotFound(err) != nil {
-			return nil, err
-		}
-
-		namespaces = append(namespaces, namespacesForSelector.Items...)
+	if err != nil {
+		return nil, err
 	}
 
 	var subscriptions []v1alpha1.Subscription
@@ -368,4 +378,68 @@ func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, ten
 	}
 
 	return subscriptions, nil
+}
+
+func (r *CollectorReconciler) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
+
+	var namespaces []apiv1.Namespace
+
+	for _, ls := range labelSelectors {
+		var namespacesForSelector apiv1.NamespaceList
+
+		selector, err := metav1.LabelSelectorAsSelector(&ls)
+
+		if err != nil {
+			return nil, err
+		}
+
+		listOpts := &client.ListOptions{
+			LabelSelector: selector,
+		}
+
+		if err := r.List(ctx, &namespacesForSelector, listOpts); client.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+
+		namespaces = append(namespaces, namespacesForSelector.Items...)
+	}
+
+	normalizeNamespaceSlice(namespaces)
+
+	return namespaces, nil
+}
+
+func normalizeNamespaceSlice(inputList []apiv1.Namespace) []apiv1.Namespace {
+	allKeys := make(map[string]bool)
+	uniqueList := []apiv1.Namespace{}
+	for _, item := range inputList {
+		if allKeys[item.Name] {
+			allKeys[item.Name] = true
+			uniqueList = append(uniqueList, item)
+		}
+	}
+
+	cmp := func(a, b apiv1.Namespace) int {
+		return strings.Compare(a.Name, b.Name)
+	}
+
+	slices.SortFunc(uniqueList, cmp)
+	return uniqueList
+}
+
+func (r *CollectorReconciler) getLogsourceNamespaceNamesForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]string, error) {
+
+	namespaces, err := r.getNamespacesForSelectorSlice(ctx, tentant.Spec.LogSourceNamespaceSelectors)
+	if err != nil {
+		return nil, err
+	}
+
+	var namespaceNames []string
+
+	for _, namespace := range namespaces {
+		namespaceNames = append(namespaceNames, namespace.Name)
+	}
+
+	return namespaceNames, nil
+
 }
