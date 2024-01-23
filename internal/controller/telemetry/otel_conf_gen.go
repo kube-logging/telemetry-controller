@@ -386,7 +386,7 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 		{
 			"type":   "regex_parser",
 			"id":     "parser-containerd",
-			"regex":  `'^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'`,
+			"regex":  `^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$`,
 			"output": "extract_metadata_from_filepath",
 			"timestamp": map[string]string{
 				"parse_from": "attributes.time",
