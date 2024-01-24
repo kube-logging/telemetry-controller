@@ -1,5 +1,11 @@
 
 # Image URL to use all building/pushing image targets
+BIN := ${PWD}/bin
+
+export PATH := $(BIN):$(PATH)
+
+GOVERSION := $(shell go env GOVERSION)
+
 IMG ?= controller:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.0
@@ -21,6 +27,9 @@ CONTAINER_TOOL ?= docker
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+
+LICENSEI := ${BIN}/licensei
+LICENSEI_VERSION = v0.8.0
 
 .PHONY: all
 all: build
@@ -194,3 +203,32 @@ e2e-test: ## Run e2e tests, make sure subscription operator is running somewhere
 .PHONY: check-diff
 check-diff: generate
 	git diff --exit-code
+
+.PHONY: license-check
+license-check: ${LICENSEI} .licensei.cache ## Run license check
+	${LICENSEI} check
+	${LICENSEI} header
+
+## target: ci-run
+## target: licensei
+
+${LICENSEI}: ${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION} | ${BIN}
+	ln -sf $(notdir $<) $@
+
+${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: IMPORT_PATH := github.com/goph/licensei/cmd/licensei
+${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: VERSION := ${LICENSEI_VERSION}
+${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: | ${BIN}
+	${go_install_binary}
+
+.licensei.cache: ${LICENSEI}
+ifndef GITHUB_TOKEN
+	@>&2 echo "WARNING: building licensei cache without Github token, rate limiting might occur."
+	@>&2 echo "(Hint: If too many licenses are missing, try specifying a Github token via the environment variable GITHUB_TOKEN.)"
+endif
+	${LICENSEI} cache
+
+define go_install_binary
+find ${BIN} -name '$(notdir ${IMPORT_PATH})_*' -exec rm {} +
+GOBIN=${BIN} go install ${IMPORT_PATH}@${VERSION}
+mv ${BIN}/$(notdir ${IMPORT_PATH}) $@
+endef
