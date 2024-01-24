@@ -1,0 +1,8 @@
+nameOverride: e2e
+
+image:
+  tag: local
+  repository: controller
+
+rbac:
+  enabled: true
