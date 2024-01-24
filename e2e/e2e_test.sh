@@ -37,9 +37,19 @@ cd .. && make manifests generate install && cd -
 kubectl apply -f ../docs/examples
 
 
-if [[ -n "${CI_MODE}" ]]; then
+if [[ -z "${CI_MODE}" ]]; then
   cd .. && timeout 5m make run & 
   cd -
+else
+  kind load docker-image controller:local --name "${KIND_CLUSTER_NAME}"
+  helm upgrade --install \
+    --debug \
+    --wait \
+    --create-namespace \
+    --namespace collector \
+    -f values.yaml \
+    telemetry-controller \
+    "../charts/telemetry-controller" 
 fi
 
 # Create log-generator

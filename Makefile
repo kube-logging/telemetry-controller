@@ -137,7 +137,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 ##@ Deployment
 
 ifndef ignore-not-found
-  ignore-not-found = false
+ignore-not-found = false
 endif
 
 .PHONY: install
@@ -205,11 +205,12 @@ tidy: ## Tidy Go modules
 
 .PHONY: e2e-test
 e2e-test: ## Run e2e tests
-	cd e2e && CI_MODE=$(CI_MODE_ENABLED) timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
+	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) && timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
 
 .PHONY: e2e-test-ci
-e2e-test-ci: CI_MODE_ENABLED=1 ## Run e2e tests, telemetry collector runs inside k8s
-e2e-test-ci: e2e-test
+e2e-test-ci: CI_MODE_ENABLED=1 
+e2e-test-ci: IMG="controller:local" ## Run e2e tests, telemetry collector runs inside k8s
+e2e-test-ci: docker-build e2e-test
 
 .PHONY: check-diff1
 check-diff: generate
