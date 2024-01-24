@@ -37,8 +37,10 @@ cd .. && make manifests generate install && cd -
 kubectl apply -f ../docs/examples
 
 
-cd .. && timeout 5m make run & 
-cd -
+if [[ -n "${CI_MODE}" ]]; then
+  cd .. && timeout 5m make run & 
+  cd -
+fi
 
 # Create log-generator
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
