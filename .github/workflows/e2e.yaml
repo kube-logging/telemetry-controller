@@ -1,0 +1,161 @@
+name: E2E tests
+
+on:
+  push:
+    branches:
+      - master
+      - "release-[0-9]+.[0-9]+*"
+  pull_request:
+
+env:
+  GO_VERSION: '1.21'
+  KUBECTL_VERSION: 'v1.24.1'
+
+jobs:
+  build:
+    name: Image build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and export
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          tags: controller:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/controller.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: controller
+          path: /tmp/controller.tar
+
+  go:
+    name: Go end2end tests
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+#      matrix:
+#        SHARD: [0]
+#        SHARDS: [1]
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: controller
+          path: /tmp
+
+      - name: Load image
+        run: |
+          docker load --input /tmp/controller.tar
+          docker image ls -a
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBECTL_VERSION }}
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run e2e tests
+        run: make e2e-test-ci
+#        env:
+#          SHARD: ${{ matrix.SHARD }}
+#          SHARDS: ${{ matrix.SHARDS }}
+
+      - name: Archive Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: go-e2e-test-cluster-logs
+          path: build/_test
+          retention-days: 5
+
+  e2e-test:
+    name: Shell script tests with different k8s versions
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        kube: ["1.26", "1.27", "1.28", "1.29"]
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: controller
+          path: /tmp
+
+      - name: Load image
+        run: |
+          docker load --input /tmp/controller.tar
+          docker image ls -a
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBECTL_VERSION }}
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # See https://github.com/kubernetes-sigs/kind/releases/tag/v0.20.0
+      - name: Determine KinD node image version
+        id: node_image
+        run: |
+          case ${{ matrix.kube }} in
+            1.26)
+              NODE_IMAGE=kindest/node:v1.26.6@sha256:6e2d8b28a5b601defe327b98bd1c2d1930b49e5d8c512e1895099e4504007adb ;;
+            1.27)
+              NODE_IMAGE=kindest/node:v1.27.3@sha256:3966ac761ae0136263ffdb6cfd4db23ef8a83cba8a463690e98317add2c9ba72 ;;
+            1.28)
+              NODE_IMAGE=kindest/node:v1.28.0@sha256:b7a4cad12c197af3ba43202d3efe03246b3f0793f162afb40a33c923952d5b31 ;;
+            1.29)
+              NODE_IMAGE=kindest/node:v1.29.0@sha256:eaa1450915475849a73a9227b8f201df25e55e268e5d619312131292e324d570 ;;
+            esac
+
+            echo "image=$NODE_IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Make setup
+        run: make kind-cluster stern
+        env:
+          KIND_IMAGE: ${{ steps.node_image.outputs.image }}
+
+      - name: Test script for E2E
+        run: make e2e-test-ci
+
+      - name: Print last 10k kubernetes logs from default, collector and example-tenant-ns namespaces
+        if: always()
+        run: |
+          mkdir -p build/_test
+          bin/stern -n default,collector,example-tenant-ns ".*" --tail 100000 --no-follow > build/_test/cluster.logs
+
+      - name: Archive Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: script-e2e-test-cluster-logs
+          path: build/_test
+          retention-days: 5

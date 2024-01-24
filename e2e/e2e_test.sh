@@ -9,7 +9,8 @@ create_if_does_not_exist() {
 }
 
 KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME_E2E:-so-e2e}
-# Backup current kubernetes context
+NO_KIND_CLEANUP=${NO_KIND_CLEANUP:-}
+  # Backup current kubernetes context
 CURRENT_K8S_CTX=$(kubectl config view | grep "current" | cut -f 2 -d : | xargs)
 
 # Prepare env
@@ -38,8 +39,21 @@ kubectl wait --namespace opentelemetry-operator-system --for=condition=available
 # Use example
 kubectl apply -f ../docs/examples/simple-demo
 
-
-(cd .. && timeout 5m make run &)
+if [[ -z "${CI_MODE}" ]]; then
+  $(cd .. && timeout 5m make run &)
+  #cd -
+else
+  kind load docker-image controller:latest --name "${KIND_CLUSTER_NAME}"
+  cd .. && make deploy && cd -
+  # helm upgrade --install \
+  #   --debug \
+  #   --wait \
+  #   --create-namespace \
+  #   --namespace example-tenant-ns \
+  #   -f values.yaml \
+  #   telemetry-controller \
+  #   "../charts/telemetry-controller" 
+fi
 
 # Create log-generator
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator

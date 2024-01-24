@@ -6,6 +6,13 @@ export PATH := $(BIN):$(PATH)
 
 GOVERSION := $(shell go env GOVERSION)
 
+KIND := ${BIN}/kind
+KIND_VERSION ?= v0.20.0
+KIND_IMAGE ?= kindest/node:v1.29.0@sha256:eaa1450915475849a73a9227b8f201df25e55e268e5d619312131292e324d570 
+KIND_CLUSTER ?= kind
+
+CI_MODE_ENABLED := ""
+
 IMG ?= controller:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.0
@@ -130,7 +137,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 ##@ Deployment
 
 ifndef ignore-not-found
-  ignore-not-found = false
+ignore-not-found = false
 endif
 
 .PHONY: install
@@ -197,8 +204,13 @@ tidy: ## Tidy Go modules
 	find . -iname "go.mod" -not -path "./.devcontainer/*" | xargs -L1 sh -c 'cd $$(dirname $$0); go mod tidy'
 
 .PHONY: e2e-test
-e2e-test: ## Run e2e tests, make sure subscription operator is running somewhere
-	cd e2e && timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
+e2e-test: ## Run e2e tests
+	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) && timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
+
+.PHONY: e2e-test-ci
+e2e-test-ci: CI_MODE_ENABLED=1 
+e2e-test-ci: IMG="controller:latest" ## Run e2e tests, telemetry collector runs inside k8s
+e2e-test-ci: docker-build e2e-test
 
 .PHONY: check-diff
 check-diff: generate
@@ -209,8 +221,22 @@ license-check: ${LICENSEI} .licensei.cache ## Run license check
 	${LICENSEI} check
 	${LICENSEI} header
 
+stern: | ${BIN}
+	GOBIN=${BIN} go install github.com/stern/stern@latest
+
+.PHONY: kind-cluster
+kind-cluster: ${KIND}
+	kind create cluster --name $(KIND_CLUSTER) --image $(KIND_IMAGE)
+
 ## target: ci-run
-## target: licensei
+
+${KIND}: ${KIND}_${KIND_VERSION}_${GOVERSION} | ${BIN}
+	ln -sf $(notdir $<) $@
+
+${KIND}_${KIND_VERSION}_${GOVERSION}: IMPORT_PATH := sigs.k8s.io/kind
+${KIND}_${KIND_VERSION}_${GOVERSION}: VERSION := ${KIND_VERSION}
+${KIND}_${KIND_VERSION}_${GOVERSION}: | ${BIN}
+	${go_install_binary}
 
 ${LICENSEI}: ${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION} | ${BIN}
 	ln -sf $(notdir $<) $@
