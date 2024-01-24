@@ -189,4 +189,4 @@ tidy: ## Tidy Go modules
 
 .PHONY: e2e-test
 e2e-test: ## Run e2e tests, make sure subscription operator is running somewhere
-	cd e2e && timeout --foreground 15m ./e2e_test.sh || echo "E2E test failed"; return 1
+	cd e2e && timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)

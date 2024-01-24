@@ -1,5 +1,7 @@
 #!/bin/env bash
 
+set -eou pipefail
+
 create_if_does_not_exist() {
   local resource_type=$1
   local resource_name=$2
@@ -31,14 +33,13 @@ echo "Wait until otel operator pod is in ready state..."
 kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
 
 # Create subscription operator resources
-cd .. && make manifests generate install && cd -
+(cd .. && make manifests generate install)
 
 # Use example
-kubectl apply -f ../docs/examples
+kubectl apply -f ../docs/examples/simple-demo
 
 
-cd .. && timeout 5m make run & 
-cd -
+(cd .. && timeout 5m make run &)
 
 # Create log-generator
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
