@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: main
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+    
+      - name: Set up Go 
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Check diff
+        run: make check-diff
+
+      - name: Test
+        run: make test
+    
+  lint: 
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+    
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Lint
+        run: make lint
+        env:
+          LINTER_FLAGS: '--timeout 5m'
