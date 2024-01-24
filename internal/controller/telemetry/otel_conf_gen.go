@@ -23,7 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TODO move this to its appropiate place
+// TODO move this to its appropriate place
 type OtelColConfigInput struct {
 	Tenants       []v1alpha1.Tenant
 	Subscriptions []v1alpha1.Subscription

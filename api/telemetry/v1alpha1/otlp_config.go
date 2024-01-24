@@ -95,7 +95,7 @@ type GRPCClientSettings struct {
 	Authority string `json:"authority,omitempty"`
 
 	// Auth configuration for outgoing RPCs.
-	Auth string `json:"auth,omitempty"` //TODO this is a refernece *configauth.Authentication
+	Auth string `json:"auth,omitempty"` //TODO this is a reference *configauth.Authentication
 }
 
 // TLSClientSetting contains TLS configurations that are specific to client
