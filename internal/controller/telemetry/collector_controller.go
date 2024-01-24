@@ -76,7 +76,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	collector.Status.Tenants = tenantNames
 
-	r.Status().Update(ctx, collector)
+	if err := r.Status().Update(ctx, collector); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	logger.Info("Setting collector status")
 
 	subscriptions := []v1alpha1.Subscription{}
@@ -112,7 +115,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		slices.Sort(logsourceNamespacesForTenant)
 		tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
-		r.Status().Update(ctx, &tenant)
+		if err := r.Status().Update(ctx, &tenant); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		logger.Info("Setting tenant status")
 
 	}
@@ -190,7 +196,9 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 	}
 
-	ctrl.SetControllerReference(collector, &otelCollector, r.Scheme)
+	if err := ctrl.SetControllerReference(collector, &otelCollector, r.Scheme); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 
@@ -235,7 +243,9 @@ func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, colle
 		},
 	}
 
-	ctrl.SetControllerReference(collector, &serviceAccount, r.Scheme)
+	if err := ctrl.SetControllerReference(collector, &serviceAccount, r.Scheme); err != nil {
+		return v1alpha1.NamespacedName{}, err
+	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 
@@ -265,7 +275,9 @@ func (r *CollectorReconciler) reconcileClusterRoleBinding(ctx context.Context, c
 		},
 	}
 
-	ctrl.SetControllerReference(collector, &clusterRoleBinding, r.Scheme)
+	if err := ctrl.SetControllerReference(collector, &clusterRoleBinding, r.Scheme); err != nil {
+		return err
+	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 
@@ -295,7 +307,9 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 		},
 	}
 
-	ctrl.SetControllerReference(collector, &clusterRole, r.Scheme)
+	if err := ctrl.SetControllerReference(collector, &clusterRole, r.Scheme); err != nil {
+		return err
+	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 
@@ -305,18 +319,18 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 }
 
 func getTenantNamesFromTenants(tenants []v1alpha1.Tenant) []string {
-	var tenantNames []string
-	for _, tenant := range tenants {
-		tenantNames = append(tenantNames, tenant.Name)
+	tenantNames := make([]string, len(tenants))
+	for i, tenant := range tenants {
+		tenantNames[i] = tenant.Name
 	}
 
 	return tenantNames
 }
 
 func getSubscriptionNamesFromSubscription(subscriptions []v1alpha1.Subscription) []v1alpha1.NamespacedName {
-	var subscriptionNames []v1alpha1.NamespacedName
-	for _, subscription := range subscriptions {
-		subscriptionNames = append(subscriptionNames, subscription.NamespacedName())
+	subscriptionNames := make([]v1alpha1.NamespacedName, len(subscriptions))
+	for i, subscription := range subscriptions {
+		subscriptionNames[i] = subscription.NamespacedName()
 	}
 
 	return subscriptionNames
@@ -434,10 +448,10 @@ func (r *CollectorReconciler) getLogsourceNamespaceNamesForTenant(ctx context.Co
 		return nil, err
 	}
 
-	var namespaceNames []string
+	namespaceNames := make([]string, len(namespaces))
 
-	for _, namespace := range namespaces {
-		namespaceNames = append(namespaceNames, namespace.Name)
+	for i, namespace := range namespaces {
+		namespaceNames[i] = namespace.Name
 	}
 
 	return namespaceNames, nil
