@@ -26,7 +26,7 @@ type CollectorSpec struct {
 
 // CollectorStatus defines the observed state of Collector
 type CollectorStatus struct {
-	Tenants []string `json:"tenants"`
+	Tenants []string `json:"tenants,omitempty"`
 }
 
 //+kubebuilder:object:root=true

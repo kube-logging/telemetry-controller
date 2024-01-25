@@ -51,6 +51,9 @@ spec:
             type: object
           status:
             description: SubscriptionStatus defines the observed state of Subscription
+            properties:
+              tenant:
+                type: string
             type: object
         type: object
     served: true
