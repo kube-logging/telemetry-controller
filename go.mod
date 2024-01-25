@@ -2,6 +2,8 @@ module github.com/kube-logging/subscription-operator
 
 go 1.21
 
+toolchain go1.21.5
+
 require (
 	emperror.dev/errors v0.8.1
 	github.com/cisco-open/operator-tools v0.34.0
