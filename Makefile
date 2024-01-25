@@ -221,6 +221,10 @@ license-check: ${LICENSEI} .licensei.cache ## Run license check
 	${LICENSEI} check
 	${LICENSEI} header
 
+.PHONY: license-cache
+license-cache: ${LICENSEI} ## Generate license cache
+	${LICENSEI} cache
+
 stern: | ${BIN}
 	GOBIN=${BIN} go install github.com/stern/stern@latest
 
