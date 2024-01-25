@@ -5,9 +5,79 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - endpoints
+  - namespaces
+  - nodes
+  - nodes/proxy
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  - pods
+  - serviceaccounts
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - replicasets
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - opentelemetry.io
+  resources:
+  - opentelemetrycollectors
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
+  - clusterroles
+  - rolebindings
+  - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - telemetry.kube-logging.dev
   resources:
   - collectors
+  - oteloutputs
+  - subscriptions
+  - tenants
   verbs:
   - create
   - delete
@@ -26,6 +96,9 @@ rules:
   - telemetry.kube-logging.dev
   resources:
   - collectors/status
+  - oteloutputs/status
+  - subscriptions/status
+  - tenants/status
   verbs:
   - get
   - patch
