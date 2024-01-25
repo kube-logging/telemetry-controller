@@ -12,6 +12,7 @@ KIND_IMAGE ?= kindest/node:v1.29.0@sha256:eaa1450915475849a73a9227b8f201df25e55e
 KIND_CLUSTER ?= kind
 
 CI_MODE_ENABLED := ""
+NO_KIND_CLEANUP := ""
 
 IMG ?= controller:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -205,10 +206,11 @@ tidy: ## Tidy Go modules
 
 .PHONY: e2e-test
 e2e-test: ## Run e2e tests
-	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) && timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
+	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) NO_KIND_CLEANUP=$(NO_KIND_CLEANUP) && timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
 
 .PHONY: e2e-test-ci
 e2e-test-ci: CI_MODE_ENABLED=1 
+e2e-test-ci: NO_KIND_CLEANUP=1
 e2e-test-ci: IMG="controller:latest" ## Run e2e tests, telemetry collector runs inside k8s
 e2e-test-ci: docker-build e2e-test
 
