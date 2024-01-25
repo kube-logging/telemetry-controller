@@ -74,21 +74,23 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	tenantNames := getTenantNamesFromTenants(tenants)
-	slices.Sort(tenantNames)
-
-	collector.Status.Tenants = tenantNames
-
-	r.Status().Update(ctx, collector)
-	logger.Info("Setting collector status")
+	tenantNames := []string{}
 
 	subscriptions := []v1alpha1.Subscription{}
 
 	for _, tenant := range tenants {
 		// check if tenant is owned by us, or make it ours only if orphan
 		// this update will connect the tenant and collector exclusively
-		tenant.Status.Collector = collector
-		err := r.Status().Update(ctx, &tenant)
+
+		if tenant.Status.Collector != "" && tenant.Status.Collector != collector.Name {
+			logger.Error(errors.Errorf("tenant (%s) is owned by another collector (%s), skipping reconciliation for this collector (%s)", tenant.Name, tenant.Status.Collector, collector.Name),
+				"make sure to remove tenant from the previous collector before adopting to new collector")
+			continue
+		}
+
+		tenantNames = append(tenantNames, tenant.Name)
+
+		tenant.Status.Collector = collector.Name
 
 		subscriptionsForTenant, err := r.getSubscriptionsForTenant(ctx, &tenant)
 
@@ -117,13 +119,25 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 
+		tenant.Status.Collector = collector.Name
+
 		slices.Sort(logsourceNamespacesForTenant)
 		tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
-		r.Status().Update(ctx, &tenant)
+		err = r.Status().Update(ctx, &tenant)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 		logger.Info("Setting tenant status")
 
 	}
+
+	slices.Sort(tenantNames)
+
+	collector.Status.Tenants = tenantNames
+
+	r.Status().Update(ctx, collector)
+	logger.Info("Setting collector status")
 
 	outputs, err := r.getAllOutputs(ctx)
 	if err != nil {
@@ -219,16 +233,16 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			tenant, _ := object.(*v1alpha1.Tenant)
 
 			collectors := v1alpha1.CollectorList{}
-			r.List(context.TODO(), collectors)
+			r.List(ctx, &collectors)
 
 			for _, c := range collectors.Items {
-				tenantsForCollector := &v1alpha1.TenantList{}
-				r.List(context.TODO(), tenantsForCollector, c.Spec.TenantSelector)
-				for _, t := range tenantsForCollector.Items {
+				tenantsForCollector, err := r.getTenantsMatchingSelectors(ctx, c.Spec.TenantSelector)
+				if err != nil {
+					return nil
+				}
+
+				for _, t := range tenantsForCollector {
 					if t.Name == tenant.Name {
-						// optionally we might discard the notification if the tenant is
-						// owned by another controller
-						// t.Status.Collector != c.Name
 						requests = append(requests, reconcile.Request{
 							NamespacedName: types.NamespacedName{
 								Name: c.Name,
