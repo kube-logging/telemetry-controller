@@ -73,7 +73,3 @@ echo "E2E test: PASSED"
 if [[ -z "${NO_KIND_CLEANUP}" ]]; then
   kind delete cluster --name "${KIND_CLUSTER_NAME}"
 fi
-
-if [[ "${CURRENT_K8S_CTX}" != "" ]]; then
-  kubectl config get-contexts -o name | grep -q "${CURRENT_K8S_CTX}" && kubectl config set-context "${CURRENT_K8S_CTX}"
-fi
