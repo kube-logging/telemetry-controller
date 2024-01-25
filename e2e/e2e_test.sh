@@ -41,18 +41,9 @@ kubectl apply -f ../docs/examples/simple-demo
 
 if [[ -z "${CI_MODE}" ]]; then
   $(cd .. && timeout 5m make run &)
-  #cd -
 else
   kind load docker-image controller:latest --name "${KIND_CLUSTER_NAME}"
   cd .. && make deploy && cd -
-  # helm upgrade --install \
-  #   --debug \
-  #   --wait \
-  #   --create-namespace \
-  #   --namespace example-tenant-ns \
-  #   -f values.yaml \
-  #   telemetry-controller \
-  #   "../charts/telemetry-controller" 
 fi
 
 # Create log-generator
