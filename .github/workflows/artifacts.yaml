@@ -138,7 +138,8 @@ jobs:
           path: trivy-results.sarif
           retention-days: 5
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@407ffafae6a767df3e0230c3df91b6443ae8df75 # v2.22.8
-        with:
-          sarif_file: trivy-results.sarif
+      # TODO: Enable it once it can successfully run
+      # - name: Upload Trivy scan results to GitHub Security tab
+      #   uses: github/codeql-action/upload-sarif@6b5b95806324a3ee7e164709fbfc152595556fe9 # v2.16.1
+      #   with:
+      #     sarif_file: trivy-results.sarif
