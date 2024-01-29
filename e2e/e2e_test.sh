@@ -9,7 +9,8 @@ create_if_does_not_exist() {
 }
 
 KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME_E2E:-so-e2e}
-# Backup current kubernetes context
+NO_KIND_CLEANUP=${NO_KIND_CLEANUP:-}
+  # Backup current kubernetes context
 CURRENT_K8S_CTX=$(kubectl config view | grep "current" | cut -f 2 -d : | xargs)
 
 # Prepare env
@@ -38,8 +39,12 @@ kubectl wait --namespace opentelemetry-operator-system --for=condition=available
 # Use example
 kubectl apply -f ../docs/examples/simple-demo
 
-
-(cd .. && timeout 5m make run &)
+if [[ -z "${CI_MODE}" ]]; then
+  $(cd .. && timeout 5m make run &)
+else
+  kind load docker-image controller:latest --name "${KIND_CLUSTER_NAME}"
+  cd .. && make deploy && cd -
+fi
 
 # Create log-generator
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
@@ -67,8 +72,4 @@ echo "E2E test: PASSED"
 # Check if cluster should be removed, ctx restored
 if [[ -z "${NO_KIND_CLEANUP}" ]]; then
   kind delete cluster --name "${KIND_CLUSTER_NAME}"
-fi
-
-if [[ "${CURRENT_K8S_CTX}" != "" ]]; then
-  kubectl config get-contexts -o name | grep -q "${CURRENT_K8S_CTX}" && kubectl config set-context "${CURRENT_K8S_CTX}"
 fi

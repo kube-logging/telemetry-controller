@@ -23,7 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TODO move this to its appropiate place
+// TODO move this to its appropriate place
 type OtelColConfigInput struct {
 	Tenants       []v1alpha1.Tenant
 	Subscriptions []v1alpha1.Subscription
@@ -130,11 +130,10 @@ func newRoutingConnector(name string, defaultPipelines []string) RoutingConnecto
 }
 
 func buildRoutingTableItemForTenant(tenant v1alpha1.Tenant) RoutingConnectorTableItem {
+	conditions := make([]string, len(tenant.Status.LogSourceNamespaces))
 
-	var conditions []string
-
-	for _, namespace := range tenant.Status.LogSourceNamespaces {
-		conditions = append(conditions, fmt.Sprintf(`IsMatch(attributes["k8s.namespace.name"], %q)`, namespace))
+	for i, namespace := range tenant.Status.LogSourceNamespaces {
+		conditions[i] = fmt.Sprintf(`IsMatch(attributes["k8s.namespace.name"], %q)`, namespace)
 	}
 
 	conditionString := strings.Join(conditions, " or ")
