@@ -10,6 +10,7 @@ create_if_does_not_exist() {
 
 KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME_E2E:-so-e2e}
 NO_KIND_CLEANUP=${NO_KIND_CLEANUP:-}
+CI_MODE=${CI_MODE:-}
   # Backup current kubernetes context
 CURRENT_K8S_CTX=$(kubectl config view | grep "current" | cut -f 2 -d : | xargs)
 
