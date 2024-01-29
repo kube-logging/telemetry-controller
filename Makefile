@@ -1,5 +1,19 @@
 
 # Image URL to use all building/pushing image targets
+BIN := ${PWD}/bin
+
+export PATH := $(BIN):$(PATH)
+
+GOVERSION := $(shell go env GOVERSION)
+
+KIND := ${BIN}/kind
+KIND_VERSION ?= v0.20.0
+KIND_IMAGE ?= kindest/node:v1.29.0@sha256:eaa1450915475849a73a9227b8f201df25e55e268e5d619312131292e324d570 
+KIND_CLUSTER ?= kind
+
+CI_MODE_ENABLED := ""
+NO_KIND_CLEANUP := ""
+
 IMG ?= controller:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.0
@@ -21,6 +35,9 @@ CONTAINER_TOOL ?= docker
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+
+LICENSEI := ${BIN}/licensei
+LICENSEI_VERSION = v0.8.0
 
 .PHONY: all
 all: build
@@ -65,7 +82,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v ./... -coverprofile cover.out
 
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.54.2
+GOLANGCI_LINT_VERSION ?= v1.55.2
 golangci-lint:
 	@[ -f $(GOLANGCI_LINT) ] || { \
 	set -e ;\
@@ -121,7 +138,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 ##@ Deployment
 
 ifndef ignore-not-found
-  ignore-not-found = false
+ignore-not-found = false
 endif
 
 .PHONY: install
@@ -156,7 +173,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.2.1
-CONTROLLER_TOOLS_VERSION ?= v0.13.0
+CONTROLLER_TOOLS_VERSION ?= v0.14.0
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
@@ -186,3 +203,64 @@ run-delve: generate fmt vet manifests
 .PHONY: tidy
 tidy: ## Tidy Go modules
 	find . -iname "go.mod" -not -path "./.devcontainer/*" | xargs -L1 sh -c 'cd $$(dirname $$0); go mod tidy'
+
+.PHONY: e2e-test
+e2e-test: ## Run e2e tests
+	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) NO_KIND_CLEANUP=$(NO_KIND_CLEANUP) && timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
+
+.PHONY: e2e-test-ci
+e2e-test-ci: CI_MODE_ENABLED=1 
+e2e-test-ci: NO_KIND_CLEANUP=1
+e2e-test-ci: IMG="controller:latest" ## Run e2e tests, telemetry collector runs inside k8s
+e2e-test-ci: docker-build e2e-test
+
+.PHONY: check-diff
+check-diff: generate
+	git diff --exit-code
+
+.PHONY: license-check
+license-check: ${LICENSEI} .licensei.cache ## Run license check
+	${LICENSEI} check
+	${LICENSEI} header
+
+.PHONY: license-cache
+license-cache: ${LICENSEI} ## Generate license cache
+	${LICENSEI} cache
+
+stern: | ${BIN}
+	GOBIN=${BIN} go install github.com/stern/stern@latest
+
+.PHONY: kind-cluster
+kind-cluster: ${KIND}
+	kind create cluster --name $(KIND_CLUSTER) --image $(KIND_IMAGE)
+
+## target: ci-run
+
+${KIND}: ${KIND}_${KIND_VERSION}_${GOVERSION} | ${BIN}
+	ln -sf $(notdir $<) $@
+
+${KIND}_${KIND_VERSION}_${GOVERSION}: IMPORT_PATH := sigs.k8s.io/kind
+${KIND}_${KIND_VERSION}_${GOVERSION}: VERSION := ${KIND_VERSION}
+${KIND}_${KIND_VERSION}_${GOVERSION}: | ${BIN}
+	${go_install_binary}
+
+${LICENSEI}: ${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION} | ${BIN}
+	ln -sf $(notdir $<) $@
+
+${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: IMPORT_PATH := github.com/goph/licensei/cmd/licensei
+${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: VERSION := ${LICENSEI_VERSION}
+${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: | ${BIN}
+	${go_install_binary}
+
+.licensei.cache: ${LICENSEI}
+ifndef GITHUB_TOKEN
+	@>&2 echo "WARNING: building licensei cache without Github token, rate limiting might occur."
+	@>&2 echo "(Hint: If too many licenses are missing, try specifying a Github token via the environment variable GITHUB_TOKEN.)"
+endif
+	${LICENSEI} cache
+
+define go_install_binary
+find ${BIN} -name '$(notdir ${IMPORT_PATH})_*' -exec rm {} +
+GOBIN=${BIN} go install ${IMPORT_PATH}@${VERSION}
+mv ${BIN}/$(notdir ${IMPORT_PATH}) $@
+endef

@@ -48,9 +48,14 @@ type CollectorReconciler struct {
 const collectorReferenceField = ".status.collector"
 const tenantReferenceField = ".status.tenant"
 
-// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/finalizers,verbs=update
+//+kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;oteloutputs;,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status;tenants/status;subscriptions/status;oteloutputs/status;,verbs=get;update;patch
+//+kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/finalizers,verbs=update
+//+kubebuilder:rbac:groups="",resources=nodes;namespaces;endpoints;nodes/proxy,verbs=get;list;watch
+//+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles;clusterrolebindings;roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=services;persistentvolumeclaims;serviceaccounts;pods,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apps,resources=statefulsets;daemonsets;replicasets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=opentelemetry.io,resources=opentelemetrycollectors,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -89,6 +94,13 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	tenantNames := []string{}
+
+	if err := r.Status().Update(ctx, collector); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	logger.Info("Setting collector status")
+
 
 	subscriptions := []v1alpha1.Subscription{}
 
@@ -147,10 +159,11 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		slices.Sort(logsourceNamespacesForTenant)
 		tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
-		err = r.Status().Update(ctx, &tenant)
-		if err != nil {
+
+		if err := r.Status().Update(ctx, &tenant); err != nil {
 			return ctrl.Result{}, err
 		}
+
 		logger.Info("Setting tenant status")
 
 	}
@@ -235,7 +248,9 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 	}
 
-	ctrl.SetControllerReference(collector, &otelCollector, r.Scheme)
+	if err := ctrl.SetControllerReference(collector, &otelCollector, r.Scheme); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 
@@ -383,7 +398,9 @@ func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, colle
 		},
 	}
 
-	ctrl.SetControllerReference(collector, &serviceAccount, r.Scheme)
+	if err := ctrl.SetControllerReference(collector, &serviceAccount, r.Scheme); err != nil {
+		return v1alpha1.NamespacedName{}, err
+	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 
@@ -413,7 +430,9 @@ func (r *CollectorReconciler) reconcileClusterRoleBinding(ctx context.Context, c
 		},
 	}
 
-	ctrl.SetControllerReference(collector, &clusterRoleBinding, r.Scheme)
+	if err := ctrl.SetControllerReference(collector, &clusterRoleBinding, r.Scheme); err != nil {
+		return err
+	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 
@@ -443,7 +462,9 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 		},
 	}
 
-	ctrl.SetControllerReference(collector, &clusterRole, r.Scheme)
+	if err := ctrl.SetControllerReference(collector, &clusterRole, r.Scheme); err != nil {
+		return err
+	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 
@@ -452,10 +473,11 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 	return err
 }
 
+
 func getSubscriptionNamesFromSubscription(subscriptions []v1alpha1.Subscription) []v1alpha1.NamespacedName {
-	var subscriptionNames []v1alpha1.NamespacedName
-	for _, subscription := range subscriptions {
-		subscriptionNames = append(subscriptionNames, subscription.NamespacedName())
+	subscriptionNames := make([]v1alpha1.NamespacedName, len(subscriptions))
+	for i, subscription := range subscriptions {
+		subscriptionNames[i] = subscription.NamespacedName()
 	}
 
 	return subscriptionNames
@@ -683,10 +705,10 @@ func (r *CollectorReconciler) getLogsourceNamespaceNamesForTenant(ctx context.Co
 		return nil, err
 	}
 
-	var namespaceNames []string
+	namespaceNames := make([]string, len(namespaces))
 
-	for _, namespace := range namespaces {
-		namespaceNames = append(namespaceNames, namespace.Name)
+	for i, namespace := range namespaces {
+		namespaceNames[i] = namespace.Name
 	}
 
 	return namespaceNames, nil

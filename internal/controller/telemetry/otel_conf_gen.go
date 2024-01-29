@@ -23,7 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TODO move this to its appropiate place
+// TODO move this to its appropriate place
 type OtelColConfigInput struct {
 	Tenants       []v1alpha1.Tenant
 	Subscriptions []v1alpha1.Subscription
@@ -41,7 +41,7 @@ type RoutingConnectorTableItem struct {
 
 type RoutingConnector struct {
 	Name             string                      `yaml:"-"`
-	DefaultPipelines []string                    `yaml:"default_pipelines,flow"`
+	DefaultPipelines []string                    `yaml:"default_pipelines,flow,omitempty"`
 	Table            []RoutingConnectorTableItem `yaml:"table"`
 }
 
@@ -84,6 +84,9 @@ type OtelColConfigIR struct {
 
 func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
 	exporters := cfgInput.generateOTLPExporters()
+	exporters["logging/debug"] = map[string]any{
+		"verbosity": "detailed",
+	}
 	return exporters
 }
 
@@ -127,11 +130,10 @@ func newRoutingConnector(name string, defaultPipelines []string) RoutingConnecto
 }
 
 func buildRoutingTableItemForTenant(tenant v1alpha1.Tenant) RoutingConnectorTableItem {
+	conditions := make([]string, len(tenant.Status.LogSourceNamespaces))
 
-	var conditions []string
-
-	for _, namespace := range tenant.Status.LogSourceNamespaces {
-		conditions = append(conditions, fmt.Sprintf(`IsMatch(attributes["k8s.namespace.name"], %q)`, namespace))
+	for i, namespace := range tenant.Status.LogSourceNamespaces {
+		conditions[i] = fmt.Sprintf(`IsMatch(attributes["k8s.namespace.name"], %q)`, namespace)
 	}
 
 	conditionString := strings.Join(conditions, " or ")
@@ -353,6 +355,7 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[str
 
 func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[string]any {
 
+	// TODO: fix parser-crio
 	operators := []map[string]any{
 		{
 			"type": "router",
@@ -363,10 +366,6 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 					"expr":   `body matches "^\\{"`,
 				},
 				{
-					"output": "parser-crio",
-					"expr":   `body matches "^[^ Z]+ "`,
-				},
-				{
 					"output": "parser-containerd",
 					"expr":   `body matches "^[^ Z]+Z"`,
 				},
@@ -374,19 +373,8 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 		},
 		{
 			"type":   "regex_parser",
-			"id":     "parser-crio",
-			"regex":  `'^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'`,
-			"output": "extract_metadata_from_filepath",
-			"timestamp": map[string]string{
-				"parse_from":  "attributes.time",
-				"layout_type": "gotime",
-				"layout":      "2006-01-02T15:04:05.999999999Z07:00",
-			},
-		},
-		{
-			"type":   "regex_parser",
 			"id":     "parser-containerd",
-			"regex":  `'^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'`,
+			"regex":  `^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$`,
 			"output": "extract_metadata_from_filepath",
 			"timestamp": map[string]string{
 				"parse_from": "attributes.time",
@@ -478,6 +466,8 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
+
+	result.Services.Telemetry = make(map[string]any)
 
 	return &result
 }
