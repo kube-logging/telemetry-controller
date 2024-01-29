@@ -31,6 +31,7 @@ type SubscriptionStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.status.tenant`
 
 // Subscription is the Schema for the subscriptions API
 type Subscription struct {
