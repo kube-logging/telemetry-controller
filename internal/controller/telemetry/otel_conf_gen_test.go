@@ -42,7 +42,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				OTTL: "route()",
 				Outputs: []v1alpha1.NamespacedName{
 					{
-						Name:      "otel-test-output",
+						Name:      "otlp-test-output",
 						Namespace: "collector",
 					},
 				},
@@ -57,7 +57,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				OTTL: "route()",
 				Outputs: []v1alpha1.NamespacedName{
 					{
-						Name:      "otel-test-output-2",
+						Name:      "otlp-test-output-2",
 						Namespace: "collector",
 					},
 				},
@@ -93,7 +93,7 @@ func TestOtelColConfComplex(t *testing.T) {
 		Outputs: []v1alpha1.OtelOutput{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "otelp-test-output",
+					Name:      "otlp-test-output",
 					Namespace: "collector",
 				},
 				Spec: v1alpha1.OtelOutputSpec{
@@ -109,7 +109,7 @@ func TestOtelColConfComplex(t *testing.T) {
 			},
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "otelp-test-output-2",
+					Name:      "otlp-test-output-2",
 					Namespace: "collector",
 				},
 				Spec: v1alpha1.OtelOutputSpec{
