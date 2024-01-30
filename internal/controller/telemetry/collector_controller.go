@@ -109,8 +109,6 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		tenantNames = append(tenantNames, tenant.Name)
 
-		tenant.Status.Collector = collector.Name
-
 		subscriptionsForTenant, err := r.getSubscriptionsForTenant(ctx, &tenant)
 
 		if err != nil {
