@@ -83,15 +83,9 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	tenantsToDisown, err := r.getTenantsReferencingCollectorButNotSelected(ctx, collector, tenants)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	tenantsToDisown := r.getTenantsReferencingCollectorButNotSelected(ctx, collector, tenants)
 
-	err = r.disownTenants(ctx, tenantsToDisown)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	r.disownTenants(ctx, tenantsToDisown)
 
 	tenantNames := []string{}
 
@@ -100,7 +94,6 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	logger.Info("Setting collector status")
-
 
 	subscriptions := []v1alpha1.Subscription{}
 
@@ -124,15 +117,9 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 
-		subscriptionsToDisown, err := r.getSubscriptionsReferencingTenantButNotSelected(ctx, &tenant, subscriptionsForTenant)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		subscriptionsToDisown := r.getSubscriptionsReferencingTenantButNotSelected(ctx, &tenant, subscriptionsForTenant)
 
-		err = r.disownSubscriptions(ctx, subscriptionsToDisown)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		r.disownSubscriptions(ctx, subscriptionsToDisown)
 
 		subscriptions = append(subscriptions, subscriptionsForTenant...)
 
@@ -159,7 +146,6 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		slices.Sort(logsourceNamespacesForTenant)
 		tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
-
 		if err := r.Status().Update(ctx, &tenant); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -172,8 +158,11 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	collector.Status.Tenants = tenantNames
 
-	r.Status().Update(ctx, collector)
 	logger.Info("Setting collector status")
+	err = r.Status().Update(ctx, collector)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	outputs, err := r.getAllOutputs(ctx)
 	if err != nil {
@@ -292,7 +281,10 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			tenant, _ := object.(*v1alpha1.Tenant)
 
 			collectors := v1alpha1.CollectorList{}
-			r.List(ctx, &collectors)
+			err := r.List(ctx, &collectors)
+			if err != nil {
+				return nil
+			}
 
 			for _, collector := range collectors.Items {
 				tenantsForCollector, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelector)
@@ -310,10 +302,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					}
 				}
 
-				tenantsToDisown, err := r.getTenantsReferencingCollectorButNotSelected(ctx, &collector, tenantsForCollector)
-				if err != nil {
-					return nil
-				}
+				tenantsToDisown := r.getTenantsReferencingCollectorButNotSelected(ctx, &collector, tenantsForCollector)
 
 				for _, t := range tenantsToDisown {
 					if t.Name == tenant.Name {
@@ -333,7 +322,10 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			subscription, _ := object.(*v1alpha1.Subscription)
 
 			tenants := v1alpha1.TenantList{}
-			r.List(ctx, &tenants)
+			err := r.List(ctx, &tenants)
+			if err != nil {
+				return nil
+			}
 
 			for _, tenant := range tenants.Items {
 				subscriptionsForTenant, err := r.getSubscriptionsForTenant(ctx, &tenant)
@@ -351,10 +343,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					}
 				}
 
-				subscriptionstoDisown, err := r.getSubscriptionsReferencingTenantButNotSelected(ctx, &tenant, subscriptionsForTenant)
-				if err != nil {
-					return nil
-				}
+				subscriptionstoDisown := r.getSubscriptionsReferencingTenantButNotSelected(ctx, &tenant, subscriptionsForTenant)
 
 				for _, s := range subscriptionstoDisown {
 					if s.Name == subscription.Name {
@@ -411,6 +400,7 @@ func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, colle
 
 	return v1alpha1.NamespacedName{Namespace: serviceAccount.Namespace, Name: serviceAccount.Name}, nil
 }
+
 func (r *CollectorReconciler) reconcileClusterRoleBinding(ctx context.Context, collector *v1alpha1.Collector) error {
 	logger := log.FromContext(ctx)
 
@@ -473,7 +463,6 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 	return err
 }
 
-
 func getSubscriptionNamesFromSubscription(subscriptions []v1alpha1.Subscription) []v1alpha1.NamespacedName {
 	subscriptionNames := make([]v1alpha1.NamespacedName, len(subscriptions))
 	for i, subscription := range subscriptions {
@@ -502,7 +491,8 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 	return tenantsForSelector.Items, nil
 }
 
-func (r *CollectorReconciler) getTenantsReferencingCollectorButNotSelected(ctx context.Context, collector *v1alpha1.Collector, selectedTenants []v1alpha1.Tenant) ([]v1alpha1.Tenant, error) {
+func (r *CollectorReconciler) getTenantsReferencingCollectorButNotSelected(ctx context.Context, collector *v1alpha1.Collector, selectedTenants []v1alpha1.Tenant) []v1alpha1.Tenant {
+	logger := log.FromContext(ctx)
 	var tenantsReferencing v1alpha1.TenantList
 
 	listOpts := &client.ListOptions{
@@ -510,7 +500,8 @@ func (r *CollectorReconciler) getTenantsReferencingCollectorButNotSelected(ctx c
 	}
 
 	if err := r.Client.List(ctx, &tenantsReferencing, listOpts); client.IgnoreNotFound(err) != nil {
-		return nil, err
+		logger.Error(err, "failed to list tenants that need to be detached from collector")
+		return nil
 	}
 
 	tenantsToDisown := []v1alpha1.Tenant{}
@@ -531,32 +522,32 @@ func (r *CollectorReconciler) getTenantsReferencingCollectorButNotSelected(ctx c
 
 	}
 
-	return tenantsToDisown, nil
+	return tenantsToDisown
 
 }
 
-func (r *CollectorReconciler) disownTenants(ctx context.Context, tenantsToDisown []v1alpha1.Tenant) error {
+func (r *CollectorReconciler) disownTenants(ctx context.Context, tenantsToDisown []v1alpha1.Tenant) {
 	logger := log.FromContext(ctx)
 	for _, tenant := range tenantsToDisown {
 		tenant.Status.Collector = ""
 		err := r.Client.Status().Update(ctx, &tenant)
 		if err != nil {
-			return err
+			logger.Error(err, fmt.Sprintf("failed to detach tenant %s from collector", tenant.Name))
 		}
 		logger.Info("Disowning tenant", "tenant", tenant.Name)
 	}
-
-	return nil
 }
 
-func (r *CollectorReconciler) getSubscriptionsReferencingTenantButNotSelected(ctx context.Context, tenant *v1alpha1.Tenant, selectedSubscriptions []v1alpha1.Subscription) ([]v1alpha1.Subscription, error) {
+func (r *CollectorReconciler) getSubscriptionsReferencingTenantButNotSelected(ctx context.Context, tenant *v1alpha1.Tenant, selectedSubscriptions []v1alpha1.Subscription) []v1alpha1.Subscription {
+	logger := log.FromContext(ctx)
 	var subscriptionsReferencing v1alpha1.SubscriptionList
 	listOpts := &client.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector(tenantReferenceField, tenant.Name),
 	}
 
 	if err := r.Client.List(ctx, &subscriptionsReferencing, listOpts); client.IgnoreNotFound(err) != nil {
-		return nil, err
+		logger.Error(err, "failed to list subscriptions that need to be detached from tenant")
+		return nil
 	}
 
 	var subscriptionsToDisown []v1alpha1.Subscription
@@ -577,22 +568,21 @@ func (r *CollectorReconciler) getSubscriptionsReferencingTenantButNotSelected(ct
 
 	}
 
-	return subscriptionsToDisown, nil
+	return subscriptionsToDisown
 
 }
 
-func (r *CollectorReconciler) disownSubscriptions(ctx context.Context, subscriptionsToDisown []v1alpha1.Subscription) error {
+func (r *CollectorReconciler) disownSubscriptions(ctx context.Context, subscriptionsToDisown []v1alpha1.Subscription) {
 	logger := log.FromContext(ctx)
 	for _, subscription := range subscriptionsToDisown {
 		subscription.Status.Tenant = ""
 		err := r.Client.Status().Update(ctx, &subscription)
 		if err != nil {
-			return err
+			logger.Error(err, fmt.Sprintf("failed to detach subscription %s/%s from collector", subscription.Namespace, subscription.Name))
 		}
 		logger.Info("Disowning subscription", "subscription", fmt.Sprintf("%s/%s", subscription.Namespace, subscription.Name))
 	}
 
-	return nil
 }
 
 func (r *CollectorReconciler) getAllOutputs(ctx context.Context) ([]v1alpha1.OtelOutput, error) {
@@ -632,7 +622,7 @@ func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, ten
 
 	}
 
-	var validSubscriptions []v1alpha1.Subscription
+	validSubscriptions := []v1alpha1.Subscription{}
 
 	for _, subscription := range selectedSubscriptions {
 		if subscription.Status.Tenant != "" && subscription.Status.Tenant != tenant.Name {
@@ -644,8 +634,11 @@ func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, ten
 		subscription.Status.Tenant = tenant.Name
 		validSubscriptions = append(validSubscriptions, subscription)
 
-		r.Status().Update(ctx, &subscription)
 		logger.Info("Setting subscription status")
+		err := r.Status().Update(ctx, &subscription)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("failed to set subscription (%s/%s) -> tenant (%s) reference", subscription.Namespace, subscription.Name, tenant.Name))
+		}
 
 	}
 
