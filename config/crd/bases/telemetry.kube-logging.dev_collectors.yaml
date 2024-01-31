@@ -43,6 +43,8 @@ spec:
           spec:
             description: CollectorSpec defines the desired state of Collector
             properties:
+              atomicPersist:
+                type: boolean
               controlNamespace:
                 type: string
               tenantSelector:

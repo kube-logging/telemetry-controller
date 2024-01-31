@@ -1,3 +1,7 @@
+extensions:
+    file_storage/persist:
+        directory: /opt/telemetry-controller/persist
+        fsync: false
 receivers:
     filelog/kubernetes:
         exclude:
@@ -54,7 +58,7 @@ receivers:
             - from: attributes.uid
               to: resource["k8s.pod.uid"]
               type: move
-        start_at: end
+        storage: file_storage/persist
 exporters:
     logging/debug:
         verbosity: detailed
@@ -111,6 +115,8 @@ connectors:
             - statement: 'route() where '
               pipelines: [logs/tenant_example-tenant]
 service:
+    extensions:
+        [file_storage/persist]
     pipelines:
         logs/all:
             receivers: [filelog/kubernetes]

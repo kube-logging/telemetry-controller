@@ -28,6 +28,7 @@ type OtelColConfigInput struct {
 	Tenants       []v1alpha1.Tenant
 	Subscriptions []v1alpha1.Subscription
 	Outputs       []v1alpha1.OtelOutput
+	AtomicPersist bool
 
 	// Subscriptions map, where the key is the Tenants' namespaced name, value is a slice of subscriptions' namespaced name
 	TenantSubscriptionMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
@@ -69,12 +70,13 @@ type Pipelines struct {
 }
 
 type Services struct {
-	Extensions map[string]any `yaml:"extensions,omitempty"`
+	Extensions []string       `yaml:"extensions,omitempty"`
 	Pipelines  Pipelines      `yaml:"pipelines,omitempty"`
 	Telemetry  map[string]any `yaml:"telemetry,omitempty"`
 }
 
 type OtelColConfigIR struct {
+	Extensions map[string]any `yaml:"extensions,omitempty"`
 	Receivers  map[string]any `yaml:"receivers,omitempty"`
 	Exporters  map[string]any `yaml:"exporters,omitempty"`
 	Processors map[string]any `yaml:"processors,omitempty"`
@@ -439,10 +441,10 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 	k8sReceiver := map[string]any{
 		"include":           []string{"/var/log/pods/*/*/*.log"},
 		"exclude":           []string{"/var/log/pods/*/otc-container/*.log"},
-		"start_at":          "end",
 		"include_file_path": true,
 		"include_file_name": false,
 		"operators":         operators,
+		"storage":           "file_storage/persist",
 	}
 
 	return k8sReceiver
@@ -451,6 +453,13 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 
 func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfigIR {
 	result := OtelColConfigIR{}
+
+	fileStorageName := "file_storage/persist"
+	result.Extensions = make(map[string]any)
+	result.Extensions[fileStorageName] = map[string]any{
+		"directory": PersistPath,
+		"fsync":     cfgInput.AtomicPersist,
+	}
 
 	// Get  outputs based tenant names
 	result.Exporters = cfgInput.generateExporters()
@@ -468,6 +477,8 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
 
 	result.Services.Telemetry = make(map[string]any)
+
+	result.Services.Extensions = append(result.Services.Extensions, fileStorageName)
 
 	return &result
 }
