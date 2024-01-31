@@ -347,20 +347,19 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		TenantLoop:
 			for _, tenant := range tenants.Items {
+				if tenant.Status.Collector == "" {
+					logger.Error(errors.WithStack(err), fmt.Sprintf("tenant %s is orphan, skipping it, and its subscriptions when looking for changes", tenant.Name))
+				}
 				subscriptionsForTenant, subscriptionsToUpdate, err := r.getSubscriptionsForTenant(ctx, &tenant)
 				if err != nil {
 					logger.Error(errors.WithStack(err), "failed listing subscriptions for collector, notifying collector anyways")
-					if tenant.Status.Collector != "" {
-						requests = addCollectorRequest(requests, tenant.Status.Collector)
-					}
+					requests = addCollectorRequest(requests, tenant.Status.Collector)
 					continue TenantLoop
 				}
 
 				for _, s := range append(subscriptionsForTenant, subscriptionsToUpdate...) {
 					if s.Name == subscription.Name {
-						if tenant.Status.Collector != "" {
-							requests = addCollectorRequest(requests, tenant.Status.Collector)
-						}
+						requests = addCollectorRequest(requests, tenant.Status.Collector)
 						continue TenantLoop
 					}
 				}
@@ -369,9 +368,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 				for _, s := range subscriptionsToDisown {
 					if s.Name == subscription.Name {
-						if tenant.Status.Collector != "" {
-							requests = addCollectorRequest(requests, tenant.Status.Collector)
-						}
+						requests = addCollectorRequest(requests, tenant.Status.Collector)
 						continue TenantLoop
 					}
 				}
