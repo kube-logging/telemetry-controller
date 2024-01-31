@@ -30,11 +30,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	telemetryv1alpha1 "github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
-	controller "github.com/kube-logging/subscription-operator/internal/controller/telemetry"
 	rbacv1 "k8s.io/api/rbac/v1"
 
-	//+kubebuilder:scaffold:imports
+	telemetryv1alpha1 "github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
+	controller "github.com/kube-logging/subscription-operator/internal/controller/telemetry"
+
+	// +kubebuilder:scaffold:imports
 
 	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
 )
@@ -51,7 +52,7 @@ func init() {
 
 	utilruntime.Must(rbacv1.AddToScheme(scheme))
 	utilruntime.Must(telemetryv1alpha1.AddToScheme(scheme))
-	//+kubebuilder:scaffold:scheme
+	// +kubebuilder:scaffold:scheme
 }
 
 func main() {
@@ -77,6 +78,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "87a80094.kube-logging.dev",
+
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -101,7 +103,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Collector")
 		os.Exit(1)
 	}
-	//+kubebuilder:scaffold:builder
+	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

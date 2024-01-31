@@ -48,14 +48,14 @@ type CollectorReconciler struct {
 const collectorReferenceField = ".status.collector"
 const tenantReferenceField = ".status.tenant"
 
-//+kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;oteloutputs;,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status;tenants/status;subscriptions/status;oteloutputs/status;,verbs=get;update;patch
-//+kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/finalizers,verbs=update
-//+kubebuilder:rbac:groups="",resources=nodes;namespaces;endpoints;nodes/proxy,verbs=get;list;watch
-//+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles;clusterrolebindings;roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=services;persistentvolumeclaims;serviceaccounts;pods,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps,resources=statefulsets;daemonsets;replicasets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=opentelemetry.io,resources=opentelemetrycollectors,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;oteloutputs;,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status;tenants/status;subscriptions/status;oteloutputs/status;,verbs=get;update;patch
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=nodes;namespaces;endpoints;nodes/proxy,verbs=get;list;watch
+// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles;clusterrolebindings;roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services;persistentvolumeclaims;serviceaccounts;pods,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=statefulsets;daemonsets;replicasets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=opentelemetry.io,resources=opentelemetrycollectors,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -83,7 +83,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	tenantsToDisown := r.getTenantsReferencingCollectorButNotSelected(ctx, collector, tenants)
+	tenantsToDisown, err := r.getTenantsReferencingCollectorButNotSelected(ctx, collector, tenants)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	r.disownTenants(ctx, tenantsToDisown)
 
@@ -95,7 +98,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	logger.Info("Setting collector status")
 
-	subscriptions := []v1alpha1.Subscription{}
+	allSubscriptions := []v1alpha1.Subscription{}
 
 	for _, tenant := range tenants {
 		// check if tenant is owned by us, or make it ours only if orphan
@@ -109,17 +112,19 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		tenantNames = append(tenantNames, tenant.Name)
 
-		subscriptionsForTenant, err := r.getSubscriptionsForTenant(ctx, &tenant)
-
+		subscriptionsForTenant, updateList, err := r.getSubscriptionsForTenant(ctx, &tenant)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+
+		// add all newly updated subscriptions here
+		subscriptionsForTenant = append(subscriptionsForTenant, r.updateSubscriptionsForTenant(ctx, tenant.Name, updateList)...)
 
 		subscriptionsToDisown := r.getSubscriptionsReferencingTenantButNotSelected(ctx, &tenant, subscriptionsForTenant)
 
 		r.disownSubscriptions(ctx, subscriptionsToDisown)
 
-		subscriptions = append(subscriptions, subscriptionsForTenant...)
+		allSubscriptions = append(allSubscriptions, subscriptionsForTenant...)
 
 		subscriptionNames := getSubscriptionNamesFromSubscription(subscriptionsForTenant)
 
@@ -169,13 +174,13 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	subscriptionOutputMap := map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{}
 
-	for _, subscription := range subscriptions {
+	for _, subscription := range allSubscriptions {
 		subscriptionOutputMap[subscription.NamespacedName()] = subscription.Spec.Outputs
 	}
 
 	otelConfigInput := OtelColConfigInput{
 		Tenants:               tenants,
-		Subscriptions:         subscriptions,
+		Subscriptions:         allSubscriptions,
 		Outputs:               outputs,
 		TenantSubscriptionMap: tenantSubscriptionMap,
 		SubscriptionOutputMap: subscriptionOutputMap,
@@ -271,90 +276,102 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}); err != nil {
 		return err
 	}
+	addCollectorRequest := func(requests []reconcile.Request, collector string) []reconcile.Request {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name: collector,
+			},
+		})
+		return requests
+	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Collector{}).
-		Watches(&v1alpha1.Tenant{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
-			requests := []reconcile.Request{}
+		Watches(&v1alpha1.Tenant{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+
+			logger := log.FromContext(ctx)
+
 			tenant, _ := object.(*v1alpha1.Tenant)
 
 			collectors := v1alpha1.CollectorList{}
 			err := r.List(ctx, &collectors)
 			if err != nil {
+				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
 				return nil
 			}
 
+		CollectorLoop:
 			for _, collector := range collectors.Items {
 				tenantsForCollector, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelector)
 				if err != nil {
-					return nil
+					logger.Error(errors.WithStack(err), "failed listing tenants for collector, notifying collector anyways")
+					requests = addCollectorRequest(requests, collector.Name)
+					continue CollectorLoop
 				}
 
 				for _, t := range tenantsForCollector {
 					if t.Name == tenant.Name {
-						requests = append(requests, reconcile.Request{
-							NamespacedName: types.NamespacedName{
-								Name: collector.Name,
-							},
-						})
+						requests = addCollectorRequest(requests, collector.Name)
+						continue CollectorLoop
 					}
 				}
 
-				tenantsToDisown := r.getTenantsReferencingCollectorButNotSelected(ctx, &collector, tenantsForCollector)
+				tenantsToDisown, err := r.getTenantsReferencingCollectorButNotSelected(ctx, &collector, tenantsForCollector)
+				if err != nil {
+					logger.Error(errors.WithStack(err), "failed listing tenants disowned, notifying collector anyways")
+					requests = addCollectorRequest(requests, collector.Name)
+					continue CollectorLoop
+				}
 
 				for _, t := range tenantsToDisown {
 					if t.Name == tenant.Name {
-						requests = append(requests, reconcile.Request{
-							NamespacedName: types.NamespacedName{
-								Name: collector.Name,
-							},
-						})
+						requests = addCollectorRequest(requests, collector.Name)
+						continue CollectorLoop
 					}
 				}
 			}
 
-			return requests
+			return
 		})).
-		Watches(&v1alpha1.Subscription{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
-			requests := []reconcile.Request{}
+		Watches(&v1alpha1.Subscription{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
 			subscription, _ := object.(*v1alpha1.Subscription)
+
+			logger := log.FromContext(ctx)
 
 			tenants := v1alpha1.TenantList{}
 			err := r.List(ctx, &tenants)
 			if err != nil {
-				return nil
+				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
+				return
 			}
 
+		TenantLoop:
 			for _, tenant := range tenants.Items {
-				subscriptionsForTenant, err := r.getSubscriptionsForTenant(ctx, &tenant)
+				subscriptionsForTenant, subscriptionsToUpdate, err := r.getSubscriptionsForTenant(ctx, &tenant)
 				if err != nil {
-					return nil
+					logger.Error(errors.WithStack(err), "failed listing subscriptions for collector, notifying collector anyways")
+					requests = addCollectorRequest(requests, tenant.Status.Collector)
+					continue TenantLoop
 				}
 
-				for _, s := range subscriptionsForTenant {
+				for _, s := range append(subscriptionsForTenant, subscriptionsToUpdate...) {
 					if s.Name == subscription.Name {
-						requests = append(requests, reconcile.Request{
-							NamespacedName: types.NamespacedName{
-								Name: tenant.Status.Collector,
-							},
-						})
+						requests = addCollectorRequest(requests, tenant.Status.Collector)
+						continue TenantLoop
 					}
 				}
 
-				subscriptionstoDisown := r.getSubscriptionsReferencingTenantButNotSelected(ctx, &tenant, subscriptionsForTenant)
+				subscriptionsToDisown := r.getSubscriptionsReferencingTenantButNotSelected(ctx, &tenant, subscriptionsForTenant)
 
-				for _, s := range subscriptionstoDisown {
+				for _, s := range subscriptionsToDisown {
 					if s.Name == subscription.Name {
-						requests = append(requests, reconcile.Request{
-							NamespacedName: types.NamespacedName{
-								Name: tenant.Status.Collector,
-							},
-						})
+						requests = addCollectorRequest(requests, tenant.Status.Collector)
+						continue TenantLoop
 					}
 				}
 			}
 
-			return requests
+			return
 		})).
 		Complete(r)
 }
@@ -489,8 +506,7 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 	return tenantsForSelector.Items, nil
 }
 
-func (r *CollectorReconciler) getTenantsReferencingCollectorButNotSelected(ctx context.Context, collector *v1alpha1.Collector, selectedTenants []v1alpha1.Tenant) []v1alpha1.Tenant {
-	logger := log.FromContext(ctx)
+func (r *CollectorReconciler) getTenantsReferencingCollectorButNotSelected(ctx context.Context, collector *v1alpha1.Collector, selectedTenants []v1alpha1.Tenant) ([]v1alpha1.Tenant, error) {
 	var tenantsReferencing v1alpha1.TenantList
 
 	listOpts := &client.ListOptions{
@@ -498,8 +514,7 @@ func (r *CollectorReconciler) getTenantsReferencingCollectorButNotSelected(ctx c
 	}
 
 	if err := r.Client.List(ctx, &tenantsReferencing, listOpts); client.IgnoreNotFound(err) != nil {
-		logger.Error(err, "failed to list tenants that need to be detached from collector")
-		return nil
+		return nil, err
 	}
 
 	tenantsToDisown := []v1alpha1.Tenant{}
@@ -520,7 +535,7 @@ func (r *CollectorReconciler) getTenantsReferencingCollectorButNotSelected(ctx c
 
 	}
 
-	return tenantsToDisown
+	return tenantsToDisown, nil
 
 }
 
@@ -570,6 +585,8 @@ func (r *CollectorReconciler) getSubscriptionsReferencingTenantButNotSelected(ct
 
 }
 
+// disownSubscriptions fails internally by logging errors individually
+// this is by design so that we don't fail the whole reconciliation when a single subscription update fails
 func (r *CollectorReconciler) disownSubscriptions(ctx context.Context, subscriptionsToDisown []v1alpha1.Subscription) {
 	logger := log.FromContext(ctx)
 	for _, subscription := range subscriptionsToDisown {
@@ -577,10 +594,10 @@ func (r *CollectorReconciler) disownSubscriptions(ctx context.Context, subscript
 		err := r.Client.Status().Update(ctx, &subscription)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("failed to detach subscription %s/%s from collector", subscription.Namespace, subscription.Name))
+		} else {
+			logger.Info("disowning subscription", "subscription", fmt.Sprintf("%s/%s", subscription.Namespace, subscription.Name))
 		}
-		logger.Info("Disowning subscription", "subscription", fmt.Sprintf("%s/%s", subscription.Namespace, subscription.Name))
 	}
-
 }
 
 func (r *CollectorReconciler) getAllOutputs(ctx context.Context) ([]v1alpha1.OtelOutput, error) {
@@ -594,33 +611,47 @@ func (r *CollectorReconciler) getAllOutputs(ctx context.Context) ([]v1alpha1.Ote
 	return outputList.Items, nil
 }
 
-func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, tenant *v1alpha1.Tenant) ([]v1alpha1.Subscription, error) {
+// updateSubscriptionsForTenant fails internally and logs failures individually
+// this is by design in order to avoid blocking the whole reconciliation in case we cannot update a single subscription
+func (r *CollectorReconciler) updateSubscriptionsForTenant(ctx context.Context, tenantName string, subscriptions []v1alpha1.Subscription) (updatedSubscriptions []v1alpha1.Subscription) {
+	logger := log.FromContext(ctx, "tenant", tenantName)
+	for _, subscription := range subscriptions {
+		subscription.Status.Tenant = tenantName
+
+		logger.Info("updating subscription status for tenant ownership")
+		err := r.Status().Update(ctx, &subscription)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("failed to set subscription (%s/%s) -> tenant (%s) reference", subscription.Namespace, subscription.Name, tenantName))
+		} else {
+			updatedSubscriptions = append(updatedSubscriptions, subscription)
+		}
+	}
+	return
+}
+
+func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, tenant *v1alpha1.Tenant) (ownedList []v1alpha1.Subscription, updateList []v1alpha1.Subscription, err error) {
 	logger := log.FromContext(ctx)
 
 	namespaces, err := r.getNamespacesForSelectorSlice(ctx, tenant.Spec.SubscriptionNamespaceSelectors)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var selectedSubscriptions []v1alpha1.Subscription
 
 	for _, ns := range namespaces {
-
 		var subscriptionsForNS v1alpha1.SubscriptionList
 		listOpts := &client.ListOptions{
 			Namespace: ns.Name,
 		}
 
 		if err := r.List(ctx, &subscriptionsForNS, listOpts); client.IgnoreNotFound(err) != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		selectedSubscriptions = append(selectedSubscriptions, subscriptionsForNS.Items...)
-
 	}
-
-	validSubscriptions := []v1alpha1.Subscription{}
 
 	for _, subscription := range selectedSubscriptions {
 		if subscription.Status.Tenant != "" && subscription.Status.Tenant != tenant.Name {
@@ -629,18 +660,14 @@ func (r *CollectorReconciler) getSubscriptionsForTenant(ctx context.Context, ten
 			continue
 		}
 
-		subscription.Status.Tenant = tenant.Name
-		validSubscriptions = append(validSubscriptions, subscription)
-
-		logger.Info("Setting subscription status")
-		err := r.Status().Update(ctx, &subscription)
-		if err != nil {
-			logger.Error(err, fmt.Sprintf("failed to set subscription (%s/%s) -> tenant (%s) reference", subscription.Namespace, subscription.Name, tenant.Name))
+		if subscription.Status.Tenant == "" {
+			updateList = append(updateList, subscription)
+		} else {
+			ownedList = append(ownedList, subscription)
 		}
-
 	}
 
-	return validSubscriptions, nil
+	return
 }
 
 func (r *CollectorReconciler) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
@@ -667,7 +694,7 @@ func (r *CollectorReconciler) getNamespacesForSelectorSlice(ctx context.Context,
 		namespaces = append(namespaces, namespacesForSelector.Items...)
 	}
 
-	normalizeNamespaceSlice(namespaces)
+	namespaces = normalizeNamespaceSlice(namespaces)
 
 	return namespaces, nil
 }
