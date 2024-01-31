@@ -350,13 +350,17 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				subscriptionsForTenant, subscriptionsToUpdate, err := r.getSubscriptionsForTenant(ctx, &tenant)
 				if err != nil {
 					logger.Error(errors.WithStack(err), "failed listing subscriptions for collector, notifying collector anyways")
-					requests = addCollectorRequest(requests, tenant.Status.Collector)
+					if tenant.Status.Collector != "" {
+						requests = addCollectorRequest(requests, tenant.Status.Collector)
+					}
 					continue TenantLoop
 				}
 
 				for _, s := range append(subscriptionsForTenant, subscriptionsToUpdate...) {
 					if s.Name == subscription.Name {
-						requests = addCollectorRequest(requests, tenant.Status.Collector)
+						if tenant.Status.Collector != "" {
+							requests = addCollectorRequest(requests, tenant.Status.Collector)
+						}
 						continue TenantLoop
 					}
 				}
@@ -365,7 +369,9 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 				for _, s := range subscriptionsToDisown {
 					if s.Name == subscription.Name {
-						requests = addCollectorRequest(requests, tenant.Status.Collector)
+						if tenant.Status.Collector != "" {
+							requests = addCollectorRequest(requests, tenant.Status.Collector)
+						}
 						continue TenantLoop
 					}
 				}
