@@ -6,26 +6,26 @@ metadata:
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/instance: collector-editor-role
     app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: subscription-operator
-    app.kubernetes.io/part-of: subscription-operator
+    app.kubernetes.io/created-by: telemetry-controller
+    app.kubernetes.io/part-of: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
   name: collector-editor-role
 rules:
-- apiGroups:
-  - telemetry.kube-logging.dev
-  resources:
-  - collectors
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - telemetry.kube-logging.dev
-  resources:
-  - collectors/status
-  verbs:
-  - get
+  - apiGroups:
+      - telemetry.kube-logging.dev
+    resources:
+      - collectors
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - telemetry.kube-logging.dev
+    resources:
+      - collectors/status
+    verbs:
+      - get

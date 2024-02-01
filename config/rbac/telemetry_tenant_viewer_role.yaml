@@ -6,22 +6,22 @@ metadata:
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/instance: tenant-viewer-role
     app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: subscription-operator
-    app.kubernetes.io/part-of: subscription-operator
+    app.kubernetes.io/created-by: telemetry-controller
+    app.kubernetes.io/part-of: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
   name: tenant-viewer-role
 rules:
-- apiGroups:
-  - telemetry.kube-logging.dev
-  resources:
-  - tenants
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - telemetry.kube-logging.dev
-  resources:
-  - tenants/status
-  verbs:
-  - get
+  - apiGroups:
+      - telemetry.kube-logging.dev
+    resources:
+      - tenants
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - telemetry.kube-logging.dev
+    resources:
+      - tenants/status
+    verbs:
+      - get

@@ -32,8 +32,8 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 
-	telemetryv1alpha1 "github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
-	controller "github.com/kube-logging/subscription-operator/internal/controller/telemetry"
+	telemetryv1alpha1 "github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	controller "github.com/kube-logging/telemetry-controller/internal/controller/telemetry"
 
 	// +kubebuilder:scaffold:imports
 

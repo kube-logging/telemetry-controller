@@ -30,7 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	telemetryv1alpha1 "github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
+	telemetryv1alpha1 "github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 

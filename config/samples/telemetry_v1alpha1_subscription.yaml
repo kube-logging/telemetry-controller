@@ -4,9 +4,9 @@ metadata:
   labels:
     app.kubernetes.io/name: subscription
     app.kubernetes.io/instance: subscription-sample
-    app.kubernetes.io/part-of: subscription-operator
+    app.kubernetes.io/part-of: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: subscription-operator
+    app.kubernetes.io/created-by: telemetry-controller
   name: subscription-sample
 spec:
   outputs:

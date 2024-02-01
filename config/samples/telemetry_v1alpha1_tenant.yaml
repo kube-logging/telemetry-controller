@@ -4,13 +4,12 @@ metadata:
   labels:
     app.kubernetes.io/name: tenant
     app.kubernetes.io/instance: tenant-sample
-    app.kubernetes.io/part-of: subscription-operator
+    app.kubernetes.io/part-of: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: subscription-operator
+    app.kubernetes.io/created-by: telemetry-controller
     tenant: tenantA
   name: tenant-sample
 spec:
   subscriptionNamespaceSelector:
     matchLabels:
       nsTenant: tenantA
-
