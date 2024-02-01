@@ -78,6 +78,8 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	originalCollectorStatus := collector.Status.DeepCopy()
+
 	tenantSubscriptionMap := make(map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName)
 	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelector)
 	if err != nil {
@@ -163,10 +165,12 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	collector.Status.Tenants = tenantNames
 
-	logger.Info("Setting collector status")
-	err = r.Status().Update(ctx, collector)
-	if err != nil {
-		return ctrl.Result{}, err
+	if reflect.DeepEqual(*originalCollectorStatus, collector.Status) {
+		logger.Info("updating collector status")
+		err = r.Status().Update(ctx, collector)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	outputs, err := r.getAllOutputs(ctx)
