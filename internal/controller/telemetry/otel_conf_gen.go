@@ -19,7 +19,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"gopkg.in/yaml.v3"
 )
 

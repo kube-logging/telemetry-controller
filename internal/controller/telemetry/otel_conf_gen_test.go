@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
-	"github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1"
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

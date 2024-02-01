@@ -4,9 +4,9 @@ metadata:
   labels:
     app.kubernetes.io/name: collector
     app.kubernetes.io/instance: collector-sample
-    app.kubernetes.io/part-of: subscription-operator
+    app.kubernetes.io/part-of: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: subscription-operator
+    app.kubernetes.io/created-by: telemetry-controller
   name: collector-sample
 spec:
   tenantSelector:

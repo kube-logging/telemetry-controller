@@ -6,8 +6,8 @@ domain: kube-logging.dev
 layout:
 - go.kubebuilder.io/v4
 multigroup: true
-projectName: subscription-operator
-repo: github.com/kube-logging/subscription-operator
+projectName: telemetry-controller
+repo: github.com/kube-logging/telemetry-controller
 resources:
 - api:
     crdVersion: v1
@@ -16,7 +16,7 @@ resources:
   domain: kube-logging.dev
   group: telemetry
   kind: Collector
-  path: github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1
+  path: github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -24,7 +24,7 @@ resources:
   domain: kube-logging.dev
   group: telemetry
   kind: Subscription
-  path: github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1
+  path: github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -32,7 +32,7 @@ resources:
   domain: kube-logging.dev
   group: telemetry
   kind: Tenant
-  path: github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1
+  path: github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -40,6 +40,6 @@ resources:
   domain: kube-logging.dev
   group: telemetry
   kind: OtelOutput
-  path: github.com/kube-logging/subscription-operator/api/telemetry/v1alpha1
+  path: github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1
   version: v1alpha1
 version: "3"
