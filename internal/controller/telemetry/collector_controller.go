@@ -17,6 +17,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"emperror.dev/errors"
@@ -101,9 +102,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	allSubscriptions := []v1alpha1.Subscription{}
 
 	for _, tenant := range tenants {
+		originalTenantStatus := tenant.Status.DeepCopy()
+
 		// check if tenant is owned by us, or make it ours only if orphan
 		// this update will connect the tenant and collector exclusively
-
 		if tenant.Status.Collector != "" && tenant.Status.Collector != collector.Name {
 			logger.Error(errors.Errorf("tenant (%s) is owned by another collector (%s), skipping reconciliation for this collector (%s)", tenant.Name, tenant.Status.Collector, collector.Name),
 				"make sure to remove tenant from the previous collector before adopting to new collector")
@@ -149,12 +151,12 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		slices.Sort(logsourceNamespacesForTenant)
 		tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
-		if err := r.Status().Update(ctx, &tenant); err != nil {
-			return ctrl.Result{}, err
+		if !reflect.DeepEqual(*originalTenantStatus, tenant.Status) {
+			logger.Info("updating tenant tenant status")
+			if err := r.Status().Update(ctx, &tenant); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
-
-		logger.Info("Setting tenant status")
-
 	}
 
 	slices.Sort(tenantNames)
