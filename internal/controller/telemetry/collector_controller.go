@@ -712,7 +712,7 @@ func normalizeNamespaceSlice(inputList []apiv1.Namespace) []apiv1.Namespace {
 	allKeys := make(map[string]bool)
 	uniqueList := []apiv1.Namespace{}
 	for _, item := range inputList {
-		if allKeys[item.Name] {
+		if _, value := allKeys[item.Name]; !value {
 			allKeys[item.Name] = true
 			uniqueList = append(uniqueList, item)
 		}
