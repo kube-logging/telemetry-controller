@@ -14,7 +14,11 @@ spec:
     singular: subscription
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.tenant
+      name: Tenant
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Subscription is the Schema for the subscriptions API
@@ -56,6 +60,9 @@ spec:
             type: object
           status:
             description: SubscriptionStatus defines the observed state of Subscription
+            properties:
+              tenant:
+                type: string
             type: object
         type: object
     served: true

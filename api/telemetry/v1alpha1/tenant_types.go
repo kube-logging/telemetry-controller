@@ -26,8 +26,9 @@ type TenantSpec struct {
 
 // TenantStatus defines the observed state of Tenant
 type TenantStatus struct {
-	Subscriptions       []string `json:"subscriptions"`
-	LogSourceNamespaces []string `json:"logSourceNamespaces"`
+	Subscriptions       []string `json:"subscriptions,omitempty"`
+	LogSourceNamespaces []string `json:"logSourceNamespaces,omitempty"`
+	Collector           string   `json:"collector"`
 }
 
 //+kubebuilder:object:root=true
@@ -35,6 +36,7 @@ type TenantStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Subscriptions",type=string,JSONPath=`.status.subscriptions`
 //+kubebuilder:printcolumn:name="Logsource namespaces",type=string,JSONPath=`.status.logSourceNamespaces`
+//+kubebuilder:printcolumn:name="Collector",type=string,JSONPath=`.status.collector`
 
 // Tenant is the Schema for the tenants API
 type Tenant struct {
@@ -45,7 +47,7 @@ type Tenant struct {
 	Status TenantStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // TenantList contains a list of Tenant
 type TenantList struct {

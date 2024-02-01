@@ -21,6 +21,9 @@ spec:
     - jsonPath: .status.logSourceNamespaces
       name: Logsource namespaces
       type: string
+    - jsonPath: .status.collector
+      name: Collector
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -148,6 +151,8 @@ spec:
           status:
             description: TenantStatus defines the observed state of Tenant
             properties:
+              collector:
+                type: string
               logSourceNamespaces:
                 items:
                   type: string
@@ -157,8 +162,7 @@ spec:
                   type: string
                 type: array
             required:
-            - logSourceNamespaces
-            - subscriptions
+            - collector
             type: object
         type: object
     served: true

@@ -18,26 +18,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // SubscriptionSpec defines the desired state of Subscription
 type SubscriptionSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	Outputs []NamespacedName `json:"outputs,omitempty"`
 	OTTL    string           `json:"ottl,omitempty"`
 }
 
 // SubscriptionStatus defines the observed state of Subscription
 type SubscriptionStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Tenant string `json:"tenant,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.status.tenant`
 
 // Subscription is the Schema for the subscriptions API
 type Subscription struct {
@@ -48,7 +42,7 @@ type Subscription struct {
 	Status SubscriptionStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // SubscriptionList contains a list of Subscription
 type SubscriptionList struct {
