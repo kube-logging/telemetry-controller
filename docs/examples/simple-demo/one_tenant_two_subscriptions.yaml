@@ -16,7 +16,7 @@ metadata:
   name: example-collector
 spec:
   controlNamespace: collector
-  atomicPersist: true
+  atomicPersist: false
   tenantSelector:
     matchLabels:
       collectorLabel: example-collector

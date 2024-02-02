@@ -23,12 +23,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	ReceiverFileStorageName  = "file_storage/receiver"
+	ExportersFileStorageName = "file_storage/exporters"
+)
+
 // TODO move this to its appropriate place
 type OtelColConfigInput struct {
 	Tenants       []v1alpha1.Tenant
 	Subscriptions []v1alpha1.Subscription
 	Outputs       []v1alpha1.OtelOutput
-	AtomicPersist bool
+	Fsync         bool
 
 	// Subscriptions map, where the key is the Tenants' namespaced name, value is a slice of subscriptions' namespaced name
 	TenantSubscriptionMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
@@ -102,6 +107,7 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
 			"tls": map[string]any{
 				"insecure": output.Spec.OTLP.TLSSetting.Insecure,
 			},
+			"sending_queue": ExportersFileStorageName,
 		}
 	}
 
@@ -444,7 +450,7 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 		"include_file_path": true,
 		"include_file_name": false,
 		"operators":         operators,
-		"storage":           "file_storage/persist",
+		"storage":           ReceiverFileStorageName,
 	}
 
 	return k8sReceiver
@@ -454,11 +460,14 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfigIR {
 	result := OtelColConfigIR{}
 
-	fileStorageName := "file_storage/persist"
 	result.Extensions = make(map[string]any)
-	result.Extensions[fileStorageName] = map[string]any{
-		"directory": PersistPath,
-		"fsync":     cfgInput.AtomicPersist,
+	result.Extensions[ReceiverFileStorageName] = map[string]any{
+		"directory": ReceiversPersistPath,
+		"fsync":     cfgInput.Fsync,
+	}
+	result.Extensions[ExportersFileStorageName] = map[string]any{
+		"directory": ExportersPersistPath,
+		"fsync":     cfgInput.Fsync,
 	}
 
 	// Get  outputs based tenant names
@@ -478,7 +487,8 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 
 	result.Services.Telemetry = make(map[string]any)
 
-	result.Services.Extensions = append(result.Services.Extensions, fileStorageName)
+	result.Services.Extensions = append(result.Services.Extensions, ReceiverFileStorageName)
+	result.Services.Extensions = append(result.Services.Extensions, ExportersFileStorageName)
 
 	return &result
 }

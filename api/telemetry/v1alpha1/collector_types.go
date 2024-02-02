@@ -22,7 +22,7 @@ import (
 type CollectorSpec struct {
 	TenantSelector   metav1.LabelSelector `json:"tenantSelector,omitempty"`
 	ControlNamespace string               `json:"controlNamespace"`
-	AtomicPersist    bool                 `json:"atomicPersist,omitempty"`
+	Fsync            bool                 `json:"fsync,omitempty"`
 }
 
 // CollectorStatus defines the observed state of Collector

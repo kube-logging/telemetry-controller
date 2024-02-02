@@ -37,6 +37,8 @@ import (
 
 const (
 	PersistPath                   = "/opt/telemetry-controller/persist"
+	ReceiversPersistPath          = PersistPath + "/receivers"
+	ExportersPersistPath          = PersistPath + "/exporters"
 	DefaultMountContainerImage    = "busybox"
 	DefaultMountContainerImageTag = "latest"
 )
@@ -151,7 +153,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Outputs:               outputs,
 		TenantSubscriptionMap: tenantSubscriptionMap,
 		SubscriptionOutputMap: subscriptionOutputMap,
-		AtomicPersist:         collector.Spec.AtomicPersist,
+		Fsync:                 collector.Spec.Fsync,
 	}
 
 	otelConfig, err := otelConfigInput.ToIntermediateRepresentation().ToYAML()
@@ -208,35 +210,33 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 	}
 
-	if collector.Spec.AtomicPersist {
-		persistVolumeMount := apiv1.VolumeMount{
-			Name:      "persist",
-			ReadOnly:  false,
-			MountPath: PersistPath,
-		}
-		otelCollector.Spec.VolumeMounts = append(otelCollector.Spec.VolumeMounts, persistVolumeMount)
-
-		mountInitContainer := apiv1.Container{
-			Name:    "persist-mount-fix",
-			Image:   fmt.Sprintf("%s:%s", DefaultMountContainerImage, DefaultMountContainerImageTag),
-			Command: []string{"sh", "-c", "chmod -R 777 " + PersistPath},
-
-			VolumeMounts: []apiv1.VolumeMount{persistVolumeMount},
-		}
-		otelCollector.Spec.InitContainers = append(otelCollector.Spec.InitContainers, mountInitContainer)
-
-		persistVolumeType := apiv1.HostPathDirectoryOrCreate
-		persistVolume := apiv1.Volume{
-			Name: "persist",
-			VolumeSource: apiv1.VolumeSource{
-				HostPath: &apiv1.HostPathVolumeSource{
-					Path: PersistPath,
-					Type: &persistVolumeType,
-				},
-			},
-		}
-		otelCollector.Spec.Volumes = append(otelCollector.Spec.Volumes, persistVolume)
+	persistVolumeMount := apiv1.VolumeMount{
+		Name:      "persist",
+		ReadOnly:  false,
+		MountPath: PersistPath,
 	}
+	otelCollector.Spec.VolumeMounts = append(otelCollector.Spec.VolumeMounts, persistVolumeMount)
+
+	mountInitContainer := apiv1.Container{
+		Name:    "persist-mount-fix",
+		Image:   fmt.Sprintf("%s:%s", DefaultMountContainerImage, DefaultMountContainerImageTag),
+		Command: []string{"sh", "-c", "chmod -R 777 " + PersistPath},
+
+		VolumeMounts: []apiv1.VolumeMount{persistVolumeMount},
+	}
+	otelCollector.Spec.InitContainers = append(otelCollector.Spec.InitContainers, mountInitContainer)
+
+	persistVolumeType := apiv1.HostPathDirectoryOrCreate
+	persistVolume := apiv1.Volume{
+		Name: "persist",
+		VolumeSource: apiv1.VolumeSource{
+			HostPath: &apiv1.HostPathVolumeSource{
+				Path: PersistPath,
+				Type: &persistVolumeType,
+			},
+		},
+	}
+	otelCollector.Spec.Volumes = append(otelCollector.Spec.Volumes, persistVolume)
 
 	if err := ctrl.SetControllerReference(collector, &otelCollector, r.Scheme); err != nil {
 		return ctrl.Result{}, err
