@@ -94,6 +94,7 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
 	var result = make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
+		// TODO: add proper error handling
 		name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
 		otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
 		if err != nil {
