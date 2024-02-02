@@ -107,7 +107,9 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
 			"tls": map[string]any{
 				"insecure": output.Spec.OTLP.TLSSetting.Insecure,
 			},
-			"sending_queue": ExportersFileStorageName,
+			"sending_queue": map[string]any{
+				"storage": ExportersFileStorageName,
+			},
 		}
 	}
 

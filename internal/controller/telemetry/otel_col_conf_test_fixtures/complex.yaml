@@ -67,12 +67,14 @@ exporters:
         verbosity: detailed
     otlp/collector_otlp-test-output:
         endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
-        sending_queue: "file_storage/exporters"
+        sending_queue: 
+          storage: "file_storage/exporters"
         tls:
             insecure: true
     otlp/collector_otlp-test-output-2:
         endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
-        sending_queue: "file_storage/exporters"
+        sending_queue: 
+          storage: "file_storage/exporters"
         tls:
             insecure: true
 processors:
