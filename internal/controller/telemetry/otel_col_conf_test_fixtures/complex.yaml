@@ -1,3 +1,10 @@
+extensions:
+    file_storage/receiver:
+        directory: /opt/telemetry-controller/persist/receivers
+        fsync: false
+    file_storage/exporters:
+        directory: /opt/telemetry-controller/persist/exporters
+        fsync: false
 receivers:
     filelog/kubernetes:
         exclude:
@@ -54,16 +61,20 @@ receivers:
             - from: attributes.uid
               to: resource["k8s.pod.uid"]
               type: move
-        start_at: end
+        storage: file_storage/receiver
 exporters:
     logging/debug:
         verbosity: detailed
     otlp/collector_otlp-test-output:
         endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
+        sending_queue: 
+          storage: "file_storage/exporters"
         tls:
             insecure: true
     otlp/collector_otlp-test-output-2:
         endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
+        sending_queue: 
+          storage: "file_storage/exporters"
         tls:
             insecure: true
 processors:
@@ -111,6 +122,8 @@ connectors:
             - statement: 'route() where '
               pipelines: [logs/tenant_example-tenant]
 service:
+    extensions:
+        [file_storage/receiver, file_storage/exporters]
     pipelines:
         logs/all:
             receivers: [filelog/kubernetes]

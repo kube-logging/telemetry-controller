@@ -23,11 +23,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	ReceiverFileStorageName  = "file_storage/receiver"
+	ExportersFileStorageName = "file_storage/exporters"
+)
+
 // TODO move this to its appropriate place
 type OtelColConfigInput struct {
 	Tenants       []v1alpha1.Tenant
 	Subscriptions []v1alpha1.Subscription
 	Outputs       []v1alpha1.OtelOutput
+	Fsync         bool
 
 	// Subscriptions map, where the key is the Tenants' namespaced name, value is a slice of subscriptions' namespaced name
 	TenantSubscriptionMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
@@ -69,12 +75,13 @@ type Pipelines struct {
 }
 
 type Services struct {
-	Extensions map[string]any `yaml:"extensions,omitempty"`
+	Extensions []string       `yaml:"extensions,omitempty"`
 	Pipelines  Pipelines      `yaml:"pipelines,omitempty"`
 	Telemetry  map[string]any `yaml:"telemetry,omitempty"`
 }
 
 type OtelColConfigIR struct {
+	Extensions map[string]any `yaml:"extensions,omitempty"`
 	Receivers  map[string]any `yaml:"receivers,omitempty"`
 	Exporters  map[string]any `yaml:"exporters,omitempty"`
 	Processors map[string]any `yaml:"processors,omitempty"`
@@ -99,6 +106,9 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
 			"endpoint": output.Spec.OTLP.GRPCClientSettings.Endpoint,
 			"tls": map[string]any{
 				"insecure": output.Spec.OTLP.TLSSetting.Insecure,
+			},
+			"sending_queue": map[string]any{
+				"storage": ExportersFileStorageName,
 			},
 		}
 	}
@@ -439,10 +449,10 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 	k8sReceiver := map[string]any{
 		"include":           []string{"/var/log/pods/*/*/*.log"},
 		"exclude":           []string{"/var/log/pods/*/otc-container/*.log"},
-		"start_at":          "end",
 		"include_file_path": true,
 		"include_file_name": false,
 		"operators":         operators,
+		"storage":           ReceiverFileStorageName,
 	}
 
 	return k8sReceiver
@@ -451,6 +461,16 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 
 func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfigIR {
 	result := OtelColConfigIR{}
+
+	result.Extensions = make(map[string]any)
+	result.Extensions[ReceiverFileStorageName] = map[string]any{
+		"directory": ReceiversPersistPath,
+		"fsync":     cfgInput.Fsync,
+	}
+	result.Extensions[ExportersFileStorageName] = map[string]any{
+		"directory": ExportersPersistPath,
+		"fsync":     cfgInput.Fsync,
+	}
 
 	// Get  outputs based tenant names
 	result.Exporters = cfgInput.generateExporters()
@@ -468,6 +488,9 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
 
 	result.Services.Telemetry = make(map[string]any)
+
+	result.Services.Extensions = append(result.Services.Extensions, ReceiverFileStorageName)
+	result.Services.Extensions = append(result.Services.Extensions, ExportersFileStorageName)
 
 	return &result
 }

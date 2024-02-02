@@ -16,6 +16,7 @@ metadata:
   name: example-collector
 spec:
   controlNamespace: collector
+  fsync: false
   tenantSelector:
     matchLabels:
       collectorLabel: example-collector
