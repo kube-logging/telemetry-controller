@@ -220,7 +220,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	mountInitContainer := apiv1.Container{
 		Name:    "persist-mount-fix",
 		Image:   fmt.Sprintf("%s:%s", DefaultMountContainerImage, DefaultMountContainerImageTag),
-		Command: []string{"sh", "-c", "chmod -R 777 " + PersistPath},
+		Command: []string{"sh", "-c", "mkdir -p " + ReceiversPersistPath + "; mkdir -p " + ExportersPersistPath + "; " + "chmod -R 777 " + PersistPath},
 
 		VolumeMounts: []apiv1.VolumeMount{persistVolumeMount},
 	}
