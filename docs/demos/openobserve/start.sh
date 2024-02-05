@@ -5,9 +5,12 @@ set -euo pipefail
 KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME:-kind}
 
 # Install OpenObserve
-kubectl create namespace openobserve
-
 kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openobserve
+---
 apiVersion: v1
 kind: Service
 metadata:

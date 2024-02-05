@@ -40,9 +40,9 @@ metadata:
   name: subscription-sample-1
   namespace: example-tenant-ns
 spec:
-  ottl: "route()"
+  ottl: 'route()'
   outputs:
-    - name: otlp-test-output-1
+    - name: otlp-test-output
       namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
@@ -51,7 +51,7 @@ metadata:
   name: subscription-sample-2
   namespace: example-tenant-ns
 spec:
-  ottl: "route()"
+  ottl: 'route()'
   outputs:
     - name: otlp-test-output-2
       namespace: collector
@@ -59,15 +59,11 @@ spec:
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: OtelOutput
 metadata:
-  name: otlp-test-output-1
+  name: otlp-test-output
   namespace: collector
 spec:
   otlp:
-    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
-    headers:
-      Authorization: "Basic <TOKEN>"
-      organization: default
-      stream-name: default
+    endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
     tls:
       insecure: true
 ---
@@ -78,10 +74,6 @@ metadata:
   namespace: collector
 spec:
   otlp:
-    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
-    headers:
-      Authorization: "Basic <TOKEN>"
-      organization: default
-      stream-name: default
+    endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
     tls:
       insecure: true
