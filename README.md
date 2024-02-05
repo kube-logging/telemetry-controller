@@ -25,18 +25,6 @@ kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releas
 make install
 ```
 
-**Build and push your image to the location specified by `IMG`:**
-
-```sh
-make docker-build docker-push IMG=<some-registry>/telemetry-controller:<tag>
-```
-
-> **NOTE:** This image ought to be published in the personal registry you specified. 
-And it is required to have access to pull the image from the working environment. 
-Make sure you have the proper permission to the registry if the above commands don’t work.
-
-**OR**
-
 **Build your image and load it to your KinD nodes**
 ```sh
 make docker-build IMG=telemetry-controller:latest
@@ -46,7 +34,7 @@ kind load docker-image telemetry-controller:latest
 **Deploy the Manager to the cluster with the image specified by `IMG`:**
 
 ```sh
-make deploy IMG=<some-registry>/telemetry-controller:tag
+make deploy IMG=telemetry-controller:tag
 ```
 
 > **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin 
@@ -91,16 +79,16 @@ helm install --wait --create-namespace --namespace example-tenant-ns --generate-
 kubectl delete -f docs/examples/simple-demo/
 ```
 
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
 **UnDeploy the controller from the cluster:**
 
 ```sh
 make undeploy
+```
+
+**Delete the APIs(CRDs) from the cluster:**
+
+```sh
+make uninstall
 ```
 
 ## Contributing
@@ -117,7 +105,7 @@ Please read the [Organisation's Code of Conduct](https://github.com/kube-logging
 
 ## License
 
-Copyright © 2023 Kube logging authors
+Copyright © 2024 Kube logging authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
