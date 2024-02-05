@@ -38,7 +38,7 @@ kubectl wait --namespace opentelemetry-operator-system --for=condition=available
 (cd .. && make manifests generate install)
 
 # Use example
-kubectl apply -f ../docs/examples/simple-demo
+kubectl apply -f ../e2e/testdata/one_tenant_two_subscriptions
 
 if [[ -z "${CI_MODE}" ]]; then
   $(cd .. && timeout 5m make run &)
