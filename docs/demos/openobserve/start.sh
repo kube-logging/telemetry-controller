@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+set -euo pipefail
+
 KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME:-kind}
 
 # Install OpenObserve
