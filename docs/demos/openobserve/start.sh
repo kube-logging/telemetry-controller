@@ -123,7 +123,7 @@ sleep 5
 # TODO: use yq instead of sed
 OO_ORG_PWD=$(curl --silent localhost:5080/api/default/organizations/passcode -v --user root@example.com:Complexpass#123 | jq .data.passcode -r)
 OO_TOKEN=$(echo -n root@example.com:$OO_ORG_PWD | base64)
-sed -i "s/Authorization.*/Authorization:\ \"Basic ${OO_TOKEN}\"/" ./demo.yaml
+sed -i '' -e "s/Authorization.*/Authorization:\ \"Basic ${OO_TOKEN}\"/" ./demo.yaml
 
 
 # Install prerequisites
