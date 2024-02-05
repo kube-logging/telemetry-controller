@@ -80,7 +80,7 @@ helm install --wait --create-namespace --namespace example-tenant-ns --generate-
 **Delete the instances (CRs) from the cluster:**
 
 ```sh
-kubectl delete -f docs/simple-demo/
+kubectl delete -f docs/examples/simple-demo/
 ```
 
 **Delete the APIs(CRDs) from the cluster:**
