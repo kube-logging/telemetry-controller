@@ -19,20 +19,28 @@ helm upgrade --install --repo https://charts.jetstack.io cert-manager cert-manag
 kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml --wait
 ```
 
+**Install the CRDs into the cluster:**
+
+```sh
+make install
+```
+
 **Build and push your image to the location specified by `IMG`:**
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/telemetry-controller:tag
+make docker-build docker-push IMG=<some-registry>/telemetry-controller:<tag>
 ```
 
 > **NOTE:** This image ought to be published in the personal registry you specified. 
 And it is required to have access to pull the image from the working environment. 
 Make sure you have the proper permission to the registry if the above commands don’t work.
 
-**Install the CRDs into the cluster:**
+**OR**
 
+**Build your image and load it to your KinD nodes**
 ```sh
-make install
+make docker-build IMG=telemetry-controller:latest
+kind load docker-image telemetry-controller:latest
 ```
 
 **Deploy the Manager to the cluster with the image specified by `IMG`:**
@@ -45,7 +53,8 @@ make deploy IMG=<some-registry>/telemetry-controller:tag
 privileges or be logged in as admin.
 
 **Create instances of your solution**
-You can apply the you can deploy the example configuration provided as part of the docs:
+You can deploy the example configuration provided as part of the docs. This will deploy a demo pipeline with one tenant, two subscriptions, and an OpenObserve instance.
+Deploying Openobserve is an optional, but recommended step, logs can be forwarded to any OTLP endpoint. Openobserve provides a UI to visualize the ingested logstream.
 
 ```sh
 # Deploy Openobserve
@@ -66,7 +75,6 @@ sed -i '' -e "s/\<TOKEN\>/INSERT YOUR COPIED TOKEN HERE/" docs/examples/simple-d
 # Deploy the pipeline definition
 kubectl apply -f docs/examples/simple-demo/one_tenant_two_subscriptions.yaml
 ```
-This will deploy a demo pipeline with one tenant, two subscriptions, and an OpenObserve instance, where logs are ingested, and visualized.
 
 **Create a workload, which will generate logs for the pipeline:**
 ```sh
