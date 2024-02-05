@@ -65,8 +65,8 @@ spec:
   otlp:
     endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
     headers:
-      # Add token from Web UI manually as there is no way to query it
-      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTp1TzU4QmFaeXAzeDZRUDlZ" # echo -n username:pwd | base64 
+      # echo -n username:org_pwd | base64 
+      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTpkREN6Z213eVVkMTlmVzZs"
       organization: default
       stream-name: default
     tls:

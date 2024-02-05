@@ -109,6 +109,20 @@ while
   [[ $? -ne 0 ]]
 do sleep 3; done
 
+# Grab organization password
+
+# OpenObserve UI
+kubectl -n openobserve port-forward svc/openobserve 5080:5080 &
+# OpenObserve OTLP GRPC
+#kubectl -n openobserve port-forward svc/openobserve-otlp-grpc 5081:5081 &
+sleep 5
+
+# TODO: use yq instead of sed
+OO_ORG_PWD=$(curl --silent localhost:5080/api/default/organizations/passcode -v --user root@example.com:Complexpass#123 | jq .data.passcode -r)
+OO_TOKEN=$(echo -n root@example.com:$OO_ORG_PWD | base64)
+sed -i "s/Authorization.*/Authorization:\ \"Basic ${OO_TOKEN}\"/" ./demo.yaml
+
+
 # Install prerequisites
 
 helm upgrade \
@@ -126,20 +140,14 @@ echo "Wait until otel operator pod is in ready state..."
 kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
 
 
-(cd ../.. && make manifests generate install)
+(cd ../../.. && make manifests generate install)
 
-cd ../../ && make docker-build
+cd ../../../ && make docker-build
 kind load docker-image controller:latest --name "${KIND_CLUSTER_NAME}"
 make deploy && cd -
 
 kubectl apply -f ./demo.yaml
 
-
-# OpenObserve UI
-kubectl -n openobserve port-forward svc/openobserve 5080:5080 &
-# OpenObserve OTLP GRPC
-#kubectl -n openobserve port-forward svc/openobserve-otlp-grpc 5081:5081 &
-sleep 5
 
 # Create log-generator
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
