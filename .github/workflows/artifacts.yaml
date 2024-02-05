@@ -63,7 +63,7 @@ jobs:
 
       - name: Gather build metadata
         id: meta
-        uses: docker/metadata-action@818d4b7b91585d195f67373fd9cb0332e31a7175 # v4.6.0
+        uses: docker/metadata-action@v5
         with:
           images: ${{ steps.image-name.outputs.value }}
           flavor: |
@@ -83,7 +83,7 @@ jobs:
       # Multiple exporters are not supported yet
       # See https://github.com/moby/buildkit/pull/2760
       - name: Determine build output
-        uses: haya14busa/action-cond@1d6e8a12b20cdb4f1954feef9aa475b9c390cab5 # v1.1.1
+        uses: haya14busa/action-cond@v1.2.1
         id: build-output
         with:
           cond: ${{ inputs.publish }}
@@ -100,7 +100,7 @@ jobs:
 
       - name: Build and push image
         id: build
-        uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # v4.1.1
+        uses: docker/build-push-action@v5 # v4.1.1
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -132,7 +132,7 @@ jobs:
           output: trivy-results.sarif
 
       - name: Upload Trivy scan results as artifact
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+        uses: actions/upload-artifact@v4
         with:
           name: "[${{ github.job }}] Trivy scan results"
           path: trivy-results.sarif
