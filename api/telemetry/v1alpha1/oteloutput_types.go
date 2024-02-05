@@ -32,10 +32,10 @@ type OtelOutputSpec struct {
 
 // OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
 type OTLPgrpc struct {
-	QueueConfig        QueueSettings `json:"sending_queue,omitempty"`
-	RetryConfig        BackOffConfig `json:"retry_on_failure,omitempty"`
-	TimeoutSettings    `json:",inline"`
-	GRPCClientSettings `json:",inline"`
+	QueueConfig        QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
+	RetryConfig        BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
+	TimeoutSettings    `json:",inline" yaml:",inline"`
+	GRPCClientSettings `json:",inline" yaml:",inline"`
 }
 
 // OtelOutputStatus defines the observed state of OtelOutput
@@ -52,15 +52,15 @@ type OtelOutput struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   OtelOutputSpec   `json:"spec,omitempty"`
-	Status OtelOutputStatus `json:"status,omitempty"`
+	Spec   OtelOutputSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status OtelOutputStatus `json:"status,omitempty" `
 }
 
 //+kubebuilder:object:root=true
 
 // OtelOutputList contains a list of OtelOutput
 type OtelOutputList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []OtelOutput `json:"items"`
 }

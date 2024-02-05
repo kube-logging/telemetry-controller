@@ -94,13 +94,18 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
 	var result = make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
+		// TODO: add proper error handling
 		name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
-		result[name] = map[string]any{
-			"endpoint": output.Spec.OTLP.GRPCClientSettings.Endpoint,
-			"tls": map[string]any{
-				"insecure": output.Spec.OTLP.TLSSetting.Insecure,
-			},
+		otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
+		if err != nil {
+			return result
 		}
+		var otlpGrpcValues map[string]any
+		if err := yaml.Unmarshal(otlpGrpcValuesMarshaled, &otlpGrpcValues); err != nil {
+			return result
+		}
+
+		result[name] = otlpGrpcValues
 	}
 
 	return result
