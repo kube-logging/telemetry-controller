@@ -15,7 +15,7 @@
 package v1alpha1
 
 import (
-	"github.com/go-yaml/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 // +kubebuilder:object:generate=true
