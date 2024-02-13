@@ -10,8 +10,25 @@ Telemetry-controller can be configured using Custom Resources to set up an opini
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
 
-### To Deploy on the cluster
+### Deployment steps for users
 
+**Install cert-manager, and opentelemtry-operator:**
+```sh
+helm upgrade --install --repo https://charts.jetstack.io cert-manager cert-manager --namespace cert-manager --create-namespace --version v1.13.3 --set installCRDs=true --wait
+
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml --wait
+```
+
+**Deploy telemetry-controller:**
+```sh
+kubectl apply -k 'github.com/kube-logging/telemetry-controller/config/default'
+```
+**Remove the controller and CRDs from the cluster:**
+```sh
+kubectl delete -k 'github.com/kube-logging/telemetry-controller/config/default'
+```
+
+### Deployment steps for contributors
 **Install cert-manager, and opentelemtry-operator:**
 ```sh
 helm upgrade --install --repo https://charts.jetstack.io cert-manager cert-manager --namespace cert-manager --create-namespace --version v1.13.3 --set installCRDs=true --wait
@@ -40,6 +57,24 @@ make deploy IMG=telemetry-controller:tag
 > **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin 
 privileges or be logged in as admin.
 
+**Delete the instances (CRs) from the cluster:**
+
+```sh
+kubectl delete -f docs/examples/simple-demo/
+```
+
+**Remove the controller from the cluster:**
+
+```sh
+make undeploy
+```
+
+**Delete the APIs(CRDs) from the cluster:**
+
+```sh
+make uninstall
+```
+### Example setup
 **Create instances of your solution**
 You can deploy the example configuration provided as part of the docs. This will deploy a demo pipeline with one tenant, two subscriptions, and an OpenObserve instance.
 Deploying Openobserve is an optional, but recommended step, logs can be forwarded to any OTLP endpoint. Openobserve provides a UI to visualize the ingested logstream.
@@ -72,24 +107,6 @@ helm install --wait --create-namespace --namespace example-tenant-ns --generate-
 **Open the Openobserve UI and inspect the generated log messages**
 ![Openobserve logs](docs/assets/openobserve-logs.png)
 
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -f docs/examples/simple-demo/
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
 
 ## Contributing
 
