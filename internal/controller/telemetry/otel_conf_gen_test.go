@@ -98,7 +98,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				},
 				Spec: v1alpha1.OtelOutputSpec{
 					OTLP: v1alpha1.OTLPgrpc{
-						GRPCClientSettings: v1alpha1.GRPCClientSettings{
+						ClientConfig: v1alpha1.ClientConfig{
 							Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
 								Insecure: true,
@@ -114,7 +114,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				},
 				Spec: v1alpha1.OtelOutputSpec{
 					OTLP: v1alpha1.OTLPgrpc{
-						GRPCClientSettings: v1alpha1.GRPCClientSettings{
+						ClientConfig: v1alpha1.ClientConfig{
 							Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
 								Insecure: true,

@@ -68,8 +68,8 @@ type KeepaliveClientConfig struct {
 	PermitWithoutStream bool          `json:"permit_without_stream,omitempty" yaml:"permit_without_stream,omitempty"`
 }
 
-// GRPCClientSettings defines common settings for a gRPC client configuration.
-type GRPCClientSettings struct {
+// ClientConfig defines common settings for a gRPC client configuration.
+type ClientConfig struct {
 	// The target to which the exporter is going to send traces or metrics,
 	// using the gRPC protocol. The valid syntax is described at
 	// https://github.com/grpc/grpc/blob/master/doc/naming.md.
