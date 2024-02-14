@@ -142,14 +142,10 @@ func TestOtelColConfComplex(t *testing.T) {
 	generatedIR := inputCfg.ToIntermediateRepresentation()
 
 	// Final YAML
-	generatedYAML, err := generatedIR.ToYAML()
+	_, err := generatedIR.ToYAML()
 	if err != nil {
 		t.Fatalf("YAML formatting failed, err=%v", err)
 	}
-	t.Logf(`the generated YAML is:
----
-%v
----`, generatedYAML)
 
 	actualYAMLBytes, err := generatedIR.ToYAMLRepresentation()
 	if err != nil {

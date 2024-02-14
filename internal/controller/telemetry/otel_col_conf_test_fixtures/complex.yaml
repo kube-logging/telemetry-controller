@@ -85,6 +85,10 @@ processors:
     k8sattributes:
         auth_type: serviceAccount
         extract:
+            labels:
+                - from: pod
+                  key_regex: .*
+                  tag_name: all_labels
             metadata:
                 - k8s.pod.name
                 - k8s.pod.uid
