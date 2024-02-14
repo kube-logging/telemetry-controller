@@ -209,10 +209,11 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Namespace: collector.Spec.ControlNamespace,
 		},
 		Spec: otelv1alpha1.OpenTelemetryCollectorSpec{
-			Config:         otelConfig,
-			Mode:           otelv1alpha1.ModeDaemonSet,
-			Image:          "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.94.0",
-			ServiceAccount: saName.Name,
+			UpgradeStrategy: "none",
+			Config:          otelConfig,
+			Mode:            otelv1alpha1.ModeDaemonSet,
+			Image:           "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.94.0",
+			ServiceAccount:  saName.Name,
 			VolumeMounts: []apiv1.VolumeMount{
 				{
 					Name:      "varlog",

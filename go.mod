@@ -30,6 +30,7 @@ require (
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/wayneashleyberry/terminal-dimensions v1.1.0 // indirect
 	go.opentelemetry.io/collector/featuregate v0.77.0 // indirect
+	logur.dev/logur v0.17.0 // indirect
 )
 
 require (
@@ -91,6 +92,7 @@ require (
 	k8s.io/klog/v2 v2.110.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
 	k8s.io/utils v0.0.0-20231127182322-b307cd553661 // indirect
+	logur.dev/integration/logr v0.5.0
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
