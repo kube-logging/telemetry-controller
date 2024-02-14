@@ -165,7 +165,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	collector.Status.Tenants = tenantNames
 
-	if reflect.DeepEqual(*originalCollectorStatus, collector.Status) {
+	if !reflect.DeepEqual(*originalCollectorStatus, collector.Status) {
 		logger.Info("updating collector status")
 		err = r.Status().Update(ctx, collector)
 		if err != nil {
