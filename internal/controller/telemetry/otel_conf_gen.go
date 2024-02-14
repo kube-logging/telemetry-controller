@@ -346,11 +346,20 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[str
 		"k8s.pod.start_time",
 	}
 
+	var defaultLabels = []map[string]string{
+		{
+			"from":      "pod",
+			"tag_name":  "all_labels",
+			"key_regex": ".*",
+		},
+	}
+
 	k8sProcessor := map[string]any{
 		"auth_type":   "serviceAccount",
 		"passthrough": false,
 		"extract": map[string]any{
 			"metadata": defaultMetadata,
+			"labels":   defaultLabels,
 		},
 		"pod_association": defaultPodAssociation,
 	}
