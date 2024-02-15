@@ -4,6 +4,8 @@ The Telemetry Controller is a multi-tenancy focused solution, that facilitates c
 Telemetry-controller can be configured using Custom Resources to set up an opinionated Opentelemetry Collector configuration to route log messages based on rules defined as a Tenant -> Subscription relation map.
 ## Getting Started
 
+To get started with the Telemetry Controller, complete the following steps. Alternatively, see our [Telemetry Controller overview and quickstart blog post](https://axoflow.com/reinvent-kubernetes-logging-with-telemetry-controller/).
+
 ### Prerequisites
 - go version v1.20.0+
 - docker version 17.03+.
