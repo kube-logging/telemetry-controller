@@ -382,6 +382,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
+		Owns(&otelv1alpha1.OpenTelemetryCollector{}).
 		Complete(r)
 }
 
