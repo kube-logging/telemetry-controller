@@ -24,3 +24,11 @@ Dockerfile.cross
 *.swp
 *.swo
 *~
+
+crddir
+
+.licensei.cache
+
+.DS_Store
+
+go.work.sum
