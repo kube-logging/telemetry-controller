@@ -100,9 +100,13 @@ processors:
                   from: resource_attribute
 connectors:
     routing/tenant_tenant-1_subscriptions:
-        table: []
+        table:     
+            - statement: route()
+              pipelines: [logs/tenant_tenant-1_subscription_subscription-example-1]
     routing/tenant_tenant-2_subscriptions:
-        table: []
+        table: 
+            - statement: route()
+              pipelines: [logs/tenant_tenant-2_subscription_subscription-example-2]
     routing/tenants:
         table:
             - statement: 'route() where '
@@ -123,3 +127,11 @@ service:
             receivers: [routing/tenants]
             processors: [attributes/tenant_tenant-2]
             exporters: [routing/tenant_tenant-2_subscriptions]
+        logs/tenant_tenant-1_subscription_subscription-example-1:
+            receivers: [routing/tenant_tenant-1_subscriptions]
+            processors: [attributes/subscription_subscription-example-1]
+            exporters: [otlp/collector_otlp-test-output-1]
+        logs/tenant_tenant-2_subscription_subscription-example-2:
+            receivers: [routing/tenant_tenant-2_subscriptions]
+            processors: [attributes/subscription_subscription-example-2]
+            exporters: [otlp/collector_otlp-test-output-2]

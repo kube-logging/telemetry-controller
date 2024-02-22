@@ -28,6 +28,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/yaml"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -119,14 +120,14 @@ var _ = Describe("Telemetry controller integration test", func() {
 						SubscriptionNamespaceSelectors: []metav1.LabelSelector{
 							{
 								MatchLabels: map[string]string{
-									"nsSelector": "tenant-1-ctrl",
+									"kubernetes.io/metadata.name": "tenant-1-ctrl",
 								},
 							},
 						},
 						LogSourceNamespaceSelectors: []metav1.LabelSelector{
 							{
 								MatchLabels: map[string]string{
-									"nsSelector": "tenant-1-workload",
+									"kubernetes.io/metadata.name": "tenant-1-workload",
 								},
 							},
 						},
@@ -145,14 +146,14 @@ var _ = Describe("Telemetry controller integration test", func() {
 						SubscriptionNamespaceSelectors: []metav1.LabelSelector{
 							{
 								MatchLabels: map[string]string{
-									"nsSelector": "tenant-2-all",
+									"kubernetes.io/metadata.name": "tenant-2-all",
 								},
 							},
 						},
 						LogSourceNamespaceSelectors: []metav1.LabelSelector{
 							{
 								MatchLabels: map[string]string{
-									"nsSelector": "tenant-2-all",
+									"kubernetes.io/metadata.name": "tenant-2-all",
 								},
 							},
 						},
@@ -283,7 +284,15 @@ var _ = Describe("Telemetry controller integration test", func() {
 				return err == nil
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(createdOtelCollector.Spec.Config).To(Equal(exptectedOtelCollector.Spec.Config))
+			expectedMap := map[string]any{}
+			err = yaml.Unmarshal([]byte(exptectedOtelCollector.Spec.Config), expectedMap)
+			Expect(err).NotTo(HaveOccurred())
+
+			createdMap := map[string]any{}
+			err = yaml.Unmarshal([]byte(createdOtelCollector.Spec.Config), createdMap)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(createdMap).To(Equal(expectedMap))
 
 		})
 	})
