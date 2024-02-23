@@ -8,6 +8,8 @@ metadata:
 spec:
   group: telemetry.kube-logging.dev
   names:
+    categories:
+    - telemetry-all
     kind: Collector
     listKind: CollectorList
     plural: collectors

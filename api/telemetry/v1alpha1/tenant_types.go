@@ -32,7 +32,7 @@ type TenantStatus struct {
 }
 
 //+kubebuilder:object:root=true
-//+kubebuilder:resource:scope=Cluster
+//+kubebuilder:resource:scope=Cluster,categories=telemetry-all
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Subscriptions",type=string,JSONPath=`.status.subscriptions`
 //+kubebuilder:printcolumn:name="Logsource namespaces",type=string,JSONPath=`.status.logSourceNamespaces`
