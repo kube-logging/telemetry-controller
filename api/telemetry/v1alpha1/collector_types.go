@@ -30,9 +30,9 @@ type CollectorStatus struct {
 }
 
 //+kubebuilder:object:root=true
-//+kubebuilder:resource:scope=Cluster
+//+kubebuilder:resource:scope=Cluster,categories=telemetry-all
 //+kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Tenants",type=string,JSONPath=`.status.tenants`
+//+kubebuilder:printcolumn:name="Tenants",type=string,JSONPath=`.status.tenants`
 
 // Collector is the Schema for the collectors API
 type Collector struct {
