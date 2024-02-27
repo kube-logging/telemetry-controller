@@ -42,7 +42,7 @@ metadata:
 spec:
   ottl: 'route()'
   outputs:
-    - name: otlp-test-output
+    - name: otlp-test-output-1
       namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
@@ -59,13 +59,16 @@ spec:
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: OtelOutput
 metadata:
-  name: otlp-test-output
+  name: otlp-test-output-1
   namespace: collector
 spec:
   otlp:
-    endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
+    endpoint: receiver-1-collector.example-tenant-ns.svc.cluster.local:4317
     tls:
       insecure: true
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: OtelOutput
@@ -74,6 +77,9 @@ metadata:
   namespace: collector
 spec:
   otlp:
-    endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
+    endpoint: receiver-2-collector.example-tenant-ns.svc.cluster.local:4317
     tls:
       insecure: true
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0

@@ -1,7 +1,7 @@
 apiVersion: opentelemetry.io/v1alpha1
 kind: OpenTelemetryCollector
 metadata:
-  name: receiver
+  name: receiver-1
   namespace: example-tenant-ns
 spec:
   config: |
@@ -12,9 +12,13 @@ spec:
 
     exporters:
       debug:
-        verbosity: detailed
+        verbosity: basic
     service:
-        pipelines:
+      telemetry:
+        metrics:
+          level: detailed
+          address: 0.0.0.0:9998
+      pipelines:
           logs: 
             receivers: [otlp]
             exporters: [debug]

@@ -54,7 +54,7 @@ helm install --wait --create-namespace --namespace example-tenant-ns --generate-
 # Check for received messages - subscription-sample
 while
   echo "Checking for subscription-sample-1 in deployments/receiver-collector logs"
-  kubectl logs --namespace example-tenant-ns deployments/receiver-collector | grep -q "subscription-sample-1"
+  kubectl logs --namespace example-tenant-ns deployments/receiver-collector-1 | grep -q "subscription-sample-1"
   
   [[ $? -ne 0 ]]
 do true; done
@@ -62,7 +62,7 @@ do true; done
 # Check for received messages - subscription-sample-2
 while
   echo "Checking for subscription-sample-2 in deployments/receiver-collector logs"
-  kubectl logs --namespace example-tenant-ns deployments/receiver-collector | grep -q "subscription-sample-2"
+  kubectl logs --namespace example-tenant-ns deployments/receiver-collector-2 | grep -q "subscription-sample-2"
 
   [[ $? -ne 0 ]]
 do true; done

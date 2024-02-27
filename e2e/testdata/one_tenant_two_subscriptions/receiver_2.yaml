@@ -1,0 +1,24 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: receiver-2
+  namespace: example-tenant-ns
+spec:
+  config: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+
+    exporters:
+      debug:
+        verbosity: basic
+    service:
+      telemetry:
+        metrics:
+          level: detailed
+          address: 0.0.0.0:9998
+      pipelines:
+        logs: 
+          receivers: [otlp]
+          exporters: [debug]
