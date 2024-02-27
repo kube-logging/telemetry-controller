@@ -194,6 +194,196 @@ actual=
 	}
 }
 
+//go:embed otel_col_conf_test_fixtures/complex_per_tenant.yaml
+var otelColReceiverPerTenant string
+
+func TestOtelColConfReceiverPerTenant(t *testing.T) {
+	// Required inputs
+	var subscriptions = []v1alpha1.Subscription{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "subscription-example-1",
+				Namespace: "example-tenant-ns",
+			},
+			Spec: v1alpha1.SubscriptionSpec{
+				OTTL: "route()",
+				Outputs: []v1alpha1.NamespacedName{
+					{
+						Name:      "otlp-test-output-1",
+						Namespace: "collector",
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "subscription-example-2",
+				Namespace: "example-tenant-ns",
+			},
+			Spec: v1alpha1.SubscriptionSpec{
+				OTTL: "route()",
+				Outputs: []v1alpha1.NamespacedName{
+					{
+						Name:      "otlp-test-output-2",
+						Namespace: "collector",
+					},
+				},
+			},
+		},
+	}
+	inputCfg := OtelColConfigInput{
+		Subscriptions: subscriptions,
+		Tenants: []v1alpha1.Tenant{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-tenant-A",
+				},
+				Spec: v1alpha1.TenantSpec{
+					SubscriptionNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-A",
+							},
+						},
+					},
+					LogSourceNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-A",
+							},
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-tenant-B",
+				},
+				Spec: v1alpha1.TenantSpec{
+					SubscriptionNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-B",
+							},
+						},
+					},
+					LogSourceNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-B",
+							},
+						},
+					},
+				},
+			},
+		},
+
+		Outputs: []v1alpha1.OtelOutput{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "otlp-test-output-1",
+					Namespace: "collector",
+				},
+				Spec: v1alpha1.OtelOutputSpec{
+					OTLP: v1alpha1.OTLPgrpc{
+						ClientConfig: v1alpha1.ClientConfig{
+							Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
+							TLSSetting: v1alpha1.TLSClientSetting{
+								Insecure: true,
+							},
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "otlp-test-output-2",
+					Namespace: "collector",
+				},
+				Spec: v1alpha1.OtelOutputSpec{
+					OTLP: v1alpha1.OTLPgrpc{
+						ClientConfig: v1alpha1.ClientConfig{
+							Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
+							TLSSetting: v1alpha1.TLSClientSetting{
+								Insecure: true,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// TODO extract this logic
+
+	subscriptionOutputMap := map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{}
+	for _, subscription := range inputCfg.Subscriptions {
+		subscriptionOutputMap[subscription.NamespacedName()] = subscription.Spec.Outputs
+	}
+	inputCfg.SubscriptionOutputMap = subscriptionOutputMap
+
+	inputCfg.TenantSubscriptionMap = map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{}
+
+	for _, tenant := range inputCfg.Tenants {
+		inputCfg.TenantSubscriptionMap[tenant.NamespacedName()] = getSubscriptionNamesFromSubscription(inputCfg.Subscriptions)
+	}
+
+	// IR
+	generatedIR := inputCfg.ToIntermediateRepresentation()
+
+	// Final YAML
+	_, err := generatedIR.ToYAML()
+	if err != nil {
+		t.Fatalf("YAML formatting failed, err=%v", err)
+	}
+
+	actualYAMLBytes, err := generatedIR.ToYAMLRepresentation()
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
+	actualYAML, err := generatedIR.ToYAML()
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
+
+	var actualUniversalMap map[string]any
+	if err := yaml.Unmarshal(actualYAMLBytes, &actualUniversalMap); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	var expectedUniversalMap map[string]any
+	if err := yaml.Unmarshal([]byte(otelColReceiverPerTenant), &expectedUniversalMap); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	// use dyff for YAML comparison
+	if diff := cmp.Diff(expectedUniversalMap, actualUniversalMap); diff != "" {
+		t.Logf("mismatch:\n---%s\n---\n", diff)
+	}
+
+	if !reflect.DeepEqual(actualUniversalMap, expectedUniversalMap) {
+		t.Logf(`yaml mismatch:
+expected=
+---
+%s
+---
+actual=
+---
+%s
+---`, otelColReceiverPerTenant, actualYAML)
+		t.Fatalf(`yaml marshaling failed
+expected=
+---
+%v
+---,
+actual=
+---
+%v
+---`,
+			expectedUniversalMap, actualUniversalMap)
+	}
+}
+
 func Test_generateRootRoutingConnector(t *testing.T) {
 	type args struct {
 		tenants []v1alpha1.Tenant

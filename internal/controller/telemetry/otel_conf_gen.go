@@ -259,17 +259,18 @@ func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) 
 
 }
 
-func generateRootPipeline() Pipeline {
-	return generatePipeline([]string{"filelog/kubernetes"}, []string{"k8sattributes"}, []string{"routing/tenants"})
+func generateRootPipeline(receiverName, exporterName string) Pipeline {
+	return generatePipeline([]string{receiverName}, []string{"k8sattributes"}, []string{exporterName})
 }
 
-func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
+func (cfgInput *OtelColConfigInput) generateNamedPipelines(tenantName, rootReceiver, rootExporter string) map[string]Pipeline {
 	var namedPipelines = make(map[string]Pipeline)
 
 	// Default pipeline
 	//namedPipelines["logs/default"] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{"debug/default"})
 
-	namedPipelines["logs/all"] = generateRootPipeline()
+	rootLogsPipelineForTenant := fmt.Sprintf("logs/all_%s", tenantName)
+	namedPipelines[rootLogsPipelineForTenant] = generateRootPipeline(rootReceiver, rootExporter)
 
 	tenants := []v1alpha1.NamespacedName{}
 	for tenant := range cfgInput.TenantSubscriptionMap {
@@ -457,6 +458,10 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 		"include_file_path": true,
 		"include_file_name": false,
 		"operators":         operators,
+		"retry_on_failure": map[string]any{
+			"enabled":          true,
+			"max_elapsed_time": 0,
+		},
 	}
 
 	return k8sReceiver
@@ -473,13 +478,18 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	result.Processors = cfgInput.generateProcessors()
 
 	result.Receivers = make(map[string]any)
-	k8sReceiverName := "filelog/kubernetes" //only one instance for now
-	result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver()
-
-	result.Connectors = cfgInput.generateConnectors()
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 
-	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
+	for _, tenant := range cfgInput.Tenants {
+		k8sReceiverName := fmt.Sprintf("filelog/kubernetes_%s", tenant.Name)
+		result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver()
+
+		rootExporter := fmt.Sprintf("logs/tenants_%s", tenant.Name)
+		result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines(tenant.Name, k8sReceiverName, rootExporter)
+
+	}
+
+	result.Connectors = cfgInput.generateConnectors()
 
 	result.Services.Telemetry = make(map[string]any)
 
