@@ -58,7 +58,7 @@ receivers:
 exporters:
     logging/debug:
         verbosity: detailed
-    otlp/collector_otlp-test-output:
+    otlp/collector_otlp-test-output-1:
         endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
         tls:
             insecure: true
@@ -127,7 +127,7 @@ service:
         logs/tenant_example-tenant_subscription_subscription-example-1:
             receivers: [routing/tenant_example-tenant_subscriptions]
             processors: [attributes/subscription_subscription-example-1]
-            exporters: [otlp/collector_otlp-test-output]
+            exporters: [otlp/collector_otlp-test-output-1]
         logs/tenant_example-tenant_subscription_subscription-example-2:
             receivers: [routing/tenant_example-tenant_subscriptions]
             processors: [attributes/subscription_subscription-example-2]
