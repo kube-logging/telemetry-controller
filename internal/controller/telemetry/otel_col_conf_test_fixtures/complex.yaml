@@ -1,5 +1,5 @@
 receivers:
-    filelog/kubernetes:
+    filelog/kubernetes_example-tenant:
         exclude:
             - /var/log/pods/*/otc-container/*.log
         include:
@@ -55,6 +55,9 @@ receivers:
               to: resource["k8s.pod.uid"]
               type: move
         start_at: end
+        retry_on_failure:
+            enabled: true
+            max_elapsed_time: 0
 exporters:
     logging/debug:
         verbosity: detailed
@@ -116,8 +119,8 @@ connectors:
               pipelines: [logs/tenant_example-tenant]
 service:
     pipelines:
-        logs/all:
-            receivers: [filelog/kubernetes]
+        logs/all_example-tenant:
+            receivers: [filelog/kubernetes_example-tenant]
             processors: [k8sattributes]
             exporters: [routing/tenants]
         logs/tenant_example-tenant:

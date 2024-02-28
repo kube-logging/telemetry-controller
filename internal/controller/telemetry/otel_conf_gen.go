@@ -280,8 +280,8 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines(tenantName, rootRecei
 	for _, tenant := range tenants {
 		// Generate a pipeline for the tenant
 		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenant.Name)
-		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenant.Name)
-		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{fmt.Sprintf("attributes/tenant_%s", tenant.Name)}, []string{tenantRoutingName})
+		tenantRoutingSubscriptions := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
+		namedPipelines[tenantPipelineName] = generatePipeline([]string{rootExporter}, []string{fmt.Sprintf("attributes/tenant_%s", tenant.Name)}, []string{tenantRoutingSubscriptions})
 
 		// Generate pipelines for the subscriptions for the tenant
 		for _, subscription := range cfgInput.TenantSubscriptionMap[tenant] {
@@ -302,7 +302,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines(tenantName, rootRecei
 				targetOutputNames = append(targetOutputNames, targetOutputName)
 
 			}
-			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{fmt.Sprintf("attributes/subscription_%s", subscription.Name)}, targetOutputNames)
+			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingSubscriptions}, []string{fmt.Sprintf("attributes/subscription_%s", subscription.Name)}, targetOutputNames)
 
 		}
 
@@ -480,13 +480,12 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	result.Receivers = make(map[string]any)
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 
+	rootExporter := "routing/tenants"
 	for _, tenant := range cfgInput.Tenants {
 		k8sReceiverName := fmt.Sprintf("filelog/kubernetes_%s", tenant.Name)
 		result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver()
 
-		rootExporter := fmt.Sprintf("logs/tenants_%s", tenant.Name)
 		result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines(tenant.Name, k8sReceiverName, rootExporter)
-
 	}
 
 	result.Connectors = cfgInput.generateConnectors()
