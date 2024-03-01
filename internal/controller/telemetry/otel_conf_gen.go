@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 )
 
@@ -481,11 +482,13 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 
 	rootExporter := "routing/tenants"
+	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 	for _, tenant := range cfgInput.Tenants {
 		k8sReceiverName := fmt.Sprintf("filelog/kubernetes_%s", tenant.Name)
 		result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver()
 
-		result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines(tenant.Name, k8sReceiverName, rootExporter)
+		namedPipelines := cfgInput.generateNamedPipelines(tenant.Name, k8sReceiverName, rootExporter)
+		maps.Copy(result.Services.Pipelines.NamedPipelines, namedPipelines)
 	}
 
 	result.Connectors = cfgInput.generateConnectors()

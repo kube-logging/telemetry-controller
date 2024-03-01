@@ -55,6 +55,9 @@ receivers:
               to: resource["k8s.pod.uid"]
               type: move
         start_at: end
+        retry_on_failure:
+          enabled: true
+          max_elapsed_time: 0
     filelog/kubernetes_example-tenant-B:
         exclude:
             - /var/log/pods/*/otc-container/*.log
@@ -111,6 +114,9 @@ receivers:
               to: resource["k8s.pod.uid"]
               type: move
         start_at: end
+        retry_on_failure:
+          enabled: true
+          max_elapsed_time: 0
 exporters:
     logging/debug:
         verbosity: detailed
@@ -133,11 +139,16 @@ processors:
             - action: insert
               key: subscription_name
               value: subscription-example-2
-    attributes/tenant_example-tenant:
+    attributes/tenant_example-tenant-A:
         actions:
             - action: insert
               key: tenant_name
-              value: example-tenant
+              value: example-tenant-A
+    attributes/tenant_example-tenant-B:
+        actions:
+            - action: insert
+              key: tenant_name
+              value: example-tenant-B
     k8sattributes:
         auth_type: serviceAccount
         extract:
@@ -160,39 +171,55 @@ processors:
                 - name: k8s.pod.name
                   from: resource_attribute
 connectors:
-    routing/tenant_example-tenant_subscriptions:
+    routing/tenant_example-tenant-A_subscriptions:
         table:
             - statement: route()
-              pipelines: [logs/tenant_example-tenant_subscription_subscription-example-1]
+              pipelines: [logs/tenant_example-tenant-A_subscription_subscription-example-1]
             - statement: 'route() '
-              pipelines: [logs/tenant_example-tenant_subscription_subscription-example-2]
-    routing/tenants_A:
+              pipelines: [logs/tenant_example-tenant-A_subscription_subscription-example-2]
+    routing/tenant_example-tenant-B_subscriptions:
+        table:
+            - statement: route()
+              pipelines: [logs/tenant_example-tenant-B_subscription_subscription-example-1]
+            - statement: 'route() '
+              pipelines: [logs/tenant_example-tenant-B_subscription_subscription-example-2]
+    routing/tenants:
         table:
             - statement: 'route() where '
-              pipelines: [logs/tenant_example-tenant]
-    routing/tenants_B:
-        table:
+              pipelines: [logs/tenant_example-tenant-A]
             - statement: 'route() where '
               pipelines: [logs/tenant_example-tenant-B]
 service:
     pipelines:
-        logs/all_A:
-            receivers: [filelog/kubernetes_A]
+        logs/all_example-tenant-A:
+            receivers: [filelog/kubernetes_example-tenant-A]
             processors: [k8sattributes]
-            exporters: [routing/tenants_A]
-        logs/all_B:
-            receivers: [filelog/kubernetes_B]
+            exporters: [routing/tenants]
+        logs/all_example-tenant-B:
+            receivers: [filelog/kubernetes_example-tenant-B]
             processors: [k8sattributes]
-            exporters: [routing/tenants_A]
-        logs/tenant_example-tenant:
+            exporters: [routing/tenants]
+        logs/tenant_example-tenant-A:
             receivers: [routing/tenants]
-            processors: [attributes/tenant_example-tenant]
-            exporters: [routing/tenant_example-tenant_subscriptions]
-        logs/tenant_example-tenant_subscription_subscription-example-1:
-            receivers: [routing/tenant_example-tenant_subscriptions]
+            processors: [attributes/tenant_example-tenant-A]
+            exporters: [routing/tenant_example-tenant-A_subscriptions]
+        logs/tenant_example-tenant-B:
+            receivers: [routing/tenants]
+            processors: [attributes/tenant_example-tenant-B]
+            exporters: [routing/tenant_example-tenant-B_subscriptions]
+        logs/tenant_example-tenant-A_subscription_subscription-example-1:
+            receivers: [routing/tenant_example-tenant-A_subscriptions]
             processors: [attributes/subscription_subscription-example-1]
             exporters: [otlp/collector_otlp-test-output-1]
-        logs/tenant_example-tenant_subscription_subscription-example-2:
-            receivers: [routing/tenant_example-tenant_subscriptions]
+        logs/tenant_example-tenant-A_subscription_subscription-example-2:
+            receivers: [routing/tenant_example-tenant-A_subscriptions]
+            processors: [attributes/subscription_subscription-example-2]
+            exporters: [otlp/collector_otlp-test-output-2]
+        logs/tenant_example-tenant-B_subscription_subscription-example-1:
+            receivers: [routing/tenant_example-tenant-B_subscriptions]
+            processors: [attributes/subscription_subscription-example-1]
+            exporters: [otlp/collector_otlp-test-output-1]
+        logs/tenant_example-tenant-B_subscription_subscription-example-2:
+            receivers: [routing/tenant_example-tenant-B_subscriptions]
             processors: [attributes/subscription_subscription-example-2]
             exporters: [otlp/collector_otlp-test-output-2]
