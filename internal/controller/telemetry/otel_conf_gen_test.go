@@ -20,10 +20,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
-
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,8 +31,8 @@ var otelColTargetYaml string
 
 func TestOtelColConfComplex(t *testing.T) {
 	// Required inputs
-	var subscriptions = []v1alpha1.Subscription{
-		{
+	var subscriptions = map[v1alpha1.NamespacedName]v1alpha1.Subscription{
+		{Name: "subscription-example-1", Namespace: "example-tenant-ns"}: {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "subscription-example-1",
 				Namespace: "example-tenant-ns",
@@ -48,7 +47,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				},
 			},
 		},
-		{
+		{Name: "subscription-example-2", Namespace: "example-tenant-ns"}: {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "subscription-example-2",
 				Namespace: "example-tenant-ns",
@@ -89,7 +88,6 @@ func TestOtelColConfComplex(t *testing.T) {
 				},
 			},
 		},
-
 		Outputs: []v1alpha1.OtelOutput{
 			{
 				ObjectMeta: metav1.ObjectMeta{
@@ -134,9 +132,16 @@ func TestOtelColConfComplex(t *testing.T) {
 	}
 	inputCfg.SubscriptionOutputMap = subscriptionOutputMap
 
-	inputCfg.TenantSubscriptionMap = map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{}
+	inputCfg.TenantSubscriptionMap = map[string][]v1alpha1.NamespacedName{}
 	tenant := inputCfg.Tenants[0]
-	inputCfg.TenantSubscriptionMap[tenant.NamespacedName()] = getSubscriptionNamesFromSubscription(inputCfg.Subscriptions)
+
+	keysOfMap := func(subsMap map[v1alpha1.NamespacedName]v1alpha1.Subscription) (names []v1alpha1.NamespacedName) {
+		for key, _ := range subsMap {
+			names = append(names, key)
+		}
+		return
+	}
+	inputCfg.TenantSubscriptionMap[tenant.Name] = keysOfMap(inputCfg.Subscriptions)
 
 	// IR
 	generatedIR := inputCfg.ToIntermediateRepresentation()
@@ -209,8 +214,7 @@ func Test_generateRootRoutingConnector(t *testing.T) {
 				tenants: []v1alpha1.Tenant{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "tenantA",
-							Namespace: "nsA",
+							Name: "tenantA",
 						},
 						Status: v1alpha1.TenantStatus{
 							LogSourceNamespaces: []string{"a", "b"},
@@ -218,8 +222,7 @@ func Test_generateRootRoutingConnector(t *testing.T) {
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "tenantB",
-							Namespace: "nsB",
+							Name: "tenantB",
 						},
 						Status: v1alpha1.TenantStatus{
 							LogSourceNamespaces: []string{"c", "d"},
@@ -254,9 +257,9 @@ func Test_generateRootRoutingConnector(t *testing.T) {
 func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *testing.T) {
 	type fields struct {
 		Tenants               []v1alpha1.Tenant
-		Subscriptions         []v1alpha1.Subscription
+		Subscriptions         map[v1alpha1.NamespacedName]v1alpha1.Subscription
 		Outputs               []v1alpha1.OtelOutput
-		TenantSubscriptionMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
+		TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
 		SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
 	}
 	type args struct {
@@ -272,18 +275,21 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 		{
 			name: "two_subscriptions",
 			fields: fields{
-				Tenants: []v1alpha1.Tenant{{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "tenantA",
-						Namespace: "nsA",
-					},
-					Spec: v1alpha1.TenantSpec{},
-					Status: v1alpha1.TenantStatus{
-						LogSourceNamespaces: []string{"a", "b"},
-					},
-				}},
-				Subscriptions: []v1alpha1.Subscription{
+				Tenants: []v1alpha1.Tenant{
 					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "tenantA",
+						},
+						Spec: v1alpha1.TenantSpec{},
+						Status: v1alpha1.TenantStatus{
+							LogSourceNamespaces: []string{"a", "b"},
+						},
+					}},
+				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
+					{
+						Name:      "subsA",
+						Namespace: "nsA",
+					}: {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "subsA",
 							Namespace: "nsA",
@@ -296,6 +302,9 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 						}, OTTL: `set(attributes["subscription"], "subscriptionA")`},
 					},
 					{
+						Name:      "subsB",
+						Namespace: "nsA",
+					}: {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "subsB",
 							Namespace: "nsA",
@@ -309,11 +318,8 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 					},
 				},
 				Outputs: []v1alpha1.OtelOutput{},
-				TenantSubscriptionMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
-					{
-						Namespace: "nsA",
-						Name:      "tenantA",
-					}: {
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					"tenantA": {
 						{
 							Namespace: "nsA",
 							Name:      "subsA",

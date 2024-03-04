@@ -106,7 +106,15 @@ var _ = BeforeSuite(func() {
 		Scheme: scheme.Scheme,
 	}
 
+	routeReconciler := &RouteReconciler{
+		Client: k8sClient,
+		Scheme: scheme.Scheme,
+	}
+
 	err = collectorReconciler.SetupWithManager(k8sManager)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = routeReconciler.SetupWithManager(k8sManager)
 	Expect(err).NotTo(HaveOccurred())
 
 	go func() {

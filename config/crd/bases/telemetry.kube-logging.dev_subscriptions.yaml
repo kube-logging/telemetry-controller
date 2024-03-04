@@ -20,6 +20,9 @@ spec:
     - jsonPath: .status.tenant
       name: Tenant
       type: string
+    - jsonPath: .status.outputs
+      name: Outputs
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -63,6 +66,18 @@ spec:
           status:
             description: SubscriptionStatus defines the observed state of Subscription
             properties:
+              outputs:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                  - name
+                  - namespace
+                  type: object
+                type: array
               tenant:
                 type: string
             type: object

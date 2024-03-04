@@ -96,6 +96,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&controller.RouteReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Route")
+		os.Exit(1)
+	}
 	if err = (&controller.CollectorReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

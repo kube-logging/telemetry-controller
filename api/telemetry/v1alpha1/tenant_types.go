@@ -24,11 +24,16 @@ type TenantSpec struct {
 	LogSourceNamespaceSelectors    []metav1.LabelSelector `json:"logSourceNamespaceSelectors,omitempty"`
 }
 
+const (
+	StateReady  = "ready"
+	StateFailed = "failed"
+)
+
 // TenantStatus defines the observed state of Tenant
 type TenantStatus struct {
-	Subscriptions       []string `json:"subscriptions,omitempty"`
-	LogSourceNamespaces []string `json:"logSourceNamespaces,omitempty"`
-	Collector           string   `json:"collector"`
+	Subscriptions       []NamespacedName `json:"subscriptions,omitempty"`
+	LogSourceNamespaces []string         `json:"logSourceNamespaces,omitempty"`
+	State               string           `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -36,7 +41,7 @@ type TenantStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Subscriptions",type=string,JSONPath=`.status.subscriptions`
 //+kubebuilder:printcolumn:name="Logsource namespaces",type=string,JSONPath=`.status.logSourceNamespaces`
-//+kubebuilder:printcolumn:name="Collector",type=string,JSONPath=`.status.collector`
+//+kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 
 // Tenant is the Schema for the tenants API
 type Tenant struct {
@@ -58,8 +63,4 @@ type TenantList struct {
 
 func init() {
 	SchemeBuilder.Register(&Tenant{}, &TenantList{})
-}
-
-func (t *Tenant) NamespacedName() NamespacedName {
-	return NamespacedName{Namespace: t.Namespace, Name: t.Name}
 }

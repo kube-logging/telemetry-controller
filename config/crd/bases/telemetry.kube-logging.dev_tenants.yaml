@@ -23,8 +23,8 @@ spec:
     - jsonPath: .status.logSourceNamespaces
       name: Logsource namespaces
       type: string
-    - jsonPath: .status.collector
-      name: Collector
+    - jsonPath: .status.state
+      name: State
       type: string
     name: v1alpha1
     schema:
@@ -153,18 +153,24 @@ spec:
           status:
             description: TenantStatus defines the observed state of Tenant
             properties:
-              collector:
-                type: string
               logSourceNamespaces:
                 items:
                   type: string
                 type: array
+              state:
+                type: string
               subscriptions:
                 items:
-                  type: string
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                  - name
+                  - namespace
+                  type: object
                 type: array
-            required:
-            - collector
             type: object
         type: object
     served: true
