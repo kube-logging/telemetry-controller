@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,7 +25,8 @@ type CollectorSpec struct {
 	// Namespace where OTel collector DaemonSet is deployed
 	ControlNamespace string `json:"controlNamespace"`
 	// Enables debug logging for the collector
-	Debug bool `json:"debug,omitempty"`
+	Debug     bool                        `json:"debug,omitempty"`
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // CollectorStatus defines the observed state of Collector
