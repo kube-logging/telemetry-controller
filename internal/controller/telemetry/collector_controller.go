@@ -201,7 +201,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 	}
 
-	if collector.Spec.Resources.Limits != nil {
+	if collector.Spec.Resources != nil && collector.Spec.Resources.Limits != nil {
 		if memoryLimit := collector.Spec.Resources.Limits.Memory(); memoryLimit != nil {
 			otelCollector.Spec.Resources.Limits = apiv1.ResourceList{
 				corev1.ResourceMemory: *memoryLimit,

@@ -120,6 +120,9 @@ processors:
             - action: insert
               key: loki.resource.labels
               value: k8s.pod.name, k8s.namespace.name
+    memory_limiter:
+        check_interval: "1s"
+        limit_mib: 1998
 connectors:
     routing/subscription_example-tenant-ns_subscription-example-1_outputs:
         table:
@@ -143,7 +146,7 @@ service:
     pipelines:
         logs/all:
             receivers: [filelog/kubernetes]
-            processors: [k8sattributes]
+            processors: [memory_limiter, k8sattributes]
             exporters: [routing/tenants]
         logs/output_example-tenant-ns_subscription-example-1_collector_loki-test-output:
             receivers: [routing/subscription_example-tenant-ns_subscription-example-1_outputs]
@@ -157,13 +160,13 @@ service:
             exporters: [otlp/collector_otlp-test-output-2]
         logs/tenant_example-tenant:
             receivers: [routing/tenants]
-            processors: [attributes/tenant_example-tenant]
+            processors: [memory_limiter, attributes/tenant_example-tenant]
             exporters: [routing/tenant_example-tenant_subscriptions]
         logs/tenant_example-tenant_subscription_example-tenant-ns_subscription-example-1:
             receivers: [routing/tenant_example-tenant_subscriptions]
-            processors: [attributes/subscription_subscription-example-1]
+            processors: [memory_limiter, attributes/subscription_subscription-example-1]
             exporters: [routing/subscription_example-tenant-ns_subscription-example-1_outputs]
         logs/tenant_example-tenant_subscription_example-tenant-ns_subscription-example-2:
             receivers: [routing/tenant_example-tenant_subscriptions]
-            processors: [attributes/subscription_subscription-example-2]
+            processors: [memory_limiter, attributes/subscription_subscription-example-2]
             exporters: [routing/subscription_example-tenant-ns_subscription-example-2_outputs]
