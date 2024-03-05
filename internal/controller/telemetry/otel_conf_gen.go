@@ -20,6 +20,8 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type OtelColConfigInput struct {
@@ -27,6 +29,7 @@ type OtelColConfigInput struct {
 	Tenants       []v1alpha1.Tenant
 	Subscriptions map[v1alpha1.NamespacedName]v1alpha1.Subscription
 	Outputs       []v1alpha1.OtelOutput
+	MemoryLimit   *corev1.ResourceRequirements
 
 	// Subscriptions map, where the key is the Tenants' name, value is a slice of subscriptions' namespaced name
 	TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
@@ -204,7 +207,23 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	return connectors
 
 }
+func (cfgInput *OtelColConfigInput) generateProcessorMemoryLimiter() map[string]any {
+	var memoryLimiter = make(map[string]any)
 
+	if memLimit := cfgInput.MemoryLimit.Limits[corev1.ResourceLimitsMemory]; !memLimit.IsZero() {
+		memoryLimiter["check_interval"] = "1s"
+		// From memorylimiterprocessor's README
+		// > Note that typically the total memory usage of process will be about 50MiB higher than this value.
+		// Because of this, 50MiB will be subtracted from memLimit
+		limit := memLimit
+		memoryOverhead := resource.MustParse("50Mi")
+		limit.Sub(memoryOverhead)
+
+		memoryLimiter["limit_mib"] = limit.Value() / 1024 / 1024
+	}
+
+	return memoryLimiter
+}
 func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	var processors = make(map[string]any)
 
@@ -218,6 +237,11 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	for _, subscription := range cfgInput.Subscriptions {
 		processors[fmt.Sprintf("attributes/subscription_%s", subscription.Name)] = generateSubscriptionAttributeProcessor(subscription)
 	}
+
+	if cfgInput.MemoryLimit != nil {
+		processors["memory_limiter"] = cfgInput.generateProcessorMemoryLimiter()
+	}
+
 	return processors
 
 }
@@ -460,6 +484,17 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
+
+	if _, ok := result.Processors["memory_limiter"]; ok {
+		for name, namedPipeline := range result.Services.Pipelines.NamedPipelines {
+			// From memorylimiterprocessor's README:
+			// > For the memory_limiter processor, the best practice is to add it as the first processor in a pipeline.
+			processors := []string{"memory_limiter"}
+			processors = append(processors, namedPipeline.Processors...)
+			namedPipeline.Processors = processors
+			result.Services.Pipelines.NamedPipelines[name] = namedPipeline
+		}
+	}
 
 	result.Services.Telemetry = make(map[string]any)
 
