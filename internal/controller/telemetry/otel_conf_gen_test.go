@@ -136,7 +136,7 @@ func TestOtelColConfComplex(t *testing.T) {
 	tenant := inputCfg.Tenants[0]
 
 	keysOfMap := func(subsMap map[v1alpha1.NamespacedName]v1alpha1.Subscription) (names []v1alpha1.NamespacedName) {
-		for key, _ := range subsMap {
+		for key := range subsMap {
 			names = append(names, key)
 		}
 		return

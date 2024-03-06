@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 	"time"
 
 	"emperror.dev/errors"
@@ -437,25 +436,6 @@ func normalizeStringSlice(inputList []string) []string {
 		}
 	}
 	slices.Sort(uniqueList)
-
-	return uniqueList
-}
-
-func normalizeNamespacedNameSlice(inputList []v1alpha1.NamespacedName) []v1alpha1.NamespacedName {
-	allKeys := make(map[v1alpha1.NamespacedName]bool)
-	uniqueList := []v1alpha1.NamespacedName{}
-	for _, item := range inputList {
-		if _, value := allKeys[item]; !value {
-			allKeys[item] = true
-			uniqueList = append(uniqueList, item)
-		}
-	}
-
-	cmp := func(a, b v1alpha1.NamespacedName) int {
-		return strings.Compare(a.String(), b.String())
-	}
-
-	slices.SortFunc(uniqueList, cmp)
 
 	return uniqueList
 }
