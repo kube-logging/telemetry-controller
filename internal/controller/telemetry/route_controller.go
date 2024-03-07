@@ -336,16 +336,12 @@ func (r *RouteReconciler) getSubscriptionsReferencingTenantButNotSelected(ctx co
 	var subscriptionsToDisown []v1alpha1.Subscription
 
 	for _, subscriptionReferencing := range subscriptionsReferencing.Items {
-		selected := false
 
-		for _, selectedSubscription := range selectedSubscriptions {
-			if subscriptionReferencing.Name == selectedSubscription.Name {
-				selected = true
-				break
-			}
-		}
+		idx := slices.IndexFunc(selectedSubscriptions, func(selected v1alpha1.Subscription) bool {
+			return reflect.DeepEqual(subscriptionReferencing.NamespacedName(), selected.NamespacedName())
+		})
 
-		if !selected {
+		if idx == -1 {
 			subscriptionsToDisown = append(subscriptionsToDisown, subscriptionReferencing)
 		}
 
