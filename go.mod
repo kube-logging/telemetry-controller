@@ -27,6 +27,8 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/siliconbrain/go-mapseqs v0.2.0 // indirect
+	github.com/siliconbrain/go-seqs v0.1.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/wayneashleyberry/terminal-dimensions v1.1.0 // indirect
 	go.opentelemetry.io/collector/featuregate v0.77.0 // indirect

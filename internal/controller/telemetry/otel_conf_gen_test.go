@@ -21,6 +21,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"github.com/siliconbrain/go-mapseqs/mapseqs"
+	"github.com/siliconbrain/go-seqs/seqs"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -135,13 +137,7 @@ func TestOtelColConfComplex(t *testing.T) {
 	inputCfg.TenantSubscriptionMap = map[string][]v1alpha1.NamespacedName{}
 	tenant := inputCfg.Tenants[0]
 
-	keysOfMap := func(subsMap map[v1alpha1.NamespacedName]v1alpha1.Subscription) (names []v1alpha1.NamespacedName) {
-		for key := range subsMap {
-			names = append(names, key)
-		}
-		return
-	}
-	inputCfg.TenantSubscriptionMap[tenant.Name] = keysOfMap(inputCfg.Subscriptions)
+	inputCfg.TenantSubscriptionMap[tenant.Name] = seqs.ToSlice(mapseqs.KeysOf(inputCfg.Subscriptions))
 
 	// IR
 	generatedIR := inputCfg.ToIntermediateRepresentation()

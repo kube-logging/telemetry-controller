@@ -139,6 +139,10 @@ github.com/prometheus/procfs v0.11.1 h1:xRC8Iq1yyca5ypa9n1EZnWZkt7dwcoRPQwX/5gwa
 github.com/prometheus/procfs v0.11.1/go.mod h1:eesXgaPo1q7lBpVMoMy0ZOFTth9hBn4W/y0/p/ScXhY=
 github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
+github.com/siliconbrain/go-mapseqs v0.2.0 h1:TQrWhpFMZG6kr8KoNDJAqT83h9fM3DG1C0HsfkAfBNU=
+github.com/siliconbrain/go-mapseqs v0.2.0/go.mod h1:IE8lGocwpiXDwm7hWXKz4keUvgYIjApJY+ZAiFwpy8U=
+github.com/siliconbrain/go-seqs v0.1.0 h1:6esr7kbXi+zZ+NKM3cdSPBPRoPpxbQw7DBt4g/RGpA4=
+github.com/siliconbrain/go-seqs v0.1.0/go.mod h1:C5Kz1fQpLUN6aSGKh4uFFyRSMJBxZtii/3+iRf5MaAk=
 github.com/spf13/cast v1.6.0 h1:GEiTHELF+vaR5dhz3VqZfFSzZjYbgeKDpBxQVS4GYJ0=
 github.com/spf13/cast v1.6.0/go.mod h1:ancEpBxwJDODSW/UG4rDrAqiKolqNNh2DX3mk86cAdo=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
