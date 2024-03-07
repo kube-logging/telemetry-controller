@@ -15,13 +15,15 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // CollectorSpec defines the desired state of Collector
 type CollectorSpec struct {
-	TenantSelector   metav1.LabelSelector `json:"tenantSelector,omitempty"`
-	ControlNamespace string               `json:"controlNamespace"`
+	TenantSelector   metav1.LabelSelector         `json:"tenantSelector,omitempty"`
+	ControlNamespace string                       `json:"controlNamespace"`
+	Resources        *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // CollectorStatus defines the observed state of Collector
