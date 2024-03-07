@@ -133,9 +133,8 @@ var _ = Describe("Telemetry controller integration test", func() {
 						},
 					},
 					Status: v1alpha1.TenantStatus{
-						Subscriptions:       []string{"asd", "bsd"},
+						Subscriptions:       []v1alpha1.NamespacedName{{Name: "asd", Namespace: "bsd"}},
 						LogSourceNamespaces: []string{},
-						Collector:           "asd",
 					},
 				},
 				{
@@ -159,9 +158,8 @@ var _ = Describe("Telemetry controller integration test", func() {
 						},
 					},
 					Status: v1alpha1.TenantStatus{
-						Subscriptions:       []string{"asd", "bsd"},
+						Subscriptions:       []v1alpha1.NamespacedName{{Name: "asd", Namespace: "bsd"}},
 						LogSourceNamespaces: []string{},
-						Collector:           "asd",
 					},
 				},
 			}

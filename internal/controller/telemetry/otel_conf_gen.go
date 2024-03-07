@@ -16,21 +16,20 @@ package telemetry
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"gopkg.in/yaml.v3"
 )
 
-// TODO move this to its appropriate place
 type OtelColConfigInput struct {
+	// These must only include resources that are selected by the collector, tenant labelselectors, and listed outputs in the subscriptions
 	Tenants       []v1alpha1.Tenant
-	Subscriptions []v1alpha1.Subscription
+	Subscriptions map[v1alpha1.NamespacedName]v1alpha1.Subscription
 	Outputs       []v1alpha1.OtelOutput
 
-	// Subscriptions map, where the key is the Tenants' namespaced name, value is a slice of subscriptions' namespaced name
-	TenantSubscriptionMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
+	// Subscriptions map, where the key is the Tenants' name, value is a slice of subscriptions' namespaced name
+	TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
 	SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
 }
 
@@ -182,15 +181,7 @@ func (cfgInput *OtelColConfigInput) generateRoutingConnectorForTenantsSubscripti
 
 	for index, subscriptionRef := range subscriptionNames {
 
-		subscriptionIdx := slices.IndexFunc(cfgInput.Subscriptions, func(output v1alpha1.Subscription) bool {
-			return output.Name == subscriptionRef.Name && output.Namespace == subscriptionRef.Namespace
-		})
-
-		if subscriptionIdx == -1 {
-			continue
-		}
-
-		subscription := cfgInput.Subscriptions[subscriptionIdx]
+		subscription := cfgInput.Subscriptions[subscriptionRef]
 
 		tableItem := buildRoutingTableItemForSubscription(tenantName, subscription, index)
 		rc.AddRoutingConnectorTableElem(tableItem)
@@ -206,7 +197,7 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	connectors[rootRoutingConnector.Name] = rootRoutingConnector
 
 	for _, tenant := range cfgInput.Tenants {
-		rc := cfgInput.generateRoutingConnectorForTenantsSubscription(tenant.Name, cfgInput.TenantSubscriptionMap[tenant.NamespacedName()])
+		rc := cfgInput.generateRoutingConnectorForTenantsSubscription(tenant.Name, cfgInput.TenantSubscriptionMap[tenant.Name])
 		connectors[rc.Name] = rc
 	}
 
@@ -271,38 +262,27 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 
 	namedPipelines["logs/all"] = generateRootPipeline()
 
-	tenants := []v1alpha1.NamespacedName{}
+	tenants := []string{}
 	for tenant := range cfgInput.TenantSubscriptionMap {
 		tenants = append(tenants, tenant)
 	}
 
 	for _, tenant := range tenants {
 		// Generate a pipeline for the tenant
-		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenant.Name)
-		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenant.Name)
-		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{fmt.Sprintf("attributes/tenant_%s", tenant.Name)}, []string{tenantRoutingName})
+		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenant)
+		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenant)
+		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{fmt.Sprintf("attributes/tenant_%s", tenant)}, []string{tenantRoutingName})
 
 		// Generate pipelines for the subscriptions for the tenant
 		for _, subscription := range cfgInput.TenantSubscriptionMap[tenant] {
 			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s", tenantPipelineName, subscription.Name)
 
-			targetOutputNames := []string{}
+			targetExporterNames := []string{}
 			for _, outputRef := range cfgInput.SubscriptionOutputMap[subscription] {
-				outputIdx := slices.IndexFunc(cfgInput.Outputs, func(output v1alpha1.OtelOutput) bool {
-					return output.Name == outputRef.Name && output.Namespace == outputRef.Namespace
-				})
-
-				if outputIdx == -1 {
-					continue
-				}
-
-				targetOutputName := fmt.Sprintf("otlp/%s_%s", outputRef.Namespace, outputRef.Name)
-
-				targetOutputNames = append(targetOutputNames, targetOutputName)
-
+				targetExporterName := fmt.Sprintf("otlp/%s_%s", outputRef.Namespace, outputRef.Name)
+				targetExporterNames = append(targetExporterNames, targetExporterName)
 			}
-			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{fmt.Sprintf("attributes/subscription_%s", subscription.Name)}, targetOutputNames)
-
+			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{fmt.Sprintf("attributes/subscription_%s", subscription.Name)}, targetExporterNames)
 		}
 
 		// Add default (catch all) pipelines
