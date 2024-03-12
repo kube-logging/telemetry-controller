@@ -110,6 +110,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		TenantSubscriptionMap: tenantSubscriptionMap,
 		SubscriptionOutputMap: subscriptionOutputMap,
 		Debug:                 collector.Spec.Debug,
+		MemoryLimiter:         *collector.Spec.MemoryLimiter,
 	}
 
 	return otelConfigInput, nil
@@ -128,13 +129,13 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	logger := log.FromContext(ctx, "collector", req.Name)
 
 	collector := &v1alpha1.Collector{}
-
 	logger.Info("Reconciling collector")
 
 	if err := r.Get(ctx, req.NamespacedName, collector); client.IgnoreNotFound(err) != nil {
 		return ctrl.Result{}, err
 	}
 
+	collector.Spec.SetDefaults()
 	originalCollectorStatus := collector.Status.DeepCopy()
 
 	otelConfigInput, err := r.buildConfigInputForCollector(ctx, collector)
@@ -201,17 +202,12 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 	}
 
-	if collector.Spec.Resources != nil && collector.Spec.Resources.Limits != nil {
-		if memoryLimit := collector.Spec.Resources.Limits.Memory(); memoryLimit != nil {
-			otelCollector.Spec.Resources.Limits = apiv1.ResourceList{
-				corev1.ResourceMemory: *memoryLimit,
-			}
-			// Calculate 80% of the specified memory limit for GOMEMLIMIT
-			goMemLimitPercent := 0.8
-			goMemLimitValue := int64(math.Round(float64(memoryLimit.Value()) * goMemLimitPercent))
-			goMemLimit := resource.NewQuantity(goMemLimitValue, resource.BinarySI)
-			otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{Name: "GOMEMLIMIT", Value: goMemLimit.String()})
-		}
+	if memoryLimit := collector.Spec.GetMemoryLimit(); memoryLimit != nil {
+		// Calculate 80% of the specified memory limit for GOMEMLIMIT
+		goMemLimitPercent := 0.8
+		goMemLimitValue := int64(math.Round(float64(memoryLimit.Value()) * goMemLimitPercent))
+		goMemLimit := resource.NewQuantity(goMemLimitValue, resource.BinarySI)
+		otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{Name: "GOMEMLIMIT", Value: goMemLimit.String()})
 	}
 
 	if err := ctrl.SetControllerReference(collector, &otelCollector, r.Scheme); err != nil {

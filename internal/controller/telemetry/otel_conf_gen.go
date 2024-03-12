@@ -26,8 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type OtelColConfigInput struct {
@@ -35,7 +33,7 @@ type OtelColConfigInput struct {
 	Tenants       []v1alpha1.Tenant
 	Subscriptions map[v1alpha1.NamespacedName]v1alpha1.Subscription
 	Outputs       []v1alpha1.OtelOutput
-	MemoryLimit   *corev1.ResourceRequirements
+	MemoryLimiter v1alpha1.MemoryLimiter
 
 	// Subscriptions map, where the key is the Tenants' name, value is a slice of subscriptions' namespaced name
 	TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
@@ -290,32 +288,34 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	return connectors
 
 }
+
 func (cfgInput *OtelColConfigInput) generateProcessorMemoryLimiter() map[string]any {
 	var memoryLimiter = make(map[string]any)
 
-	if memLimit := cfgInput.MemoryLimit.Limits[corev1.ResourceLimitsMemory]; !memLimit.IsZero() {
-		memoryLimiter["check_interval"] = "1s"
-		// From memorylimiterprocessor's README
-		// > Note that typically the total memory usage of process will be about 50MiB higher than this value.
-		// Because of this, 50MiB will be subtracted from memLimit
-		limit := memLimit
-		memoryOverhead := resource.MustParse("50Mi")
-		limit.Sub(memoryOverhead)
+	memoryLimiter["check_interval"] = cfgInput.MemoryLimiter.CheckInterval.String()
+	if cfgInput.MemoryLimiter.MemoryLimitMiB != 0 {
+		memoryLimiter["limit_mib"] = cfgInput.MemoryLimiter.MemoryLimitMiB
 
-		memoryLimiter["limit_mib"] = limit.Value() / 1024 / 1024
 	}
-
+	if cfgInput.MemoryLimiter.MemorySpikeLimitMiB != 0 {
+		memoryLimiter["spike_limit_mib"] = cfgInput.MemoryLimiter.MemorySpikeLimitMiB
+	}
+	if cfgInput.MemoryLimiter.MemoryLimitPercentage != 0 {
+		memoryLimiter["limit_percentage"] = cfgInput.MemoryLimiter.MemoryLimitPercentage
+	}
+	if cfgInput.MemoryLimiter.MemorySpikePercentage != 0 {
+		memoryLimiter["spike_limit_percentage"] = cfgInput.MemoryLimiter.MemorySpikePercentage
+	}
 	return memoryLimiter
 }
+
 func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	var processors = make(map[string]any)
 
 	k8sProcessorName := "k8sattributes"
 	processors[k8sProcessorName] = cfgInput.generateDefaultKubernetesProcessor()
 
-	if cfgInput.MemoryLimit != nil {
-		processors["memory_limiter"] = cfgInput.generateProcessorMemoryLimiter()
-	}
+	processors["memory_limiter"] = cfgInput.generateProcessorMemoryLimiter()
 
 	for _, tenant := range cfgInput.Tenants {
 		processors[fmt.Sprintf("attributes/tenant_%s", tenant.Name)] = generateTenantAttributeProcessor(tenant)
@@ -331,6 +331,7 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 			processors[fmt.Sprintf("resource/loki_exporter_%s", output.Name)] = generateLokiExporterResourceProcessor()
 		}
 	}
+
 	return processors
 
 }

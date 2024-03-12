@@ -18,6 +18,7 @@ import (
 	_ "embed"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
@@ -25,8 +26,6 @@ import (
 	"github.com/siliconbrain/go-seqs/seqs"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -146,10 +145,10 @@ func TestOtelColConfComplex(t *testing.T) {
 				},
 			},
 		},
-		MemoryLimit: &v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				v1.ResourceLimitsMemory: resource.MustParse("2Gi"),
-			},
+		MemoryLimiter: v1alpha1.MemoryLimiter{
+			CheckInterval:         1 * time.Second,
+			MemoryLimitPercentage: 75,
+			MemorySpikePercentage: 25,
 		},
 	}
 
