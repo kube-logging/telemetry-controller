@@ -58,6 +58,10 @@ receivers:
 exporters:
     logging/debug:
         verbosity: detailed
+    loki/collector_loki-test-output:
+        endpoint: loki.example-tenant-ns.svc.cluster.local:4317
+        tls:
+            insecure: true
     otlp/collector_otlp-test-output:
         endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
         tls:
@@ -67,6 +71,11 @@ exporters:
         tls:
             insecure: true
 processors:
+    attributes/loki_exporter_loki-test-output:
+        actions:
+            - action: insert
+              key: loki.tenant
+              from_attribute: tenant_name
     attributes/subscription_subscription-example-1:
         actions:
             - action: insert
@@ -103,7 +112,20 @@ processors:
                   from: resource_attribute
                 - name: k8s.pod.name
                   from: resource_attribute
+    resource/loki_exporter_loki-test-output:
+        attributes:
+            - action: insert
+              key: loki.resource.labels
+              value: k8s.pod.name, k8s.namespace.name
 connectors:
+    routing/subscription_subscription-example-1_outputs:
+        table:
+            - statement: route()
+              pipelines: [logs/output_example-tenant-ns_subscription-example-1_collector_loki-test-output, logs/output_example-tenant-ns_subscription-example-1_collector_otlp-test-output]
+    routing/subscription_subscription-example-2_outputs:
+        table:
+            - statement: route()
+              pipelines: [logs/output_example-tenant-ns_subscription-example-2_collector_otlp-test-output-2]
     routing/tenant_example-tenant_subscriptions:
         table:
             - statement: route()
@@ -120,6 +142,16 @@ service:
             receivers: [filelog/kubernetes]
             processors: [k8sattributes]
             exporters: [routing/tenants]
+        logs/output_example-tenant-ns_subscription-example-1_collector_loki-test-output:
+            receivers: [routing/subscription_subscription-example-1_outputs]
+            processors: [attributes/loki_exporter_loki-test-output, resource/loki_exporter_loki-test-output]
+            exporters: [loki/collector_loki-test-output]
+        logs/output_example-tenant-ns_subscription-example-1_collector_otlp-test-output:
+            receivers: [routing/subscription_subscription-example-1_outputs]
+            exporters: [otlp/collector_otlp-test-output]
+        logs/output_example-tenant-ns_subscription-example-2_collector_otlp-test-output-2:
+            receivers: [routing/subscription_subscription-example-2_outputs]
+            exporters: [otlp/collector_otlp-test-output-2]
         logs/tenant_example-tenant:
             receivers: [routing/tenants]
             processors: [attributes/tenant_example-tenant]
@@ -127,8 +159,8 @@ service:
         logs/tenant_example-tenant_subscription_subscription-example-1:
             receivers: [routing/tenant_example-tenant_subscriptions]
             processors: [attributes/subscription_subscription-example-1]
-            exporters: [otlp/collector_otlp-test-output]
+            exporters: [routing/subscription_subscription-example-1_outputs]
         logs/tenant_example-tenant_subscription_subscription-example-2:
             receivers: [routing/tenant_example-tenant_subscriptions]
             processors: [attributes/subscription_subscription-example-2]
-            exporters: [otlp/collector_otlp-test-output-2]
+            exporters: [routing/subscription_subscription-example-2_outputs]

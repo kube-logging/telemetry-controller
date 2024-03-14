@@ -39,6 +39,212 @@ spec:
           spec:
             description: OtelOutputSpec defines the desired state of OtelOutput
             properties:
+              loki:
+                properties:
+                  auth:
+                    description: Auth configuration for outgoing HTTP calls.
+                    type: string
+                  compression:
+                    description: The compression key for supported compression types
+                      within collector.
+                    type: string
+                  disable_keep_alives:
+                    description: |-
+                      DisableKeepAlives, if true, disables HTTP keep-alives and will only use the connection to the server
+                      for a single HTTP request.
+
+
+                      WARNING: enabling this option can result in significant overhead establishing a new HTTP(S)
+                      connection for every request. Before enabling this option please consider whether changes
+                      to idle connection settings can achieve your goal.
+                    type: boolean
+                  endpoint:
+                    description: 'The target URL to send data to (e.g.: http://some.url:9411/v1/traces).'
+                    type: string
+                  headers:
+                    additionalProperties:
+                      description: |-
+                        String alias that is marshaled and printed in an opaque way.
+                        To recover the original value, cast it to a string.
+                      type: string
+                    description: |-
+                      Additional headers attached to each HTTP request sent by the client.
+                      Existing header values are overwritten if collision happens.
+                      Header values are opaque since they may be sensitive.
+                    type: object
+                  http2_ping_timeout:
+                    description: |-
+                      HTTP2PingTimeout if there's no response to the ping within the configured value, the connection will be closed.
+                      If not set or set to 0, it defaults to 15s.
+                    format: int64
+                    type: integer
+                  http2_read_idle_timeout:
+                    description: |-
+                      This is needed in case you run into
+                      https://github.com/golang/go/issues/59690
+                      https://github.com/golang/go/issues/36026
+                      HTTP2ReadIdleTimeout if the connection has been idle for the configured value send a ping frame for health check
+                      0s means no health check will be performed.
+                    format: int64
+                    type: integer
+                  idle_conn_timeout:
+                    description: |-
+                      IdleConnTimeout is the maximum amount of time a connection will remain open before closing itself.
+                      There's an already set value, and we want to override it only if an explicit value provided
+                    format: int64
+                    type: integer
+                  max_conns_per_host:
+                    description: |-
+                      MaxConnsPerHost limits the total number of connections per host, including connections in the dialing,
+                      active, and idle states.
+                      There's an already set value, and we want to override it only if an explicit value provided
+                    type: integer
+                  max_idle_conns:
+                    description: |-
+                      MaxIdleConns is used to set a limit to the maximum idle HTTP connections the client can keep open.
+                      There's an already set value, and we want to override it only if an explicit value provided
+                    type: integer
+                  max_idle_conns_per_host:
+                    description: |-
+                      MaxIdleConnsPerHost is used to set a limit to the maximum idle HTTP connections the host can keep open.
+                      There's an already set value, and we want to override it only if an explicit value provided
+                    type: integer
+                  proxy_url:
+                    description: ProxyURL setting for the collector
+                    type: string
+                  read_buffer_size:
+                    description: ReadBufferSize for HTTP client. See http.Transport.ReadBufferSize.
+                    type: integer
+                  retry_on_failure:
+                    description: |-
+                      BackOffConfig defines configuration for retrying batches in case of export failure.
+                      The current supported strategy is exponential backoff.
+                    properties:
+                      enabled:
+                        description: Enabled indicates whether to not retry sending
+                          batches in case of export failure.
+                        type: boolean
+                      initial_interval:
+                        description: InitialInterval the time to wait after the first
+                          failure before retrying.
+                        format: int64
+                        type: integer
+                      max_elapsed_time:
+                        description: |-
+                          MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
+                          Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                        format: int64
+                        type: integer
+                      max_interval:
+                        description: |-
+                          MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
+                          consecutive retries will always be `MaxInterval`.
+                        format: int64
+                        type: integer
+                      multiplier:
+                        description: Multiplier is the value multiplied by the backoff
+                          interval bounds
+                        type: string
+                      randomization_factor:
+                        description: |-
+                          RandomizationFactor is a random factor used to calculate next backoffs
+                          Randomized interval = RetryInterval * (1 ± RandomizationFactor)
+                        type: string
+                    type: object
+                  sending_queue:
+                    description: QueueSettings defines configuration for queueing
+                      batches before sending to the consumerSender.
+                    properties:
+                      enabled:
+                        description: Enabled indicates whether to not enqueue batches
+                          before sending to the consumerSender.
+                        type: boolean
+                      num_consumers:
+                        description: NumConsumers is the number of consumers from
+                          the queue.
+                        type: integer
+                      queue_size:
+                        description: QueueSize is the maximum number of batches allowed
+                          in queue at a given time.
+                        type: integer
+                      storage:
+                        description: |-
+                          StorageID if not empty, enables the persistent storage and uses the component specified
+                          as a storage extension for the persistent queue
+                        type: string
+                    type: object
+                  timeout:
+                    description: Timeout parameter configures `http.Client.Timeout`.
+                    format: int64
+                    type: integer
+                  tls:
+                    description: TLSSetting struct exposes TLS client configuration.
+                    properties:
+                      ca_file:
+                        description: |-
+                          Path to the CA cert. For a client this verifies the server certificate.
+                          For a server this verifies client certificates. If empty uses system root CA.
+                          (optional)
+                        type: string
+                      ca_pem:
+                        description: In memory PEM encoded cert. (optional)
+                        type: string
+                      cert_file:
+                        description: Path to the TLS cert to use for TLS required
+                          connections. (optional)
+                        type: string
+                      cert_pem:
+                        description: In memory PEM encoded TLS cert to use for TLS
+                          required connections. (optional)
+                        type: string
+                      insecure:
+                        description: |-
+                          In gRPC when set to true, this is used to disable the client transport security.
+                          See https://godoc.org/google.golang.org/grpc#WithInsecure.
+                          In HTTP, this disables verifying the server's certificate chain and host name
+                          (InsecureSkipVerify in the tls Config). Please refer to
+                          https://godoc.org/crypto/tls#Config for more information.
+                          (optional, default false)
+                        type: boolean
+                      insecure_skip_verify:
+                        description: InsecureSkipVerify will enable TLS but not verify
+                          the certificate.
+                        type: boolean
+                      key_file:
+                        description: Path to the TLS key to use for TLS required connections.
+                          (optional)
+                        type: string
+                      key_pem:
+                        description: In memory PEM encoded TLS key to use for TLS
+                          required connections. (optional)
+                        type: string
+                      max_version:
+                        description: |-
+                          MaxVersion sets the maximum TLS version that is acceptable.
+                          If not set, refer to crypto/tls for defaults. (optional)
+                        type: string
+                      min_version:
+                        description: |-
+                          MinVersion sets the minimum TLS version that is acceptable.
+                          If not set, TLS 1.2 will be used. (optional)
+                        type: string
+                      reload_interval:
+                        description: |-
+                          ReloadInterval specifies the duration after which the certificate will be reloaded
+                          If not set, it will never be reloaded (optional)
+                        format: int64
+                        type: integer
+                      server_name_override:
+                        description: |-
+                          ServerName requested by client for virtual hosting.
+                          This sets the ServerName in the TLSConfig. Please refer to
+                          https://godoc.org/crypto/tls#Config for more information. (optional)
+                        type: string
+                    type: object
+                  write_buffer_size:
+                    description: WriteBufferSize for HTTP client. See http.Transport.WriteBufferSize.
+                    type: integer
+                type: object
               otlp:
                 description: Foo is an example field of OtelOutput. Edit oteloutput_types.go
                   to remove/update

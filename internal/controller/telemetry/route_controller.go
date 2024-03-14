@@ -73,7 +73,7 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 		tenant.Status.State = v1alpha1.StateFailed
 		logger.Error(errors.WithStack(err), "failed to get subscriptions for tenant", "tenant", tenant.Name)
-		if updateErr := r.Status().Update(ctx, tenant); err != nil {
+		if updateErr := r.Status().Update(ctx, tenant); updateErr != nil {
 			logger.Error(errors.WithStack(updateErr), "failed update tenant status", "tenant", tenant.Name)
 			return ctrl.Result{}, err
 		}
@@ -111,7 +111,7 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		subscription.Status.Outputs = validOutputs
 
 		if !reflect.DeepEqual(originalSubscriptionStatus, subscription.Status) {
-			if updateErr := r.Status().Update(ctx, &subscription); err != nil {
+			if updateErr := r.Status().Update(ctx, &subscription); updateErr != nil {
 				logger.Error(errors.WithStack(updateErr), "failed update subscription status", "subscription", subscription.NamespacedName().String())
 				return ctrl.Result{}, err
 			}
@@ -122,7 +122,7 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if err != nil {
 		tenant.Status.State = v1alpha1.StateFailed
 		logger.Error(errors.WithStack(err), "failed to get logsource namespaces for tenant", "tenant", tenant.Name)
-		if updateErr := r.Status().Update(ctx, tenant); err != nil {
+		if updateErr := r.Status().Update(ctx, tenant); updateErr != nil {
 			logger.Error(errors.WithStack(updateErr), "failed update tenant status", "tenant", tenant.Name)
 			return ctrl.Result{}, err
 		}

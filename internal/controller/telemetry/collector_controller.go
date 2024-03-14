@@ -106,6 +106,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		Outputs:               outputs,
 		TenantSubscriptionMap: tenantSubscriptionMap,
 		SubscriptionOutputMap: subscriptionOutputMap,
+		Debug:                 collector.Spec.Debug,
 	}
 
 	return otelConfigInput, nil
