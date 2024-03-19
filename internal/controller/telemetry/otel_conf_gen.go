@@ -341,6 +341,11 @@ func generateLokiExporterAttributeProcessor() AttributesProcessor {
 				Key:           "loki.tenant",
 				FromAttribute: "tenant_name",
 			},
+			{
+				Action: "insert",
+				Key:    "loki.attribute.labels",
+				Value:  "tenant_name",
+			},
 		},
 	}
 	return processor
