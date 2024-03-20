@@ -76,6 +76,9 @@ processors:
             - action: insert
               key: loki.tenant
               from_attribute: tenant_name
+            - action: insert
+              key: loki.attribute.labels
+              value: tenant_name
     attributes/subscription_subscription-example-1:
         actions:
             - action: insert
