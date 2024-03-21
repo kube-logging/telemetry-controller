@@ -7,15 +7,15 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    tenant: loki-1
-  name: tenant-loki-1
+    tenant: demo-1
+  name: tenant-demo-1
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    tenant: loki-2
-  name: tenant-loki-2
+    tenant: demo-2
+  name: tenant-demo-2
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Collector
@@ -33,20 +33,20 @@ kind: Tenant
 metadata:
   labels:
     collectorLabel: kubernetes
-  name: loki-1
+  name: demo-1
 spec:
   subscriptionNamespaceSelectors:
     - matchLabels:
-        tenant: loki-1
+        tenant: demo-1
   logSourceNamespaceSelectors:
     - matchLabels:
-        tenant: loki-1
+        tenant: demo-1
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Subscription
 metadata:
   name: all-logs
-  namespace: tenant-loki-1
+  namespace: tenant-demo-1
 spec:
   ottl: 'route()'
   outputs:
@@ -71,20 +71,20 @@ kind: Tenant
 metadata:
   labels:
     collectorLabel: kubernetes
-  name: loki-2
+  name: demo-2
 spec:
   subscriptionNamespaceSelectors:
     - matchLabels:
-        tenant: loki-2
+        tenant: demo-2
   logSourceNamespaceSelectors:
     - matchLabels:
-        tenant: loki-2
+        tenant: demo-2
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Subscription
 metadata:
   name: all-logs
-  namespace: tenant-loki-2
+  namespace: tenant-demo-2
 spec:
   ottl: 'route()'
   outputs:
@@ -102,8 +102,8 @@ spec:
   otlp:
     endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
     headers:
-      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTpKSng2UmcxQ09zVmJFaWs3"
-      organization: loki-1
+      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTphUGJUZzljTE9PWFp4SVA1"
+      organization: demo-1
       stream-name: all-logs
     tls:
       insecure: true
@@ -117,8 +117,8 @@ spec:
   otlp:
     endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
     headers:
-      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTpKSng2UmcxQ09zVmJFaWs3"
-      organization: loki-2
+      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTphUGJUZzljTE9PWFp4SVA1"
+      organization: demo-2
       stream-name: all-logs
     tls:
       insecure: true
