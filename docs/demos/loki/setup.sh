@@ -10,9 +10,10 @@ kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releas
 
 kubectl apply -f manifests.yaml
 
-helm upgrade --install --wait log-generator oci://ghcr.io/kube-logging/helm-charts/log-generator -n example-tenant-ns
-helm upgrade --install --wait log-generator oci://ghcr.io/kube-logging/helm-charts/log-generator -n another-tenant-ns
+helm upgrade --install --wait log-generator oci://ghcr.io/kube-logging/helm-charts/log-generator -n tenant-loki-1
+helm upgrade --install --wait log-generator oci://ghcr.io/kube-logging/helm-charts/log-generator -n tenant-loki-2
 
 kubectl get secret -n loki loki-grafana -o jsonpath="{.data.admin-password}" | base64 --decode
+echo ""
 
 (cd ../../.. && make run)
