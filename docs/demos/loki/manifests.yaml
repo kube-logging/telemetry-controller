@@ -52,6 +52,8 @@ spec:
   outputs:
     - name: loki
       namespace: collector
+    - name: openobserve-1
+      namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: OtelOutput
@@ -88,3 +90,35 @@ spec:
   outputs:
     - name: loki
       namespace: collector
+    - name: openobserve-2
+      namespace: collector
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: OtelOutput
+metadata:
+  name: openobserve-1
+  namespace: collector
+spec:
+  otlp:
+    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
+    headers:
+      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTpKSng2UmcxQ09zVmJFaWs3"
+      organization: loki-1
+      stream-name: all-logs
+    tls:
+      insecure: true
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: OtelOutput
+metadata:
+  name: openobserve-2
+  namespace: collector
+spec:
+  otlp:
+    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
+    headers:
+      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTpKSng2UmcxQ09zVmJFaWs3"
+      organization: loki-2
+      stream-name: all-logs
+    tls:
+      insecure: true
