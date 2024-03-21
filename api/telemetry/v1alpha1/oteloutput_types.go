@@ -51,8 +51,9 @@ type OtelOutputStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:categories=telemetry-all
 
 // OtelOutput is the Schema for the oteloutputs API
 type OtelOutput struct {
@@ -63,7 +64,7 @@ type OtelOutput struct {
 	Status OtelOutputStatus `json:"status,omitempty" `
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // OtelOutputList contains a list of OtelOutput
 type OtelOutputList struct {
