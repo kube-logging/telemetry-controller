@@ -101,6 +101,8 @@ type OtelColConfigIR struct {
 
 func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
 	exporters := map[string]any{}
+	// TODO: add proper error handling
+
 	maps.Copy(exporters, cfgInput.generateOTLPExporters())
 	maps.Copy(exporters, cfgInput.generateLokiExporters())
 	exporters["logging/debug"] = map[string]any{
@@ -114,16 +116,14 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
 
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.OTLP != nil {
-
-			// TODO: add proper error handling
 			name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
 			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
 			if err != nil {
-				return result
+				panic(fmt.Errorf("failed to compile config for output %q", output.NamespacedName().String()))
 			}
 			var otlpGrpcValues map[string]any
 			if err := yaml.Unmarshal(otlpGrpcValuesMarshaled, &otlpGrpcValues); err != nil {
-				return result
+				panic(fmt.Errorf("failed to compile config for output %q", output.NamespacedName().String()))
 			}
 
 			result[name] = otlpGrpcValues
