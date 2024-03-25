@@ -20,9 +20,11 @@ import (
 
 // CollectorSpec defines the desired state of Collector
 type CollectorSpec struct {
-	TenantSelector   metav1.LabelSelector `json:"tenantSelector,omitempty"`
-	ControlNamespace string               `json:"controlNamespace"`
-	Debug            bool                 `json:"debug,omitempty"`
+	TenantSelector metav1.LabelSelector `json:"tenantSelector,omitempty"`
+	// Namespace where OTel collector DaemonSet is deployed
+	ControlNamespace string `json:"controlNamespace"`
+	// Enables debug logging for the collector
+	Debug bool `json:"debug,omitempty"`
 }
 
 // CollectorStatus defines the observed state of Collector

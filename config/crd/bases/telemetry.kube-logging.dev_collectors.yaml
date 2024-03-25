@@ -46,8 +46,10 @@ spec:
             description: CollectorSpec defines the desired state of Collector
             properties:
               controlNamespace:
+                description: Namespace where OTel collector DaemonSet is deployed
                 type: string
               debug:
+                description: Enables debug logging for the collector
                 type: boolean
               tenantSelector:
                 description: |-
