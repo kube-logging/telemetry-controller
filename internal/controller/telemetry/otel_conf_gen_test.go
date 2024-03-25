@@ -365,11 +365,11 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 				Table: []RoutingConnectorTableItem{
 					{
 						Statement: `set(attributes["subscription"], "subscriptionA")`,
-						Pipelines: []string{"logs/tenant_tenantA_subscription_subsA"},
+						Pipelines: []string{"logs/tenant_tenantA_subscription_nsA_subsA"},
 					},
 					{
 						Statement: `set(attributes["subscription"], "subscriptionB") `,
-						Pipelines: []string{"logs/tenant_tenantA_subscription_subsB"},
+						Pipelines: []string{"logs/tenant_tenantA_subscription_nsA_subsB"},
 					},
 				},
 			},
