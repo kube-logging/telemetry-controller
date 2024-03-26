@@ -4,7 +4,7 @@ helm upgrade --install --namespace loki --create-namespace loki --repo https://g
 helm upgrade --install --namespace=loki --repo https://grafana.github.io/helm-charts loki-grafana grafana --version 7.0.8
 
 helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set installCRDs=true --version v1.13.3
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.93.0/opentelemetry-operator.yaml
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.96.0/opentelemetry-operator.yaml
 
 (cd ../../.. && make install)
 
