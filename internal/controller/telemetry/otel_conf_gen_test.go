@@ -160,7 +160,7 @@ func TestOtelColConfComplex(t *testing.T) {
 	inputCfg.TenantSubscriptionMap[tenant.Name] = seqs.ToSlice(mapseqs.KeysOf(inputCfg.Subscriptions))
 
 	// IR
-	generatedIR := inputCfg.ToIntermediateRepresentation()
+	generatedIR := inputCfg.ToIntermediateRepresentation(ctx)
 
 	// Final YAML
 	_, err := generatedIR.ToYAML()

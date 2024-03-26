@@ -15,12 +15,15 @@
 package telemetry
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
@@ -99,19 +102,20 @@ type OtelColConfigIR struct {
 	Services   Services       `yaml:"service,omitempty"`
 }
 
-func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
+func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[string]any {
 	exporters := map[string]any{}
 	// TODO: add proper error handling
 
-	maps.Copy(exporters, cfgInput.generateOTLPExporters())
-	maps.Copy(exporters, cfgInput.generateLokiExporters())
+	maps.Copy(exporters, cfgInput.generateOTLPExporters(ctx))
+	maps.Copy(exporters, cfgInput.generateLokiExporters(ctx))
 	exporters["logging/debug"] = map[string]any{
 		"verbosity": "detailed",
 	}
 	return exporters
 }
 
-func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
+func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) map[string]any {
+	logger := log.FromContext(ctx)
 	var result = make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
@@ -119,11 +123,11 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
 			name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
 			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
 			if err != nil {
-				panic(fmt.Errorf("failed to compile config for output %q", output.NamespacedName().String()))
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
 			}
 			var otlpGrpcValues map[string]any
 			if err := yaml.Unmarshal(otlpGrpcValuesMarshaled, &otlpGrpcValues); err != nil {
-				panic(fmt.Errorf("failed to compile config for output %q", output.NamespacedName().String()))
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
 			}
 
 			result[name] = otlpGrpcValues
@@ -132,7 +136,9 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
 
 	return result
 }
-func (cfgInput *OtelColConfigInput) generateLokiExporters() map[string]any {
+func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) map[string]any {
+	logger := log.FromContext(ctx)
+
 	var result = make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
@@ -142,11 +148,11 @@ func (cfgInput *OtelColConfigInput) generateLokiExporters() map[string]any {
 			name := fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)
 			lokiHTTPValuesMarshaled, err := yaml.Marshal(output.Spec.Loki)
 			if err != nil {
-				return result
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
 			}
 			var lokiHTTPValues map[string]any
 			if err := yaml.Unmarshal(lokiHTTPValuesMarshaled, &lokiHTTPValues); err != nil {
-				return result
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
 			}
 
 			result[name] = lokiHTTPValues
@@ -565,11 +571,11 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 
 }
 
-func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfigIR {
+func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Context) *OtelColConfigIR {
 	result := OtelColConfigIR{}
 
 	// Get  outputs based tenant names
-	result.Exporters = cfgInput.generateExporters()
+	result.Exporters = cfgInput.generateExporters(ctx)
 
 	// Add processors
 	result.Processors = cfgInput.generateProcessors()
