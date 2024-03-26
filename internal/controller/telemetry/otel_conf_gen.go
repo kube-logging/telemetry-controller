@@ -15,11 +15,17 @@
 package telemetry
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
-	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
 type OtelColConfigInput struct {
@@ -31,6 +37,7 @@ type OtelColConfigInput struct {
 	// Subscriptions map, where the key is the Tenants' name, value is a slice of subscriptions' namespaced name
 	TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
 	SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
+	Debug                 bool
 }
 
 type RoutingConnectorTableItem struct {
@@ -49,9 +56,23 @@ type AttributesProcessor struct {
 }
 
 type AttributesProcessorAction struct {
-	Action string `yaml:"action"`
-	Key    string `yaml:"key"`
-	Value  string `yaml:"value"`
+	Action        string `yaml:"action"`
+	Key           string `yaml:"key"`
+	Value         string `yaml:"value,omitempty"`
+	FromAttribute string `yaml:"from_attribute,omitempty"`
+	FromContext   string `yaml:"from_context,omitempty"`
+}
+
+type ResourceProcessor struct {
+	Actions []ResourceProcessorAction `yaml:"attributes"`
+}
+
+type ResourceProcessorAction struct {
+	Action        string `yaml:"action"`
+	Key           string `yaml:"key"`
+	Value         string `yaml:"value,omitempty"`
+	FromAttribute string `yaml:"from_attribute,omitempty"`
+	FromContext   string `yaml:"from_context,omitempty"`
 }
 
 type Pipeline struct {
@@ -81,30 +102,61 @@ type OtelColConfigIR struct {
 	Services   Services       `yaml:"service,omitempty"`
 }
 
-func (cfgInput *OtelColConfigInput) generateExporters() map[string]any {
-	exporters := cfgInput.generateOTLPExporters()
+func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[string]any {
+	exporters := map[string]any{}
+	// TODO: add proper error handling
+
+	maps.Copy(exporters, cfgInput.generateOTLPExporters(ctx))
+	maps.Copy(exporters, cfgInput.generateLokiExporters(ctx))
 	exporters["logging/debug"] = map[string]any{
 		"verbosity": "detailed",
 	}
 	return exporters
 }
 
-func (cfgInput *OtelColConfigInput) generateOTLPExporters() map[string]any {
+func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) map[string]any {
+	logger := log.FromContext(ctx)
 	var result = make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
-		// TODO: add proper error handling
-		name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
-		otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
-		if err != nil {
-			return result
-		}
-		var otlpGrpcValues map[string]any
-		if err := yaml.Unmarshal(otlpGrpcValuesMarshaled, &otlpGrpcValues); err != nil {
-			return result
-		}
+		if output.Spec.OTLP != nil {
+			name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
+			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
+			if err != nil {
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+			}
+			var otlpGrpcValues map[string]any
+			if err := yaml.Unmarshal(otlpGrpcValuesMarshaled, &otlpGrpcValues); err != nil {
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+			}
 
-		result[name] = otlpGrpcValues
+			result[name] = otlpGrpcValues
+		}
+	}
+
+	return result
+}
+func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) map[string]any {
+	logger := log.FromContext(ctx)
+
+	var result = make(map[string]any)
+
+	for _, output := range cfgInput.Outputs {
+		if output.Spec.Loki != nil {
+
+			// TODO: add proper error handling
+			name := fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)
+			lokiHTTPValuesMarshaled, err := yaml.Marshal(output.Spec.Loki)
+			if err != nil {
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+			}
+			var lokiHTTPValues map[string]any
+			if err := yaml.Unmarshal(lokiHTTPValuesMarshaled, &lokiHTTPValues); err != nil {
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+			}
+
+			result[name] = lokiHTTPValues
+		}
 	}
 
 	return result
@@ -124,10 +176,9 @@ func (rc *RoutingConnector) AddRoutingConnectorTableElem(newTableItem RoutingCon
 	rc.Table = append(rc.Table, newTableItem)
 }
 
-func newRoutingConnector(name string, defaultPipelines []string) RoutingConnector {
+func newRoutingConnector(name string) RoutingConnector {
 	result := RoutingConnector{}
 
-	result.DefaultPipelines = defaultPipelines
 	result.Name = name
 
 	return result
@@ -143,7 +194,6 @@ func buildRoutingTableItemForTenant(tenant v1alpha1.Tenant) RoutingConnectorTabl
 	conditionString := strings.Join(conditions, " or ")
 
 	newItem := RoutingConnectorTableItem{
-		//Statement: fmt.Sprintf(`set(attributes["tenant"], %q) where %s`, tenant.Name, conditionString),
 		Statement: fmt.Sprintf(`route() where %s`, conditionString),
 		Pipelines: []string{fmt.Sprintf("logs/tenant_%s", tenant.Name)},
 	}
@@ -153,7 +203,7 @@ func buildRoutingTableItemForTenant(tenant v1alpha1.Tenant) RoutingConnectorTabl
 
 func generateRootRoutingConnector(tenants []v1alpha1.Tenant) RoutingConnector {
 	// Generate routing table's first hop that will sort it's input by tenant name
-	defaultRc := newRoutingConnector("routing/tenants", []string{})
+	defaultRc := newRoutingConnector("routing/tenants")
 	for _, tenant := range tenants {
 		tableItem := buildRoutingTableItemForTenant(tenant)
 		defaultRc.AddRoutingConnectorTableElem(tableItem)
@@ -163,7 +213,7 @@ func generateRootRoutingConnector(tenants []v1alpha1.Tenant) RoutingConnector {
 
 func buildRoutingTableItemForSubscription(tenantName string, subscription v1alpha1.Subscription, index int) RoutingConnectorTableItem {
 
-	pipelineName := fmt.Sprintf("logs/tenant_%s_subscription_%s", tenantName, subscription.Name)
+	pipelineName := fmt.Sprintf("logs/tenant_%s_subscription_%s_%s", tenantName, subscription.Namespace, subscription.Name)
 
 	appendedSpaces := strings.Repeat(" ", index)
 
@@ -175,9 +225,13 @@ func buildRoutingTableItemForSubscription(tenantName string, subscription v1alph
 	return newItem
 }
 
-func (cfgInput *OtelColConfigInput) generateRoutingConnectorForTenantsSubscription(tenantName string, subscriptionNames []v1alpha1.NamespacedName) RoutingConnector {
+func (cfgInput *OtelColConfigInput) generateRoutingConnectorForTenantsSubscriptions(tenantName string, subscriptionNames []v1alpha1.NamespacedName) RoutingConnector {
 	rcName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
-	rc := newRoutingConnector(rcName, []string{})
+	rc := newRoutingConnector(rcName)
+
+	slices.SortFunc(subscriptionNames, func(a, b v1alpha1.NamespacedName) int {
+		return strings.Compare(a.String(), b.String())
+	})
 
 	for index, subscriptionRef := range subscriptionNames {
 
@@ -190,6 +244,30 @@ func (cfgInput *OtelColConfigInput) generateRoutingConnectorForTenantsSubscripti
 	return rc
 }
 
+func (cfgInput *OtelColConfigInput) generateRoutingConnectorForSubscriptionsOutputs(subscriptionRef v1alpha1.NamespacedName, outputNames []v1alpha1.NamespacedName) RoutingConnector {
+	rcName := fmt.Sprintf("routing/subscription_%s_%s_outputs", subscriptionRef.Namespace, subscriptionRef.Name)
+	rc := newRoutingConnector(rcName)
+
+	slices.SortFunc(outputNames, func(a, b v1alpha1.NamespacedName) int {
+		return strings.Compare(a.String(), b.String())
+	})
+
+	pipelines := []string{}
+
+	for _, outputRef := range outputNames {
+		pipelines = append(pipelines, fmt.Sprintf("logs/output_%s_%s_%s_%s", subscriptionRef.Namespace, subscriptionRef.Name, outputRef.Namespace, outputRef.Name))
+	}
+
+	tableItem := RoutingConnectorTableItem{
+		Statement: "route()",
+		Pipelines: pipelines,
+	}
+
+	rc.AddRoutingConnectorTableElem(tableItem)
+
+	return rc
+}
+
 func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	var connectors = make(map[string]any)
 
@@ -197,7 +275,12 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	connectors[rootRoutingConnector.Name] = rootRoutingConnector
 
 	for _, tenant := range cfgInput.Tenants {
-		rc := cfgInput.generateRoutingConnectorForTenantsSubscription(tenant.Name, cfgInput.TenantSubscriptionMap[tenant.Name])
+		rc := cfgInput.generateRoutingConnectorForTenantsSubscriptions(tenant.Name, cfgInput.TenantSubscriptionMap[tenant.Name])
+		connectors[rc.Name] = rc
+	}
+
+	for _, subscription := range cfgInput.Subscriptions {
+		rc := cfgInput.generateRoutingConnectorForSubscriptionsOutputs(subscription.NamespacedName(), cfgInput.SubscriptionOutputMap[subscription.NamespacedName()])
 		connectors[rc.Name] = rc
 	}
 
@@ -217,6 +300,13 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 
 	for _, subscription := range cfgInput.Subscriptions {
 		processors[fmt.Sprintf("attributes/subscription_%s", subscription.Name)] = generateSubscriptionAttributeProcessor(subscription)
+	}
+
+	for _, output := range cfgInput.Outputs {
+		if output.Spec.Loki != nil {
+			processors[fmt.Sprintf("attributes/loki_exporter_%s", output.Name)] = generateLokiExporterAttributeProcessor()
+			processors[fmt.Sprintf("resource/loki_exporter_%s", output.Name)] = generateLokiExporterResourceProcessor()
+		}
 	}
 	return processors
 
@@ -250,16 +340,44 @@ func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) 
 
 }
 
+func generateLokiExporterAttributeProcessor() AttributesProcessor {
+	processor := AttributesProcessor{
+		Actions: []AttributesProcessorAction{
+			{
+				Action:        "insert",
+				Key:           "loki.tenant",
+				FromAttribute: "tenant_name",
+			},
+			{
+				Action: "insert",
+				Key:    "loki.attribute.labels",
+				Value:  "tenant_name",
+			},
+		},
+	}
+	return processor
+}
+
+func generateLokiExporterResourceProcessor() ResourceProcessor {
+	processor := ResourceProcessor{
+		Actions: []ResourceProcessorAction{
+			{
+				Action: "insert",
+				Key:    "loki.resource.labels",
+				Value:  "k8s.pod.name, k8s.namespace.name",
+			},
+		},
+	}
+	return processor
+
+}
+
 func generateRootPipeline() Pipeline {
 	return generatePipeline([]string{"filelog/kubernetes"}, []string{"k8sattributes"}, []string{"routing/tenants"})
 }
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
 	var namedPipelines = make(map[string]Pipeline)
-
-	// Default pipeline
-	//namedPipelines["logs/default"] = generatePipeline([]string{"routing/tenants"}, []string{}, []string{"debug/default"})
-
 	namedPipelines["logs/all"] = generateRootPipeline()
 
 	tenants := []string{}
@@ -275,20 +393,30 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 
 		// Generate pipelines for the subscriptions for the tenant
 		for _, subscription := range cfgInput.TenantSubscriptionMap[tenant] {
-			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s", tenantPipelineName, subscription.Name)
+			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s_%s", tenantPipelineName, subscription.Namespace, subscription.Name)
 
-			targetExporterNames := []string{}
+			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{fmt.Sprintf("attributes/subscription_%s", subscription.Name)}, []string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)})
+
 			for _, outputRef := range cfgInput.SubscriptionOutputMap[subscription] {
-				targetExporterName := fmt.Sprintf("otlp/%s_%s", outputRef.Namespace, outputRef.Name)
-				targetExporterNames = append(targetExporterNames, targetExporterName)
-			}
-			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{fmt.Sprintf("attributes/subscription_%s", subscription.Name)}, targetExporterNames)
-		}
+				outputPipelineName := fmt.Sprintf("logs/output_%s_%s_%s_%s", subscription.Namespace, subscription.Name, outputRef.Namespace, outputRef.Name)
 
-		// Add default (catch all) pipelines
-		//tenantDefaultCatchAllPipelineName := fmt.Sprintf("%s_default", tenantPipelineName)
-		//tenantDefaultCatchAllPipelineExporterName := fmt.Sprintf("debug/tenant_%s_default", tenant.Name)
-		//namedPipelines[tenantDefaultCatchAllPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{}, []string{})
+				idx := slices.IndexFunc(cfgInput.Outputs, func(elem v1alpha1.OtelOutput) bool {
+					return outputRef == elem.NamespacedName()
+				})
+
+				if idx != -1 {
+					output := cfgInput.Outputs[idx]
+
+					if output.Spec.Loki != nil {
+						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}, []string{fmt.Sprintf("attributes/loki_exporter_%s", output.Name), fmt.Sprintf("resource/loki_exporter_%s", output.Name)}, []string{fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)})
+					}
+
+					if output.Spec.OTLP != nil {
+						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}, []string{}, []string{fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)})
+					}
+				}
+			}
+		}
 
 	}
 
@@ -443,17 +571,17 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 
 }
 
-func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfigIR {
+func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Context) *OtelColConfigIR {
 	result := OtelColConfigIR{}
 
 	// Get  outputs based tenant names
-	result.Exporters = cfgInput.generateExporters()
+	result.Exporters = cfgInput.generateExporters(ctx)
 
 	// Add processors
 	result.Processors = cfgInput.generateProcessors()
 
 	result.Receivers = make(map[string]any)
-	k8sReceiverName := "filelog/kubernetes" //only one instance for now
+	k8sReceiverName := "filelog/kubernetes" // only one instance for now
 	result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver()
 
 	result.Connectors = cfgInput.generateConnectors()
@@ -461,7 +589,13 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation() *OtelColConfi
 
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
 
-	result.Services.Telemetry = make(map[string]any)
+	if cfgInput.Debug {
+		result.Services.Telemetry = map[string]any{
+			"logs": map[string]string{"level": "debug"},
+		}
+	} else {
+		result.Services.Telemetry = map[string]any{}
+	}
 
 	return &result
 }

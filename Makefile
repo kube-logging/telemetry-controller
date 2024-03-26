@@ -191,7 +191,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
 
-ENVTEST_OTEL_OPERATOR_VERSION=v0.94.0
+ENVTEST_OTEL_OPERATOR_VERSION=v0.96.0
 # Download CRDs for envtest
 crddir/github.com/open-telemetry/opentelemetry-operator:
 	git clone --depth 1 --branch ${ENVTEST_OTEL_OPERATOR_VERSION} https://github.com/open-telemetry/opentelemetry-operator.git crddir/github.com/open-telemetry/opentelemetry-operator

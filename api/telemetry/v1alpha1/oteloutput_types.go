@@ -27,15 +27,22 @@ type OtelOutputSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of OtelOutput. Edit oteloutput_types.go to remove/update
-	OTLP OTLPgrpc `json:"otlp,omitempty"`
+	OTLP *OTLP `json:"otlp,omitempty"`
+	Loki *Loki `json:"loki,omitempty"`
 }
 
 // OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
-type OTLPgrpc struct {
-	QueueConfig     QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
-	RetryConfig     BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
-	TimeoutSettings `json:",inline" yaml:",inline"`
-	ClientConfig    `json:",inline" yaml:",inline"`
+type OTLP struct {
+	QueueConfig      QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
+	RetryConfig      BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
+	TimeoutSettings  `json:",inline" yaml:",inline"`
+	GRPCClientConfig `json:",inline" yaml:",inline"`
+}
+
+type Loki struct {
+	QueueConfig      QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
+	RetryConfig      BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
+	HTTPClientConfig `json:",inline" yaml:",inline"`
 }
 
 // OtelOutputStatus defines the observed state of OtelOutput
@@ -44,8 +51,9 @@ type OtelOutputStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:categories=telemetry-all
 
 // OtelOutput is the Schema for the oteloutputs API
 type OtelOutput struct {
@@ -56,7 +64,7 @@ type OtelOutput struct {
 	Status OtelOutputStatus `json:"status,omitempty" `
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // OtelOutputList contains a list of OtelOutput
 type OtelOutputList struct {
@@ -67,4 +75,8 @@ type OtelOutputList struct {
 
 func init() {
 	SchemeBuilder.Register(&OtelOutput{}, &OtelOutputList{})
+}
+
+func (o *OtelOutput) NamespacedName() NamespacedName {
+	return NamespacedName{Namespace: o.Namespace, Name: o.Name}
 }

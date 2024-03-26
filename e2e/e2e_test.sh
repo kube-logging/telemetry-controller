@@ -30,7 +30,7 @@ helm upgrade \
   --set installCRDs=true \
   --wait
 
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml --wait
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.96.0/opentelemetry-operator.yaml --wait
 echo "Wait until otel operator pod is in ready state..."
 kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
 

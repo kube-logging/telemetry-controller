@@ -46,6 +46,10 @@ func TestOtelColConfComplex(t *testing.T) {
 						Name:      "otlp-test-output",
 						Namespace: "collector",
 					},
+					{
+						Name:      "loki-test-output",
+						Namespace: "collector",
+					},
 				},
 			},
 		},
@@ -97,8 +101,8 @@ func TestOtelColConfComplex(t *testing.T) {
 					Namespace: "collector",
 				},
 				Spec: v1alpha1.OtelOutputSpec{
-					OTLP: v1alpha1.OTLPgrpc{
-						ClientConfig: v1alpha1.ClientConfig{
+					OTLP: &v1alpha1.OTLP{
+						GRPCClientConfig: v1alpha1.GRPCClientConfig{
 							Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
 								Insecure: true,
@@ -113,9 +117,25 @@ func TestOtelColConfComplex(t *testing.T) {
 					Namespace: "collector",
 				},
 				Spec: v1alpha1.OtelOutputSpec{
-					OTLP: v1alpha1.OTLPgrpc{
-						ClientConfig: v1alpha1.ClientConfig{
+					OTLP: &v1alpha1.OTLP{
+						GRPCClientConfig: v1alpha1.GRPCClientConfig{
 							Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
+							TLSSetting: v1alpha1.TLSClientSetting{
+								Insecure: true,
+							},
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "loki-test-output",
+					Namespace: "collector",
+				},
+				Spec: v1alpha1.OtelOutputSpec{
+					Loki: &v1alpha1.Loki{
+						HTTPClientConfig: v1alpha1.HTTPClientConfig{
+							Endpoint: "loki.example-tenant-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
 								Insecure: true,
 							},
@@ -140,7 +160,7 @@ func TestOtelColConfComplex(t *testing.T) {
 	inputCfg.TenantSubscriptionMap[tenant.Name] = seqs.ToSlice(mapseqs.KeysOf(inputCfg.Subscriptions))
 
 	// IR
-	generatedIR := inputCfg.ToIntermediateRepresentation()
+	generatedIR := inputCfg.ToIntermediateRepresentation(ctx)
 
 	// Final YAML
 	_, err := generatedIR.ToYAML()
@@ -227,8 +247,7 @@ func Test_generateRootRoutingConnector(t *testing.T) {
 				},
 			},
 			want: RoutingConnector{
-				Name:             "routing/tenants",
-				DefaultPipelines: []string{},
+				Name: "routing/tenants",
 				Table: []RoutingConnectorTableItem{
 					{
 						Statement: `route() where IsMatch(attributes["k8s.namespace.name"], "a") or IsMatch(attributes["k8s.namespace.name"], "b")`,
@@ -342,16 +361,15 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 				},
 			},
 			want: RoutingConnector{
-				Name:             "routing/tenant_tenantA_subscriptions",
-				DefaultPipelines: []string{},
+				Name: "routing/tenant_tenantA_subscriptions",
 				Table: []RoutingConnectorTableItem{
 					{
 						Statement: `set(attributes["subscription"], "subscriptionA")`,
-						Pipelines: []string{"logs/tenant_tenantA_subscription_subsA"},
+						Pipelines: []string{"logs/tenant_tenantA_subscription_nsA_subsA"},
 					},
 					{
 						Statement: `set(attributes["subscription"], "subscriptionB") `,
-						Pipelines: []string{"logs/tenant_tenantA_subscription_subsB"},
+						Pipelines: []string{"logs/tenant_tenantA_subscription_nsA_subsB"},
 					},
 				},
 			},
@@ -366,7 +384,7 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 				TenantSubscriptionMap: tt.fields.TenantSubscriptionMap,
 				SubscriptionOutputMap: tt.fields.SubscriptionOutputMap,
 			}
-			got := cfgInput.generateRoutingConnectorForTenantsSubscription(tt.args.tenantName, tt.args.subscriptionNames)
+			got := cfgInput.generateRoutingConnectorForTenantsSubscriptions(tt.args.tenantName, tt.args.subscriptionNames)
 			assert.Equal(t, got, tt.want)
 		})
 	}

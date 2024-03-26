@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/collector/config/configcompression"
+	"go.opentelemetry.io/collector/config/configopaque"
 )
 
 type TimeoutSettings struct {
@@ -69,14 +70,14 @@ type KeepaliveClientConfig struct {
 }
 
 // ClientConfig defines common settings for a gRPC client configuration.
-type ClientConfig struct {
+type GRPCClientConfig struct {
 	// The target to which the exporter is going to send traces or metrics,
 	// using the gRPC protocol. The valid syntax is described at
 	// https://github.com/grpc/grpc/blob/master/doc/naming.md.
 	Endpoint string `json:"endpoint" yaml:"endpoint"`
 
 	// The compression key for supported compression types within collector.
-	Compression configcompression.CompressionType `json:"compression,omitempty" yaml:"compression,omitempty"`
+	Compression configcompression.Type `json:"compression,omitempty" yaml:"compression,omitempty"`
 
 	// TLSSetting struct exposes TLS client configuration.
 	TLSSetting TLSClientSetting `json:"tls,omitempty" yaml:"tls,omitempty"`
@@ -171,4 +172,71 @@ type TLSSetting struct {
 	// ReloadInterval specifies the duration after which the certificate will be reloaded
 	// If not set, it will never be reloaded (optional)
 	ReloadInterval time.Duration `json:"reload_interval,omitempty" yaml:"reload_interval,omitempty"`
+}
+
+// ClientConfig defines settings for creating an HTTP client.
+type HTTPClientConfig struct {
+	// The target URL to send data to (e.g.: http://some.url:9411/v1/traces).
+	Endpoint string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+
+	// ProxyURL setting for the collector
+	ProxyURL string `json:"proxy_url,omitempty" yaml:"proxy_url,omitempty"`
+
+	// TLSSetting struct exposes TLS client configuration.
+	TLSSetting TLSClientSetting `json:"tls,omitempty" yaml:"tls,omitempty"`
+
+	// ReadBufferSize for HTTP client. See http.Transport.ReadBufferSize.
+	ReadBufferSize int `json:"read_buffer_size,omitempty" yaml:"read_buffer_size,omitempty"`
+
+	// WriteBufferSize for HTTP client. See http.Transport.WriteBufferSize.
+	WriteBufferSize int `json:"write_buffer_size,omitempty" yaml:"write_buffer_size,omitempty"`
+
+	// Timeout parameter configures `http.Client.Timeout`.
+	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+
+	// Additional headers attached to each HTTP request sent by the client.
+	// Existing header values are overwritten if collision happens.
+	// Header values are opaque since they may be sensitive.
+	Headers map[string]configopaque.String `json:"headers,omitempty" yaml:"headers,omitempty"`
+
+	// Auth configuration for outgoing HTTP calls.
+	Auth string `json:"auth,omitempty" yaml:"auth,omitempty"` //TODO this is a reference *configauth.Authentication
+
+	// The compression key for supported compression types within collector.
+	Compression configcompression.Type `json:"compression,omitempty" yaml:"compression,omitempty"`
+
+	// MaxIdleConns is used to set a limit to the maximum idle HTTP connections the client can keep open.
+	// There's an already set value, and we want to override it only if an explicit value provided
+	MaxIdleConns *int `json:"max_idle_conns,omitempty" yaml:"max_idle_conns,omitempty"`
+
+	// MaxIdleConnsPerHost is used to set a limit to the maximum idle HTTP connections the host can keep open.
+	// There's an already set value, and we want to override it only if an explicit value provided
+	MaxIdleConnsPerHost *int `json:"max_idle_conns_per_host,omitempty" yaml:"max_idle_conns_per_host,omitempty"`
+
+	// MaxConnsPerHost limits the total number of connections per host, including connections in the dialing,
+	// active, and idle states.
+	// There's an already set value, and we want to override it only if an explicit value provided
+	MaxConnsPerHost *int `json:"max_conns_per_host,omitempty" yaml:"max_conns_per_host,omitempty"`
+
+	// IdleConnTimeout is the maximum amount of time a connection will remain open before closing itself.
+	// There's an already set value, and we want to override it only if an explicit value provided
+	IdleConnTimeout *time.Duration `json:"idle_conn_timeout,omitempty" yaml:"idle_conn_timeout,omitempty"`
+
+	// DisableKeepAlives, if true, disables HTTP keep-alives and will only use the connection to the server
+	// for a single HTTP request.
+	//
+	// WARNING: enabling this option can result in significant overhead establishing a new HTTP(S)
+	// connection for every request. Before enabling this option please consider whether changes
+	// to idle connection settings can achieve your goal.
+	DisableKeepAlives bool `json:"disable_keep_alives,omitempty" yaml:"disable_keep_alives,omitempty"`
+
+	// This is needed in case you run into
+	// https://github.com/golang/go/issues/59690
+	// https://github.com/golang/go/issues/36026
+	// HTTP2ReadIdleTimeout if the connection has been idle for the configured value send a ping frame for health check
+	// 0s means no health check will be performed.
+	HTTP2ReadIdleTimeout time.Duration `json:"http2_read_idle_timeout,omitempty" yaml:"http2_read_idle_timeout,omitempty"`
+	// HTTP2PingTimeout if there's no response to the ping within the configured value, the connection will be closed.
+	// If not set or set to 0, it defaults to 15s.
+	HTTP2PingTimeout time.Duration `json:"http2_ping_timeout,omitempty" yaml:"http2_ping_timeout,omitempty"`
 }

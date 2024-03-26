@@ -106,6 +106,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		Outputs:               outputs,
 		TenantSubscriptionMap: tenantSubscriptionMap,
 		SubscriptionOutputMap: subscriptionOutputMap,
+		Debug:                 collector.Spec.Debug,
 	}
 
 	return otelConfigInput, nil
@@ -142,7 +143,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	otelConfig, err := otelConfigInput.ToIntermediateRepresentation().ToYAML()
+	otelConfig, err := otelConfigInput.ToIntermediateRepresentation(ctx).ToYAML()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
