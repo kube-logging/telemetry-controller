@@ -8,7 +8,7 @@ require (
 	emperror.dev/errors v0.8.1
 	github.com/cisco-open/operator-tools v0.34.0
 	github.com/onsi/ginkgo/v2 v2.16.0
-	github.com/onsi/gomega v1.31.1
+	github.com/onsi/gomega v1.32.0
 	github.com/open-telemetry/opentelemetry-operator v0.96.0
 	github.com/siliconbrain/go-mapseqs v0.2.0
 	github.com/siliconbrain/go-seqs v0.9.0
