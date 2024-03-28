@@ -10,13 +10,14 @@ require (
 	github.com/onsi/ginkgo/v2 v2.16.0
 	github.com/onsi/gomega v1.31.1
 	github.com/open-telemetry/opentelemetry-operator v0.96.0
+	github.com/siliconbrain/go-mapseqs v0.2.0
 	github.com/siliconbrain/go-seqs v0.9.0
-	k8s.io/apimachinery v0.29.2
-	k8s.io/client-go v0.29.2
+	k8s.io/apimachinery v0.29.3
+	k8s.io/client-go v0.29.3
 	sigs.k8s.io/controller-runtime v0.17.2
 )
 
-require go.opentelemetry.io/collector/config/configopaque v1.3.0 // indirect
+require go.opentelemetry.io/collector/config/configopaque v1.3.0
 
 require (
 	cloud.google.com/go/compute v1.23.3 // indirect
@@ -102,7 +103,6 @@ require (
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/prometheus v0.50.1 // indirect
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.22 // indirect
-	github.com/siliconbrain/go-mapseqs v0.2.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/cobra v1.7.0 // indirect
 	github.com/vultr/govultr/v2 v2.17.2 // indirect
@@ -170,7 +170,7 @@ require (
 	go.opentelemetry.io/collector/config/configcompression v0.96.0
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
+	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
 	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/oauth2 v0.18.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
@@ -184,7 +184,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.29.2
+	k8s.io/api v0.29.3
 	k8s.io/apiextensions-apiserver v0.29.2 // indirect
 	k8s.io/component-base v0.29.2 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
