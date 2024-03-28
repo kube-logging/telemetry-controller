@@ -17,7 +17,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.17.2
 )
 
-require go.opentelemetry.io/collector/config/configopaque v1.3.0
+require go.opentelemetry.io/collector/config/configopaque v1.4.0
 
 require (
 	cloud.google.com/go/compute v1.23.3 // indirect
