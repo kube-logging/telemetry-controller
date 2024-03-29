@@ -167,7 +167,7 @@ require (
 	github.com/prometheus/procfs v0.13.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.9.0
-	go.opentelemetry.io/collector/config/configcompression v0.96.0
+	go.opentelemetry.io/collector/config/configcompression v1.4.0
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
