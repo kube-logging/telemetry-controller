@@ -11,7 +11,7 @@ require (
 	github.com/onsi/gomega v1.31.1
 	github.com/open-telemetry/opentelemetry-operator v0.96.0
 	github.com/siliconbrain/go-mapseqs v0.2.0
-	github.com/siliconbrain/go-seqs v0.9.0
+	github.com/siliconbrain/go-seqs v0.10.0
 	k8s.io/apimachinery v0.29.3
 	k8s.io/client-go v0.29.3
 	sigs.k8s.io/controller-runtime v0.17.2

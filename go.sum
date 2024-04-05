@@ -545,6 +545,8 @@ github.com/siliconbrain/go-seqs v0.1.0 h1:6esr7kbXi+zZ+NKM3cdSPBPRoPpxbQw7DBt4g/
 github.com/siliconbrain/go-seqs v0.1.0/go.mod h1:C5Kz1fQpLUN6aSGKh4uFFyRSMJBxZtii/3+iRf5MaAk=
 github.com/siliconbrain/go-seqs v0.9.0 h1:oU/HIyuDCGLSGx72U5QdncTbpRLgJzu3g1lwXFe0EHI=
 github.com/siliconbrain/go-seqs v0.9.0/go.mod h1:8kptI0u8epC1dPx/nCo3fUM2xJnfAoo59/UJiCsxkR4=
+github.com/siliconbrain/go-seqs v0.10.0 h1:yU4D17wnh72Lxz0JKg08+EWiZZM0hkJLip1HBlAvSyE=
+github.com/siliconbrain/go-seqs v0.10.0/go.mod h1:8kptI0u8epC1dPx/nCo3fUM2xJnfAoo59/UJiCsxkR4=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
