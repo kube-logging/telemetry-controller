@@ -1,6 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "schedule:daily",
+    "group:all"
+  ],
+  "gomodTidy": true,
+  "postUpdateOptions": [
+    "gomodTidy"
   ]
 }
