@@ -167,7 +167,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			UpgradeStrategy: "none",
 			Config:          otelConfig,
 			Mode:            otelv1alpha1.ModeDaemonSet,
-			Image:           "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.97.0",
+			Image:           "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.97.0-dev3",
 			ServiceAccount:  saName.Name,
 			VolumeMounts: []apiv1.VolumeMount{
 				{
