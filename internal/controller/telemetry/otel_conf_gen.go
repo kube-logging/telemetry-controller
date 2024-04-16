@@ -24,7 +24,6 @@ import (
 
 	"go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/configopaque"
-	"go.opentelemetry.io/collector/config/configtls"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -113,27 +112,27 @@ type PrometheusExporterConfig struct {
 
 type HTTPServerConfig struct {
 	// Endpoint configures the listening address for the server.
-	Endpoint string `yaml:"endpoint"`
+	Endpoint string `yaml:"endpoint,omitempty"`
 
 	// TLSSetting struct exposes TLS client configuration.
-	TLSSetting *configtls.ServerConfig `yaml:"tls"`
+	TLSSetting *TLSServerConfig `yaml:"tls,omitempty"`
 
 	// CORS configures the server for HTTP cross-origin resource sharing (CORS).
-	CORS *CORSConfig `yaml:"cors"`
+	CORS *CORSConfig `yaml:"cors,omitempty"`
 
 	// Auth for this receiver
-	Auth *configauth.Authentication `yaml:"auth"`
+	Auth *configauth.Authentication `yaml:"auth,omitempty"`
 
 	// MaxRequestBodySize sets the maximum request body size in bytes
-	MaxRequestBodySize int64 `yaml:"max_request_body_size"`
+	MaxRequestBodySize int64 `yaml:"max_request_body_size,omitempty"`
 
 	// IncludeMetadata propagates the client metadata from the incoming requests to the downstream consumers
 	// Experimental: *NOTE* this option is subject to change or removal in the future.
-	IncludeMetadata bool `yaml:"include_metadata"`
+	IncludeMetadata bool `yaml:"include_metadata,omitempty"`
 
 	// Additional headers attached to each HTTP response sent to the client.
 	// Header values are opaque since they may be sensitive.
-	ResponseHeaders map[string]configopaque.String `yaml:"response_headers"`
+	ResponseHeaders map[string]configopaque.String `yaml:"response_headers,omitempty"`
 }
 
 type TLSServerConfig struct {
@@ -435,13 +434,15 @@ func (cfgInput *OtelColConfigInput) generateProcessorMemoryLimiter() map[string]
 		memoryLimiter["spike_limit_percentage"] = cfgInput.MemoryLimiter.MemorySpikePercentage
 	}
 	return memoryLimiter
+}
+
 func generateCountConnectors() map[string]any {
 	countConnectors := make(map[string]any)
 
 	countConnectors["count/tenant_metrics"] = map[string]any{
 		"logs": map[string]CountConnectorMetricInfo{
 			"otelcollector_tenant_log_count": {
-				Description: "The number of logs from each environment.",
+				Description: "The number of logs from each tenant pipeline.",
 				Attributes: []CountConnectorAttributeConfig{{
 					Key:          "tenant",
 					DefaultValue: "no_tenant",
@@ -453,7 +454,7 @@ func generateCountConnectors() map[string]any {
 	countConnectors["count/output_metrics"] = map[string]any{
 		"logs": map[string]CountConnectorMetricInfo{
 			"otelcollector_output_log_count": {
-				Description: "The number of logs from each environment.",
+				Description: "The number of logs sent out from each exporter.",
 				Attributes: []CountConnectorAttributeConfig{{
 					Key:          "tenant",
 					DefaultValue: "no_tenant",
