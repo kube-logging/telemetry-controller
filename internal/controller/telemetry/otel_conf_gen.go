@@ -244,7 +244,7 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) m
 
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.OTLP != nil {
-			name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
+			name := GetExporterNameForOtelOutput(output)
 			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
@@ -269,7 +269,7 @@ func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) m
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.Loki != nil {
 
-			name := fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)
+			name := GetExporterNameForOtelOutput(output)
 			lokiHTTPValuesMarshaled, err := yaml.Marshal(output.Spec.Loki)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
@@ -505,17 +505,11 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 }
 
 func generateOutputExporterNameProcessor(output v1alpha1.OtelOutput) AttributesProcessor {
-	var exporterName string
-	if output.Spec.Loki != nil {
-		exporterName = fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)
-	} else if output.Spec.OTLP != nil {
-		exporterName = fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
-	}
 	processor := AttributesProcessor{
 		Actions: []AttributesProcessorAction{{
 			Action: "insert",
 			Key:    "exporter",
-			Value:  exporterName,
+			Value:  GetExporterNameForOtelOutput(output),
 		}},
 	}
 
@@ -633,11 +627,15 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 					output := cfgInput.Outputs[idx]
 
 					if output.Spec.Loki != nil {
-						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}, []string{fmt.Sprintf("attributes/exporter_name_%s", output.Name), fmt.Sprintf("attributes/loki_exporter_%s", output.Name), fmt.Sprintf("resource/loki_exporter_%s", output.Name)}, []string{fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name), outputCountConnectorName})
+						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
+							[]string{fmt.Sprintf("attributes/exporter_name_%s", output.Name), fmt.Sprintf("attributes/loki_exporter_%s", output.Name), fmt.Sprintf("resource/loki_exporter_%s", output.Name)},
+							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
 					}
 
 					if output.Spec.OTLP != nil {
-						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}, []string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)}, []string{fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name), outputCountConnectorName})
+						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
+							[]string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)},
+							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
 					}
 				}
 			}

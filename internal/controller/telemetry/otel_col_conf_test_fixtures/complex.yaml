@@ -188,20 +188,20 @@ service:
             exporters: [routing/tenants]
         logs/output_example-tenant-ns_subscription-example-1_collector_loki-test-output:
             receivers: [routing/subscription_example-tenant-ns_subscription-example-1_outputs]
-            processors: [memory_limiter, attributes/loki_exporter_loki-test-output, resource/loki_exporter_loki-test-output]
-            exporters: [loki/collector_loki-test-output]
+            processors: [memory_limiter, attributes/exporter_name_loki-test-output, attributes/loki_exporter_loki-test-output, resource/loki_exporter_loki-test-output]
+            exporters: [loki/collector_loki-test-output, count/output_metrics]
         logs/output_example-tenant-ns_subscription-example-1_collector_otlp-test-output:
             receivers: [routing/subscription_example-tenant-ns_subscription-example-1_outputs]
-            processors: [memory_limiter]
-            exporters: [otlp/collector_otlp-test-output]
+            processors: [memory_limiter, attributes/exporter_name_otlp-test-output]
+            exporters: [otlp/collector_otlp-test-output, count/output_metrics]
         logs/output_example-tenant-ns_subscription-example-2_collector_otlp-test-output-2:
             receivers: [routing/subscription_example-tenant-ns_subscription-example-2_outputs]
-            processors: [memory_limiter]
-            exporters: [otlp/collector_otlp-test-output-2]
+            processors: [memory_limiter, attributes/exporter_name_otlp-test-output-2]
+            exporters: [otlp/collector_otlp-test-output-2, count/output_metrics]
         logs/tenant_example-tenant:
             receivers: [routing/tenants]
             processors: [memory_limiter, attributes/tenant_example-tenant]
-            exporters: [routing/tenant_example-tenant_subscriptions]
+            exporters: [routing/tenant_example-tenant_subscriptions, count/tenant_metrics]
         logs/tenant_example-tenant_subscription_example-tenant-ns_subscription-example-1:
             receivers: [routing/tenant_example-tenant_subscriptions]
             processors: [memory_limiter, attributes/subscription_subscription-example-1]
@@ -212,9 +212,9 @@ service:
             exporters: [routing/subscription_example-tenant-ns_subscription-example-2_outputs]
         metrics/output:
             receivers: [count/output_metrics]
-            processors: [deltatocumulative]
+            processors: [memory_limiter, deltatocumulative]
             exporters: [prometheus/message_metrics_exporter]
         metrics/tenant:
             receivers: [count/tenant_metrics]
-            processors: [deltatocumulative]
+            processors: [memory_limiter, deltatocumulative]
             exporters: [prometheus/message_metrics_exporter]

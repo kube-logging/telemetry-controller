@@ -26,7 +26,6 @@ import (
 	"github.com/cisco-open/operator-tools/pkg/reconciler"
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
-	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -169,7 +168,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Mode:            otelv1alpha1.ModeDaemonSet,
 			Image:           "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.97.0-dev3",
 			ServiceAccount:  saName.Name,
-			VolumeMounts: []apiv1.VolumeMount{
+			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "varlog",
 					ReadOnly:  true,
@@ -181,19 +180,19 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					MountPath: "/var/lib/docker/containers",
 				},
 			},
-			Volumes: []apiv1.Volume{
+			Volumes: []corev1.Volume{
 				{
 					Name: "varlog",
-					VolumeSource: apiv1.VolumeSource{
-						HostPath: &apiv1.HostPathVolumeSource{
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
 							Path: "/var/log",
 						},
 					},
 				},
 				{
 					Name: "varlibdockercontainers",
-					VolumeSource: apiv1.VolumeSource{
-						HostPath: &apiv1.HostPathVolumeSource{
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
 							Path: "/var/lib/docker/containers",
 						},
 					},
@@ -298,7 +297,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&apiv1.Namespace{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			collectors := &v1alpha1.CollectorList{}
@@ -336,7 +335,7 @@ func (r *CollectorReconciler) reconcileRBAC(ctx context.Context, collector *v1al
 func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
 	logger := log.FromContext(ctx)
 
-	serviceAccount := apiv1.ServiceAccount{
+	serviceAccount := corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-sa", collector.Name),
