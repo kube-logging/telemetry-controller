@@ -923,8 +923,8 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Con
 	}
 
 	if cfgInput.Debug {
-		result.Services.Telemetry = map[string]any{
-			"logs": map[string]string{"level": "debug"},
+		result.Services.Telemetry["logs"] = map[string]string{
+			"level": "debug",
 		}
 	}
 
