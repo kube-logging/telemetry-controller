@@ -39,8 +39,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const tenantReferenceField = ".status.tenant"
-const requeueDelayOnFailedTenant = 20 * time.Second
+const (
+	tenantReferenceField       = ".status.tenant"
+	requeueDelayOnFailedTenant = 20 * time.Second
+)
 
 // CollectorReconciler reconciles a Collector object
 type CollectorReconciler struct {
@@ -141,7 +143,6 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err != nil {
 		if errors.Is(err, &TenantFailedError{}) {
 			return ctrl.Result{RequeueAfter: requeueDelayOnFailedTenant}, err
-
 		}
 		return ctrl.Result{}, err
 	}
@@ -318,7 +319,6 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *CollectorReconciler) reconcileRBAC(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
-
 	errCR := r.reconcileClusterRole(ctx, collector)
 
 	sa, errSA := r.reconcileServiceAccount(ctx, collector)
@@ -420,7 +420,6 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 }
 
 func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, labelSelector metav1.LabelSelector) ([]v1alpha1.Tenant, error) {
-
 	selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
 	if err != nil {
 		return nil, err
