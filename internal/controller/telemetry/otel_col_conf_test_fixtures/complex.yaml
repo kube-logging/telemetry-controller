@@ -124,6 +124,11 @@ exporters:
         endpoint: loki.example-tenant-a-ns.svc.cluster.local:4317
         tls:
             insecure: true
+    fluentforwardexporter/collector_fluentforward-test-output:
+         endpoint:     fluentforward.example-tenant-ns.svc.cluster.local:8888
+         map_metadata: true
+         tls:
+           insecure: true
     otlp/collector_otlp-test-output:
         endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
         tls:

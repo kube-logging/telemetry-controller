@@ -219,6 +219,7 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 	maps.Copy(exporters, generateMetricsExporters())
 	maps.Copy(exporters, cfgInput.generateOTLPExporters(ctx))
 	maps.Copy(exporters, cfgInput.generateLokiExporters(ctx))
+	maps.Copy(exporters, cfgInput.generateFluentforwardExporters(ctx))
 	exporters["logging/debug"] = map[string]any{
 		"verbosity": "detailed",
 	}
@@ -281,6 +282,32 @@ func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) m
 			}
 
 			result[name] = lokiHTTPValues
+		}
+	}
+
+	return result
+}
+
+func (cfgInput *OtelColConfigInput) generateFluentforwardExporters(ctx context.Context) map[string]any {
+	logger := log.FromContext(ctx)
+
+	var result = make(map[string]any)
+
+	for _, output := range cfgInput.Outputs {
+		if output.Spec.Fluentforward != nil {
+
+			// TODO: add proper error handling
+			name := fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
+			fluetForwardMarshaled, err := yaml.Marshal(output.Spec.Fluentforward)
+			if err != nil {
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+			}
+			var fluetForwardValues map[string]any
+			if err := yaml.Unmarshal(fluetForwardMarshaled, &fluetForwardValues); err != nil {
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+			}
+
+			result[name] = fluetForwardValues
 		}
 	}
 

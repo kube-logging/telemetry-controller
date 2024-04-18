@@ -41,6 +41,160 @@ spec:
           spec:
             description: OtelOutputSpec defines the desired state of OtelOutput
             properties:
+              fluentforward:
+                properties:
+                  compress_gzip:
+                    description: CompressGzip enables gzip compression for the payload.
+                    type: boolean
+                  connection_timeout:
+                    description: Connection Timeout parameter configures `net.Dialer`.
+                    format: int64
+                    type: integer
+                  default_labels_enabled:
+                    additionalProperties:
+                      type: boolean
+                    description: DefaultLabelsEnabled is a map of default attributes
+                      to be added to each log record.
+                    type: object
+                  endpoint:
+                    description: 'The target endpoint URI to send data to (e.g.: some.url:24224).'
+                    type: string
+                  map_metadata:
+                    description: Enable mapping
+                    type: boolean
+                  require_ack:
+                    description: RequireAck enables the acknowledgement feature.
+                    type: boolean
+                  retry_on_failure:
+                    description: |-
+                      BackOffConfig defines configuration for retrying batches in case of export failure.
+                      The current supported strategy is exponential backoff.
+                    properties:
+                      enabled:
+                        description: Enabled indicates whether to not retry sending
+                          batches in case of export failure.
+                        type: boolean
+                      initial_interval:
+                        description: InitialInterval the time to wait after the first
+                          failure before retrying.
+                        format: int64
+                        type: integer
+                      max_elapsed_time:
+                        description: |-
+                          MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
+                          Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                        format: int64
+                        type: integer
+                      max_interval:
+                        description: |-
+                          MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
+                          consecutive retries will always be `MaxInterval`.
+                        format: int64
+                        type: integer
+                      multiplier:
+                        description: Multiplier is the value multiplied by the backoff
+                          interval bounds
+                        type: string
+                      randomization_factor:
+                        description: |-
+                          RandomizationFactor is a random factor used to calculate next backoffs
+                          Randomized interval = RetryInterval * (1 ± RandomizationFactor)
+                        type: string
+                    type: object
+                  sending_queue:
+                    description: QueueSettings defines configuration for queueing
+                      batches before sending to the consumerSender.
+                    properties:
+                      enabled:
+                        description: Enabled indicates whether to not enqueue batches
+                          before sending to the consumerSender.
+                        type: boolean
+                      num_consumers:
+                        description: NumConsumers is the number of consumers from
+                          the queue.
+                        type: integer
+                      queue_size:
+                        description: QueueSize is the maximum number of batches allowed
+                          in queue at a given time.
+                        type: integer
+                      storage:
+                        description: |-
+                          StorageID if not empty, enables the persistent storage and uses the component specified
+                          as a storage extension for the persistent queue
+                        type: string
+                    type: object
+                  shared_key:
+                    description: SharedKey is used for authorization with the server
+                      that knows it.
+                    type: string
+                  tag:
+                    description: The Fluent tag parameter used for routing
+                    type: string
+                  tls:
+                    description: TLSSetting struct exposes TLS client configuration.
+                    properties:
+                      ca_file:
+                        description: |-
+                          Path to the CA cert. For a client this verifies the server certificate.
+                          For a server this verifies client certificates. If empty uses system root CA.
+                          (optional)
+                        type: string
+                      ca_pem:
+                        description: In memory PEM encoded cert. (optional)
+                        type: string
+                      cert_file:
+                        description: Path to the TLS cert to use for TLS required
+                          connections. (optional)
+                        type: string
+                      cert_pem:
+                        description: In memory PEM encoded TLS cert to use for TLS
+                          required connections. (optional)
+                        type: string
+                      insecure:
+                        description: |-
+                          In gRPC when set to true, this is used to disable the client transport security.
+                          See https://godoc.org/google.golang.org/grpc#WithInsecure.
+                          In HTTP, this disables verifying the server's certificate chain and host name
+                          (InsecureSkipVerify in the tls Config). Please refer to
+                          https://godoc.org/crypto/tls#Config for more information.
+                          (optional, default false)
+                        type: boolean
+                      insecure_skip_verify:
+                        description: InsecureSkipVerify will enable TLS but not verify
+                          the certificate.
+                        type: boolean
+                      key_file:
+                        description: Path to the TLS key to use for TLS required connections.
+                          (optional)
+                        type: string
+                      key_pem:
+                        description: In memory PEM encoded TLS key to use for TLS
+                          required connections. (optional)
+                        type: string
+                      max_version:
+                        description: |-
+                          MaxVersion sets the maximum TLS version that is acceptable.
+                          If not set, refer to crypto/tls for defaults. (optional)
+                        type: string
+                      min_version:
+                        description: |-
+                          MinVersion sets the minimum TLS version that is acceptable.
+                          If not set, TLS 1.2 will be used. (optional)
+                        type: string
+                      reload_interval:
+                        description: |-
+                          ReloadInterval specifies the duration after which the certificate will be reloaded
+                          If not set, it will never be reloaded (optional)
+                        format: int64
+                        type: integer
+                      server_name_override:
+                        description: |-
+                          ServerName requested by client for virtual hosting.
+                          This sets the ServerName in the TLSConfig. Please refer to
+                          https://godoc.org/crypto/tls#Config for more information. (optional)
+                        type: string
+                    type: object
+                type: object
               loki:
                 properties:
                   auth:
