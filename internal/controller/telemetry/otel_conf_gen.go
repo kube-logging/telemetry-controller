@@ -298,12 +298,12 @@ func (cfgInput *OtelColConfigInput) generateFluentforwardExporters(ctx context.C
 
 			// TODO: add proper error handling
 			name := fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
-			fluetForwardMarshaled, err := yaml.Marshal(output.Spec.Fluentforward)
+			fluentForwardMarshaled, err := yaml.Marshal(output.Spec.Fluentforward)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
 			}
 			var fluetForwardValues map[string]any
-			if err := yaml.Unmarshal(fluetForwardMarshaled, &fluetForwardValues); err != nil {
+			if err := yaml.Unmarshal(fluentForwardMarshaled, &fluetForwardValues); err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
 			}
 
@@ -526,6 +526,9 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 			processors[fmt.Sprintf("attributes/loki_exporter_%s", output.Name)] = generateLokiExporterAttributeProcessor()
 			processors[fmt.Sprintf("resource/loki_exporter_%s", output.Name)] = generateLokiExporterResourceProcessor()
 		}
+		if output.Spec.Fluentforward != nil && output.Spec.Fluentforward.MapMetadata {
+			processors[fmt.Sprintf("attributes/fluentforward_exporter_%s", output.Name)] = generateFluentforwardResourceProcessor()
+		}
 	}
 
 	return processors
@@ -618,6 +621,38 @@ func generateRootPipeline(tenantName string) Pipeline {
 	exporterName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
 	return generatePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName)}, []string{exporterName, tenantCountConnectorName})
 }
+func generateFluentforwardResourceProcessor() AttributesProcessor {
+	processor := AttributesProcessor{
+		Actions: []AttributesProcessorAction{
+			{
+				Action:        "insert",
+				Key:           "kubernetes.pod_name",
+				FromAttribute: "k8s.pod.name",
+			},
+			{
+				Action:        "insert",
+				Key:           "kubernetes.pod_id",
+				FromAttribute: "k8s.pod.uid",
+			},
+			{
+				Action:        "insert",
+				Key:           "kubernetes.labels",
+				FromAttribute: "k8s.pod.labels",
+			},
+			{
+				Action:        "insert",
+				Key:           "kubernetes.namespace_name",
+				FromAttribute: "k8s.namespace.name",
+			},
+			{
+				Action:        "insert",
+				Key:           "kubernetes.container_name",
+				FromAttribute: "k8s.container.name",
+			},
+		},
+	}
+	return processor
+}
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
 	outputCountConnectorName := "count/output_metrics"
@@ -665,6 +700,10 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
 							[]string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)},
 							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
+					}
+
+					if output.Spec.Fluentforward != nil && output.Spec.Fluentforward.MapMetadata {
+						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}, []string{fmt.Sprintf("attributes/fluentforward_exporter_%s", output.Name)}, []string{fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)})
 					}
 				}
 			}
@@ -877,13 +916,18 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Con
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
 	result.Services.Telemetry = make(map[string]any)
 
+	result.Services.Telemetry = make(map[string]any)
+
+	result.Services.Telemetry["metrics"] = map[string]string{
+		"level": "detailed",
+	}
+
 	if cfgInput.Debug {
 		result.Services.Telemetry = map[string]any{
 			"logs": map[string]string{"level": "debug"},
 		}
-	} else {
-		result.Services.Telemetry = map[string]any{}
 	}
+
 	if _, ok := result.Processors["memory_limiter"]; ok {
 		for name, namedPipeline := range result.Services.Pipelines.NamedPipelines {
 			// From memorylimiterprocessor's README:

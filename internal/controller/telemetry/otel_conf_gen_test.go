@@ -81,6 +81,10 @@ func TestOtelColConfComplex(t *testing.T) {
 						Name:      "otlp-test-output-2",
 						Namespace: "collector",
 					},
+					{
+						Name:      "fluentforward-test-output",
+						Namespace: "collector",
+					},
 				},
 			},
 		},
@@ -204,6 +208,23 @@ func TestOtelColConfComplex(t *testing.T) {
 					Loki: &v1alpha1.Loki{
 						HTTPClientConfig: v1alpha1.HTTPClientConfig{
 							Endpoint: "loki.example-tenant-a-ns.svc.cluster.local:4317",
+							TLSSetting: v1alpha1.TLSClientSetting{
+								Insecure: true,
+							},
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "fluentforward-test-output",
+					Namespace: "collector",
+				},
+				Spec: v1alpha1.OtelOutputSpec{
+					Fluentforward: &v1alpha1.Fluentforward{
+						MapMetadata: true,
+						TCPClientSettings: v1alpha1.TCPClientSettings{
+							Endpoint: "fluentforward.example-tenant-ns.svc.cluster.local:8888",
 							TLSSetting: v1alpha1.TLSClientSetting{
 								Insecure: true,
 							},

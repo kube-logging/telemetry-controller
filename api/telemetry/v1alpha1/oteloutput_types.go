@@ -65,6 +65,9 @@ type Fluentforward struct {
 
 	QueueConfig QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
 	RetryConfig BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
+
+	// Enable mapping
+	MapMetadata bool `json:"map_metadata,omitempty" yaml:"map_metadata,omitempty"`
 }
 
 type TCPClientSettings struct {
