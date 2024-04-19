@@ -1,83 +1,77 @@
-# telemetry-controller
-The Telemetry Controller is a multi-tenancy focused solution, that facilitates collection of telemetry data from Kubernetes workloads, without any need for changes to the running software.
+# Telemetry Controller
+
+Telemetry Controller collects, routes and forwards telemetry data (logs, metrics and traces) from Kubernetes clusters
+supporting multi-tenancy out of the box.
+
 ## Description
+
 Telemetry-controller can be configured using Custom Resources to set up an opinionated Opentelemetry Collector configuration to route log messages based on rules defined as a Tenant -> Subscription relation map.
+
 ## Getting Started
 
 To get started with the Telemetry Controller, complete the following steps. Alternatively, see our [Telemetry Controller overview and quickstart blog post](https://axoflow.com/reinvent-kubernetes-logging-with-telemetry-controller/).
 
 ### Prerequisites
-- go version v1.20.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+- go version v1.22+
+- docker version 24+
+- kubectl version v1.26+
+- kubernetes v1.26+ with *containerd* as the container runtime
+
+### Optional: create a cluster locally
+
+We recommend using kind or minikube for local experimentation and development.
+
+Kind uses containerd by default, but for minikube you have to start the cluster using the `--container-runtime=containerd` flag.
+
+```sh
+kind create cluster
+# or
+minikube start --container-runtime=containerd
+```
 
 ### Deployment steps for users
 
-**Install cert-manager, and opentelemtry-operator:**
+Install dependencies (cert-manager and opentelemetry-operator):
 ```sh
-helm upgrade --install --repo https://charts.jetstack.io cert-manager cert-manager --namespace cert-manager --create-namespace --version v1.13.3 --set installCRDs=true --wait
-
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml --wait
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.98.0/opentelemetry-operator.yaml
 ```
 
-**Deploy telemetry-controller:**
+Deploy latest telemetry-controller:
 ```sh
-kubectl apply -k 'github.com/kube-logging/telemetry-controller/config/default'
-```
-**Remove the controller and CRDs from the cluster:**
-```sh
-kubectl delete -k 'github.com/kube-logging/telemetry-controller/config/default'
+kubectl apply -k github.com/kube-logging/telemetry-controller/config/default
 ```
 
-### Deployment steps for contributors
-**Install cert-manager, and opentelemtry-operator:**
-```sh
-helm upgrade --install --repo https://charts.jetstack.io cert-manager cert-manager --namespace cert-manager --create-namespace --version v1.13.3 --set installCRDs=true --wait
+### Deployment steps for devs
 
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml --wait
-```
-
-**Install the CRDs into the cluster:**
+#### Install deps, CRDs and RBAC
 
 ```sh
+# Install dependencies (cert-manager and opentelemtry-operator):
+make install-deps
+
+# Install the CRDs and RBAC into the cluster:
 make install
 ```
 
-**Build your image and load it to your KinD nodes**
+#### Run
+
 ```sh
+# Option 1 (faster): Run the operator from you local machine (uses cluster-admin rights)
+make run
+
+# Option 2 (safer): Build and run the operator inside the cluster (uses proper RBAC)
 make docker-build IMG=telemetry-controller:latest
+
 kind load docker-image telemetry-controller:latest
+# or
+minikube image load telemetry-controller:latest
+
+make deploy IMG=telemetry-controller:latest
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
-
-```sh
-make deploy IMG=telemetry-controller:tag
-```
-
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin 
-privileges or be logged in as admin.
-
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -f docs/examples/simple-demo/
-```
-
-**Remove the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
 ### Example setup
-**Create instances of your solution**
+
 You can deploy the example configuration provided as part of the docs. This will deploy a demo pipeline with one tenant, two subscriptions, and an OpenObserve instance.
 Deploying Openobserve is an optional, but recommended step, logs can be forwarded to any OTLP endpoint. Openobserve provides a UI to visualize the ingested logstream.
 
@@ -107,6 +101,11 @@ helm install --wait --create-namespace --namespace example-tenant-ns --generate-
 ```
 
 **Open the Openobserve UI and inspect the generated log messages**
+
+Set up portforwarding for Openobserve UI
+```sh
+kubectl -n openobserve port-forward svc/openobserve 5080:5080
+```
 ![Openobserve logs](docs/assets/openobserve-logs.png)
 
 
@@ -137,4 +136,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-

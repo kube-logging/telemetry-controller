@@ -8,7 +8,7 @@ GOVERSION := $(shell go env GOVERSION)
 
 KIND := ${BIN}/kind
 KIND_VERSION ?= v0.20.0
-KIND_IMAGE ?= kindest/node:v1.29.0@sha256:eaa1450915475849a73a9227b8f201df25e55e268e5d619312131292e324d570 
+KIND_IMAGE ?= kindest/node:v1.29.0@sha256:eaa1450915475849a73a9227b8f201df25e55e268e5d619312131292e324d570
 KIND_CLUSTER ?= kind
 
 CI_MODE_ENABLED := ""
@@ -39,9 +39,6 @@ SHELL = /usr/bin/env bash -o pipefail
 LICENSEI := ${BIN}/licensei
 LICENSEI_VERSION = v0.8.0
 
-.PHONY: all
-all: build
-
 ##@ General
 
 # The help target prints out all targets with their descriptions organized
@@ -55,6 +52,7 @@ all: build
 # More info on the awk command:
 # http://linuxcommand.org/lc3_adv_awk.php
 
+.DEFAULT_GOAL = help
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
@@ -141,21 +139,26 @@ ifndef ignore-not-found
 ignore-not-found = false
 endif
 
+.PHONY: install-deps
+install-deps: ## Install dependencies into the actual K8s cluster
+	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
+	kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.98.0/opentelemetry-operator.yaml
+
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply --server-side -f -
 
 .PHONY: uninstall
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+uninstall: manifests kustomize ## Uninstall CRDs from the actual K8s cluster. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
-deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+deploy: manifests kustomize ## Deploy controller to the actual K8s cluster.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply --server-side -f -
 
 .PHONY: undeploy
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+undeploy: ## Undeploy controller from the actual K8s cluster. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Build Dependencies
@@ -215,7 +218,7 @@ e2e-test: ## Run e2e tests
 	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) NO_KIND_CLEANUP=$(NO_KIND_CLEANUP) && timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
 
 .PHONY: e2e-test-ci
-e2e-test-ci: CI_MODE_ENABLED=1 
+e2e-test-ci: CI_MODE_ENABLED=1
 e2e-test-ci: NO_KIND_CLEANUP=1
 e2e-test-ci: IMG="controller:latest" ## Run e2e tests, telemetry collector runs inside k8s
 e2e-test-ci: docker-build e2e-test
@@ -270,4 +273,3 @@ find ${BIN} -name '$(notdir ${IMPORT_PATH})_*' -exec rm {} +
 GOBIN=${BIN} go install ${IMPORT_PATH}@${VERSION}
 mv ${BIN}/$(notdir ${IMPORT_PATH}) $@
 endef
-
