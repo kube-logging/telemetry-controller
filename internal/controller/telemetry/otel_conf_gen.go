@@ -33,6 +33,7 @@ type OtelColConfigInput struct {
 	Tenants       []v1alpha1.Tenant
 	Subscriptions map[v1alpha1.NamespacedName]v1alpha1.Subscription
 	Outputs       []v1alpha1.OtelOutput
+	MemoryLimiter v1alpha1.MemoryLimiter
 
 	// Subscriptions map, where the key is the Tenants' name, value is a slice of subscriptions' namespaced name
 	TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
@@ -288,11 +289,33 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 
 }
 
+func (cfgInput *OtelColConfigInput) generateProcessorMemoryLimiter() map[string]any {
+	var memoryLimiter = make(map[string]any)
+
+	memoryLimiter["check_interval"] = cfgInput.MemoryLimiter.CheckInterval.String()
+	if cfgInput.MemoryLimiter.MemoryLimitMiB != 0 {
+		memoryLimiter["limit_mib"] = cfgInput.MemoryLimiter.MemoryLimitMiB
+
+	}
+	if cfgInput.MemoryLimiter.MemorySpikeLimitMiB != 0 {
+		memoryLimiter["spike_limit_mib"] = cfgInput.MemoryLimiter.MemorySpikeLimitMiB
+	}
+	if cfgInput.MemoryLimiter.MemoryLimitPercentage != 0 {
+		memoryLimiter["limit_percentage"] = cfgInput.MemoryLimiter.MemoryLimitPercentage
+	}
+	if cfgInput.MemoryLimiter.MemorySpikePercentage != 0 {
+		memoryLimiter["spike_limit_percentage"] = cfgInput.MemoryLimiter.MemorySpikePercentage
+	}
+	return memoryLimiter
+}
+
 func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	var processors = make(map[string]any)
 
 	k8sProcessorName := "k8sattributes"
 	processors[k8sProcessorName] = cfgInput.generateDefaultKubernetesProcessor()
+
+	processors["memory_limiter"] = cfgInput.generateProcessorMemoryLimiter()
 
 	for _, tenant := range cfgInput.Tenants {
 		processors[fmt.Sprintf("attributes/tenant_%s", tenant.Name)] = generateTenantAttributeProcessor(tenant)
@@ -308,6 +331,7 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 			processors[fmt.Sprintf("resource/loki_exporter_%s", output.Name)] = generateLokiExporterResourceProcessor()
 		}
 	}
+
 	return processors
 
 }
@@ -596,6 +620,18 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Con
 	} else {
 		result.Services.Telemetry = map[string]any{}
 	}
+	if _, ok := result.Processors["memory_limiter"]; ok {
+		for name, namedPipeline := range result.Services.Pipelines.NamedPipelines {
+			// From memorylimiterprocessor's README:
+			// > For the memory_limiter processor, the best practice is to add it as the first processor in a pipeline.
+			processors := []string{"memory_limiter"}
+			processors = append(processors, namedPipeline.Processors...)
+			namedPipeline.Processors = processors
+			result.Services.Pipelines.NamedPipelines[name] = namedPipeline
+		}
+	}
+
+	result.Services.Telemetry = make(map[string]any)
 
 	return &result
 }

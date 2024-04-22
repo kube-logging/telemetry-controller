@@ -18,6 +18,7 @@ import (
 	_ "embed"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
@@ -143,6 +144,11 @@ func TestOtelColConfComplex(t *testing.T) {
 					},
 				},
 			},
+		},
+		MemoryLimiter: v1alpha1.MemoryLimiter{
+			CheckInterval:         1 * time.Second,
+			MemoryLimitPercentage: 75,
+			MemorySpikePercentage: 25,
 		},
 	}
 

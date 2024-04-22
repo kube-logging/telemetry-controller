@@ -17,6 +17,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"math"
 	"reflect"
 	"slices"
 	"time"
@@ -26,7 +27,9 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
 	apiv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -107,6 +110,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		TenantSubscriptionMap: tenantSubscriptionMap,
 		SubscriptionOutputMap: subscriptionOutputMap,
 		Debug:                 collector.Spec.Debug,
+		MemoryLimiter:         *collector.Spec.MemoryLimiter,
 	}
 
 	return otelConfigInput, nil
@@ -125,13 +129,13 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	logger := log.FromContext(ctx, "collector", req.Name)
 
 	collector := &v1alpha1.Collector{}
-
 	logger.Info("Reconciling collector")
 
 	if err := r.Get(ctx, req.NamespacedName, collector); client.IgnoreNotFound(err) != nil {
 		return ctrl.Result{}, err
 	}
 
+	collector.Spec.SetDefaults()
 	originalCollectorStatus := collector.Status.DeepCopy()
 
 	otelConfigInput, err := r.buildConfigInputForCollector(ctx, collector)
@@ -196,6 +200,14 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				},
 			},
 		},
+	}
+
+	if memoryLimit := collector.Spec.GetMemoryLimit(); memoryLimit != nil {
+		// Calculate 80% of the specified memory limit for GOMEMLIMIT
+		goMemLimitPercent := 0.8
+		goMemLimitValue := int64(math.Round(float64(memoryLimit.Value()) * goMemLimitPercent))
+		goMemLimit := resource.NewQuantity(goMemLimitValue, resource.BinarySI)
+		otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{Name: "GOMEMLIMIT", Value: goMemLimit.String()})
 	}
 
 	if err := ctrl.SetControllerReference(collector, &otelCollector, r.Scheme); err != nil {
