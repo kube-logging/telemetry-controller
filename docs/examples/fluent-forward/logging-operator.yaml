@@ -1,0 +1,26 @@
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: Logging
+metadata:
+  name: all-to-file
+spec:
+  fluentd: {}
+  controlNamespace: default
+---
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: Flow
+metadata:
+  name: all
+spec:
+  filters:
+    - stdout: {}
+  match:
+    - select: {}
+  localOutputRefs:
+    - nullout
+---
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: Output
+metadata:
+  name: nullout
+spec:
+  nullout: {}
