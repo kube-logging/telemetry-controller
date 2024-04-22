@@ -22,6 +22,7 @@ import (
 type SubscriptionSpec struct {
 	Outputs []NamespacedName `json:"outputs,omitempty"`
 	OTTL    string           `json:"ottl,omitempty"`
+	Debug   bool             `json:"debug,omitempty"`
 }
 
 // SubscriptionStatus defines the observed state of Subscription
@@ -32,9 +33,9 @@ type SubscriptionStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.status.tenant`
-//+kubebuilder:printcolumn:name="Outputs",type=string,JSONPath=`.status.outputs`
-//+kubebuilder:resource:categories=telemetry-all
+// +kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.status.tenant`
+// +kubebuilder:printcolumn:name="Outputs",type=string,JSONPath=`.status.outputs`
+// +kubebuilder:resource:categories=telemetry-all
 
 // Subscription is the Schema for the subscriptions API
 type Subscription struct {
