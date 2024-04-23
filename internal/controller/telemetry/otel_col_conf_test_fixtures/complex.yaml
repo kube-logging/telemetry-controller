@@ -70,30 +70,49 @@ exporters:
         endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
         tls:
             insecure: true
+    prometheus/message_metrics_exporter:
+      endpoint: 0.0.0.0:9999
+
 processors:
+    attributes/exporter_name_loki-test-output:
+        actions:
+            - action: insert
+              key: exporter
+              value: loki/collector_loki-test-output
+    attributes/exporter_name_otlp-test-output:
+        actions:
+            - action: insert
+              key: exporter
+              value: otlp/collector_otlp-test-output
+    attributes/exporter_name_otlp-test-output-2:
+        actions:
+            - action: insert
+              key: exporter
+              value: otlp/collector_otlp-test-output-2
     attributes/loki_exporter_loki-test-output:
         actions:
             - action: insert
               key: loki.tenant
-              from_attribute: tenant_name
+              from_attribute: tenant
             - action: insert
               key: loki.attribute.labels
-              value: tenant_name
+              value: tenant
     attributes/subscription_subscription-example-1:
         actions:
             - action: insert
-              key: subscription_name
+              key: subscription
               value: subscription-example-1
     attributes/subscription_subscription-example-2:
         actions:
             - action: insert
-              key: subscription_name
+              key: subscription
               value: subscription-example-2
     attributes/tenant_example-tenant:
         actions:
             - action: insert
-              key: tenant_name
+              key: tenant
               value: example-tenant
+    deltatocumulative: {}
     k8sattributes:
         auth_type: serviceAccount
         extract:
@@ -125,6 +144,24 @@ processors:
         limit_percentage: 75
         spike_limit_percentage: 25
 connectors:
+    count/output_metrics:
+        logs:
+            otelcollector_output_log_count:
+                description: The number of logs sent out from each exporter.
+                attributes:
+                    - key: tenant
+                      default_value: no_tenant
+                    - key: subscription
+                      default_value: no_subscription
+                    - key: exporter
+                      default_value: no_exporter
+    count/tenant_metrics:
+        logs:
+            otelcollector_tenant_log_count:
+                description: The number of logs from each tenant pipeline.
+                attributes:
+                    - key: tenant
+                      default_value: no_tenant
     routing/subscription_example-tenant-ns_subscription-example-1_outputs:
         table:
             - statement: route()
@@ -151,20 +188,20 @@ service:
             exporters: [routing/tenants]
         logs/output_example-tenant-ns_subscription-example-1_collector_loki-test-output:
             receivers: [routing/subscription_example-tenant-ns_subscription-example-1_outputs]
-            processors: [memory_limiter, attributes/loki_exporter_loki-test-output, resource/loki_exporter_loki-test-output]
-            exporters: [loki/collector_loki-test-output]
+            processors: [memory_limiter, attributes/exporter_name_loki-test-output, attributes/loki_exporter_loki-test-output, resource/loki_exporter_loki-test-output]
+            exporters: [loki/collector_loki-test-output, count/output_metrics]
         logs/output_example-tenant-ns_subscription-example-1_collector_otlp-test-output:
             receivers: [routing/subscription_example-tenant-ns_subscription-example-1_outputs]
-            processors: [memory_limiter]
-            exporters: [otlp/collector_otlp-test-output]
+            processors: [memory_limiter, attributes/exporter_name_otlp-test-output]
+            exporters: [otlp/collector_otlp-test-output, count/output_metrics]
         logs/output_example-tenant-ns_subscription-example-2_collector_otlp-test-output-2:
             receivers: [routing/subscription_example-tenant-ns_subscription-example-2_outputs]
-            processors: [memory_limiter]
-            exporters: [otlp/collector_otlp-test-output-2]
+            processors: [memory_limiter, attributes/exporter_name_otlp-test-output-2]
+            exporters: [otlp/collector_otlp-test-output-2, count/output_metrics]
         logs/tenant_example-tenant:
             receivers: [routing/tenants]
             processors: [memory_limiter, attributes/tenant_example-tenant]
-            exporters: [routing/tenant_example-tenant_subscriptions]
+            exporters: [routing/tenant_example-tenant_subscriptions, count/tenant_metrics]
         logs/tenant_example-tenant_subscription_example-tenant-ns_subscription-example-1:
             receivers: [routing/tenant_example-tenant_subscriptions]
             processors: [memory_limiter, attributes/subscription_subscription-example-1]
@@ -173,3 +210,11 @@ service:
             receivers: [routing/tenant_example-tenant_subscriptions]
             processors: [memory_limiter, attributes/subscription_subscription-example-2]
             exporters: [routing/subscription_example-tenant-ns_subscription-example-2_outputs]
+        metrics/output:
+            receivers: [count/output_metrics]
+            processors: [memory_limiter, deltatocumulative]
+            exporters: [prometheus/message_metrics_exporter]
+        metrics/tenant:
+            receivers: [count/tenant_metrics]
+            processors: [memory_limiter, deltatocumulative]
+            exporters: [prometheus/message_metrics_exporter]

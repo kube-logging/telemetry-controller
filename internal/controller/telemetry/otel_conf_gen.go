@@ -20,12 +20,17 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
+	"go.opentelemetry.io/collector/config/configauth"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type OtelColConfigInput struct {
@@ -62,6 +67,110 @@ type AttributesProcessorAction struct {
 	Value         string `yaml:"value,omitempty"`
 	FromAttribute string `yaml:"from_attribute,omitempty"`
 	FromContext   string `yaml:"from_context,omitempty"`
+}
+
+type CountConnectorAttributeConfig struct {
+	Key          string `yaml:"key,omitempty"`
+	DefaultValue string `yaml:"default_value,omitempty"`
+}
+
+type CountConnectorMetricInfo struct {
+	Description string                          `yaml:"description,omitempty"`
+	Conditions  []string                        `yaml:"conditions,omitempty"`
+	Attributes  []CountConnectorAttributeConfig `yaml:"attributes,omitempty"`
+}
+
+type DeltatoCumulativeConfig struct {
+	MaxStale   time.Duration `yaml:"max_stale,omitempty"`
+	MaxStreams int           `yaml:"max_streams,omitempty"`
+}
+
+type PrometheusExporterConfig struct {
+	HTTPServerConfig `yaml:",inline"`
+
+	// Namespace if set, exports metrics under the provided value.
+	Namespace string `yaml:"namespace,omitempty"`
+
+	// ConstLabels are values that are applied for every exported metric.
+	ConstLabels prometheus.Labels `yaml:"const_labels,omitempty"`
+
+	// SendTimestamps will send the underlying scrape timestamp with the export
+	SendTimestamps bool `yaml:"send_timestamps,omitempty"`
+
+	// MetricExpiration defines how long metrics are kept without updates
+	MetricExpiration time.Duration `yaml:"metric_expiration,omitempty"`
+
+	// ResourceToTelemetrySettings defines configuration for converting resource attributes to metric labels.
+	ResourceToTelemetrySettings resourcetotelemetry.Settings `yaml:"resource_to_telemetry_conversion,omitempty"`
+
+	// EnableOpenMetrics enables the use of the OpenMetrics encoding option for the prometheus exporter.
+	EnableOpenMetrics bool `yaml:"enable_open_metrics,omitempty"`
+
+	// AddMetricSuffixes controls whether suffixes are added to metric names. Defaults to true.
+	AddMetricSuffixes bool `yaml:"add_metric_suffixes,omitempty"`
+}
+
+type HTTPServerConfig struct {
+	// Endpoint configures the listening address for the server.
+	Endpoint string `yaml:"endpoint,omitempty"`
+
+	// TLSSetting struct exposes TLS client configuration.
+	TLSSetting *TLSServerConfig `yaml:"tls,omitempty"`
+
+	// CORS configures the server for HTTP cross-origin resource sharing (CORS).
+	CORS *CORSConfig `yaml:"cors,omitempty"`
+
+	// Auth for this receiver
+	Auth *configauth.Authentication `yaml:"auth,omitempty"`
+
+	// MaxRequestBodySize sets the maximum request body size in bytes
+	MaxRequestBodySize int64 `yaml:"max_request_body_size,omitempty"`
+
+	// IncludeMetadata propagates the client metadata from the incoming requests to the downstream consumers
+	// Experimental: *NOTE* this option is subject to change or removal in the future.
+	IncludeMetadata bool `yaml:"include_metadata,omitempty"`
+
+	// Additional headers attached to each HTTP response sent to the client.
+	// Header values are opaque since they may be sensitive.
+	ResponseHeaders map[string]configopaque.String `yaml:"response_headers,omitempty"`
+}
+
+type TLSServerConfig struct {
+	// squash ensures fields are correctly decoded in embedded struct.
+	v1alpha1.TLSSetting `yaml:",squash"`
+
+	// These are config options specific to server connections.
+
+	// Path to the TLS cert to use by the server to verify a client certificate. (optional)
+	// This sets the ClientCAs and ClientAuth to RequireAndVerifyClientCert in the TLSConfig. Please refer to
+	// https://godoc.org/crypto/tls#Config for more information. (optional)
+	ClientCAFile string `yaml:"client_ca_file"`
+
+	// Reload the ClientCAs file when it is modified
+	// (optional, default false)
+	ReloadClientCAFile bool `yaml:"client_ca_file_reload"`
+}
+
+// CORSConfig configures a receiver for HTTP cross-origin resource sharing (CORS).
+// See the underlying https://github.com/rs/cors package for details.
+type CORSConfig struct {
+	// AllowedOrigins sets the allowed values of the Origin header for
+	// HTTP/JSON requests to an OTLP receiver. An origin may contain a
+	// wildcard (*) to replace 0 or more characters (e.g.,
+	// "http://*.domain.com", or "*" to allow any origin).
+	AllowedOrigins []string `yaml:"allowed_origins"`
+
+	// AllowedHeaders sets what headers will be allowed in CORS requests.
+	// The Accept, Accept-Language, Content-Type, and Content-Language
+	// headers are implicitly allowed. If no headers are listed,
+	// X-Requested-With will also be accepted by default. Include "*" to
+	// allow any request header.
+	AllowedHeaders []string `yaml:"allowed_headers"`
+
+	// MaxAge sets the value of the Access-Control-Max-Age response header.
+	// Set it to the number of seconds that browsers should cache a CORS
+	// preflight response for.
+	MaxAge int `yaml:"max_age"`
 }
 
 type ResourceProcessor struct {
@@ -105,8 +214,8 @@ type OtelColConfigIR struct {
 
 func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[string]any {
 	exporters := map[string]any{}
-	// TODO: add proper error handling
 
+	maps.Copy(exporters, generateMetricsExporters())
 	maps.Copy(exporters, cfgInput.generateOTLPExporters(ctx))
 	maps.Copy(exporters, cfgInput.generateLokiExporters(ctx))
 	exporters["logging/debug"] = map[string]any{
@@ -115,13 +224,27 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 	return exporters
 }
 
+func generateMetricsExporters() map[string]any {
+	metricsExporters := make(map[string]any)
+
+	defaultPrometheusExporterConfig := PrometheusExporterConfig{
+		HTTPServerConfig: HTTPServerConfig{
+			Endpoint: "0.0.0.0:9999",
+		},
+	}
+
+	metricsExporters["prometheus/message_metrics_exporter"] = defaultPrometheusExporterConfig
+
+	return metricsExporters
+}
+
 func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) map[string]any {
 	logger := log.FromContext(ctx)
 	var result = make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.OTLP != nil {
-			name := fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
+			name := GetExporterNameForOtelOutput(output)
 			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
@@ -137,6 +260,7 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) m
 
 	return result
 }
+
 func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) map[string]any {
 	logger := log.FromContext(ctx)
 
@@ -145,8 +269,7 @@ func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) m
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.Loki != nil {
 
-			// TODO: add proper error handling
-			name := fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)
+			name := GetExporterNameForOtelOutput(output)
 			lokiHTTPValuesMarshaled, err := yaml.Marshal(output.Spec.Loki)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
@@ -272,6 +395,10 @@ func (cfgInput *OtelColConfigInput) generateRoutingConnectorForSubscriptionsOutp
 func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	var connectors = make(map[string]any)
 
+	countConnectors := generateCountConnectors()
+
+	maps.Copy(connectors, countConnectors)
+
 	rootRoutingConnector := generateRootRoutingConnector(cfgInput.Tenants)
 	connectors[rootRoutingConnector.Name] = rootRoutingConnector
 
@@ -309,6 +436,42 @@ func (cfgInput *OtelColConfigInput) generateProcessorMemoryLimiter() map[string]
 	return memoryLimiter
 }
 
+func generateCountConnectors() map[string]any {
+	countConnectors := make(map[string]any)
+
+	countConnectors["count/tenant_metrics"] = map[string]any{
+		"logs": map[string]CountConnectorMetricInfo{
+			"otelcollector_tenant_log_count": {
+				Description: "The number of logs from each tenant pipeline.",
+				Attributes: []CountConnectorAttributeConfig{{
+					Key:          "tenant",
+					DefaultValue: "no_tenant",
+				}},
+			},
+		},
+	}
+
+	countConnectors["count/output_metrics"] = map[string]any{
+		"logs": map[string]CountConnectorMetricInfo{
+			"otelcollector_output_log_count": {
+				Description: "The number of logs sent out from each exporter.",
+				Attributes: []CountConnectorAttributeConfig{{
+					Key:          "tenant",
+					DefaultValue: "no_tenant",
+				}, {
+					Key:          "subscription",
+					DefaultValue: "no_subscription",
+				}, {
+					Key:          "exporter",
+					DefaultValue: "no_exporter",
+				}},
+			},
+		},
+	}
+
+	return countConnectors
+}
+
 func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	var processors = make(map[string]any)
 
@@ -316,6 +479,9 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	processors[k8sProcessorName] = cfgInput.generateDefaultKubernetesProcessor()
 
 	processors["memory_limiter"] = cfgInput.generateProcessorMemoryLimiter()
+	metricsProcessors := generateMetricsProcessors()
+
+	maps.Copy(processors, metricsProcessors)
 
 	for _, tenant := range cfgInput.Tenants {
 		processors[fmt.Sprintf("attributes/tenant_%s", tenant.Name)] = generateTenantAttributeProcessor(tenant)
@@ -326,6 +492,8 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	}
 
 	for _, output := range cfgInput.Outputs {
+
+		processors[fmt.Sprintf("attributes/exporter_name_%s", output.Name)] = generateOutputExporterNameProcessor(output)
 		if output.Spec.Loki != nil {
 			processors[fmt.Sprintf("attributes/loki_exporter_%s", output.Name)] = generateLokiExporterAttributeProcessor()
 			processors[fmt.Sprintf("resource/loki_exporter_%s", output.Name)] = generateLokiExporterResourceProcessor()
@@ -336,12 +504,32 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 
 }
 
+func generateOutputExporterNameProcessor(output v1alpha1.OtelOutput) AttributesProcessor {
+	processor := AttributesProcessor{
+		Actions: []AttributesProcessorAction{{
+			Action: "insert",
+			Key:    "exporter",
+			Value:  GetExporterNameForOtelOutput(output),
+		}},
+	}
+
+	return processor
+}
+
+func generateMetricsProcessors() map[string]any {
+	metricsProcessors := make(map[string]any)
+
+	metricsProcessors["deltatocumulative"] = DeltatoCumulativeConfig{}
+
+	return metricsProcessors
+}
+
 func generateTenantAttributeProcessor(tenant v1alpha1.Tenant) AttributesProcessor {
 	processor := AttributesProcessor{
 		Actions: []AttributesProcessorAction{
 			{
 				Action: "insert",
-				Key:    "tenant_name",
+				Key:    "tenant",
 				Value:  tenant.Name,
 			},
 		},
@@ -355,7 +543,7 @@ func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) 
 		Actions: []AttributesProcessorAction{
 			{
 				Action: "insert",
-				Key:    "subscription_name",
+				Key:    "subscription",
 				Value:  subscription.Name,
 			},
 		},
@@ -370,12 +558,12 @@ func generateLokiExporterAttributeProcessor() AttributesProcessor {
 			{
 				Action:        "insert",
 				Key:           "loki.tenant",
-				FromAttribute: "tenant_name",
+				FromAttribute: "tenant",
 			},
 			{
 				Action: "insert",
 				Key:    "loki.attribute.labels",
-				Value:  "tenant_name",
+				Value:  "tenant",
 			},
 		},
 	}
@@ -401,8 +589,15 @@ func generateRootPipeline() Pipeline {
 }
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
+	tenantCountConnectorName := "count/tenant_metrics"
+	outputCountConnectorName := "count/output_metrics"
+
 	var namedPipelines = make(map[string]Pipeline)
 	namedPipelines["logs/all"] = generateRootPipeline()
+
+	metricsPipelines := generateMetricsPipelines()
+
+	maps.Copy(namedPipelines, metricsPipelines)
 
 	tenants := []string{}
 	for tenant := range cfgInput.TenantSubscriptionMap {
@@ -413,7 +608,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 		// Generate a pipeline for the tenant
 		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenant)
 		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenant)
-		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{fmt.Sprintf("attributes/tenant_%s", tenant)}, []string{tenantRoutingName})
+		namedPipelines[tenantPipelineName] = generatePipeline([]string{"routing/tenants"}, []string{fmt.Sprintf("attributes/tenant_%s", tenant)}, []string{tenantRoutingName, tenantCountConnectorName})
 
 		// Generate pipelines for the subscriptions for the tenant
 		for _, subscription := range cfgInput.TenantSubscriptionMap[tenant] {
@@ -432,11 +627,15 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 					output := cfgInput.Outputs[idx]
 
 					if output.Spec.Loki != nil {
-						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}, []string{fmt.Sprintf("attributes/loki_exporter_%s", output.Name), fmt.Sprintf("resource/loki_exporter_%s", output.Name)}, []string{fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)})
+						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
+							[]string{fmt.Sprintf("attributes/exporter_name_%s", output.Name), fmt.Sprintf("attributes/loki_exporter_%s", output.Name), fmt.Sprintf("resource/loki_exporter_%s", output.Name)},
+							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
 					}
 
 					if output.Spec.OTLP != nil {
-						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}, []string{}, []string{fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)})
+						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
+							[]string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)},
+							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
 					}
 				}
 			}
@@ -446,6 +645,24 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 
 	return namedPipelines
 
+}
+
+func generateMetricsPipelines() map[string]Pipeline {
+	metricsPipelines := make(map[string]Pipeline)
+
+	metricsPipelines["metrics/tenant"] = Pipeline{
+		Receivers:  []string{"count/tenant_metrics"},
+		Processors: []string{"deltatocumulative"},
+		Exporters:  []string{"prometheus/message_metrics_exporter"},
+	}
+
+	metricsPipelines["metrics/output"] = Pipeline{
+		Receivers:  []string{"count/output_metrics"},
+		Processors: []string{"deltatocumulative"},
+		Exporters:  []string{"prometheus/message_metrics_exporter"},
+	}
+
+	return metricsPipelines
 }
 
 func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[string]any {
