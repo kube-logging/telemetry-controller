@@ -21,7 +21,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.98.0
 	go.opentelemetry.io/collector/config/configauth v0.98.0
 	go.opentelemetry.io/collector/config/configopaque v1.5.0
-	go.opentelemetry.io/collector/config/configtls v0.98.0
 )
 
 require (
