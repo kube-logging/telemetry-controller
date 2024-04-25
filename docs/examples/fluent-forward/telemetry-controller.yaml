@@ -56,3 +56,6 @@ spec:
   fluentforward:
     endpoint: all-to-file-fluentd.default:24240
     tag: asd
+    map_metadata: true
+    default_labels_enabled:
+      kubernetes.namespace_name: true

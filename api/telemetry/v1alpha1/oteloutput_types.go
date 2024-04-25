@@ -67,7 +67,7 @@ type Fluentforward struct {
 	RetryConfig BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
 
 	// Enable mapping
-	MapMetadata bool `json:"map_metadata,omitempty" yaml:"map_metadata,omitempty"`
+	MapMetadata bool `json:"map_metadata,omitempty" yaml:"-"`
 }
 
 type TCPClientSettings struct {

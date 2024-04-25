@@ -186,6 +186,15 @@ type ResourceProcessorAction struct {
 	FromContext   string `yaml:"from_context,omitempty"`
 }
 
+type TransformProcessor struct {
+	LogStatements []Statement `yaml:"log_statements,omitempty"`
+}
+
+type Statement struct {
+	Context    string   `yaml:"context"`
+	Statements []string `yaml:"statements"`
+}
+
 type Pipeline struct {
 	Receivers  []string `yaml:"receivers,omitempty,flow"`
 	Processors []string `yaml:"processors,omitempty,flow"`
@@ -295,7 +304,6 @@ func (cfgInput *OtelColConfigInput) generateFluentforwardExporters(ctx context.C
 
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.Fluentforward != nil {
-
 			// TODO: add proper error handling
 			name := fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
 			fluentForwardMarshaled, err := yaml.Marshal(output.Spec.Fluentforward)
@@ -524,7 +532,7 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 			processors[fmt.Sprintf("resource/loki_exporter_%s", output.Name)] = generateLokiExporterResourceProcessor()
 		}
 		if output.Spec.Fluentforward != nil && output.Spec.Fluentforward.MapMetadata {
-			processors[fmt.Sprintf("attributes/fluentforward_exporter_%s", output.Name)] = generateFluentforwardResourceProcessor()
+			processors[fmt.Sprintf("transform/fluentforward_exporter_%s", output.Name)] = generateFluentforwardResourceProcessor()
 		}
 	}
 
@@ -614,33 +622,18 @@ func generateRootPipeline(tenantName string) Pipeline {
 	exporterName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
 	return generatePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName)}, []string{exporterName, tenantCountConnectorName})
 }
-func generateFluentforwardResourceProcessor() AttributesProcessor {
-	processor := AttributesProcessor{
-		Actions: []AttributesProcessorAction{
+
+func generateFluentforwardResourceProcessor() TransformProcessor {
+	processor := TransformProcessor{
+		LogStatements: []Statement{
 			{
-				Action:        "insert",
-				Key:           "kubernetes.pod_name",
-				FromAttribute: "k8s.pod.name",
-			},
-			{
-				Action:        "insert",
-				Key:           "kubernetes.pod_id",
-				FromAttribute: "k8s.pod.uid",
-			},
-			{
-				Action:        "insert",
-				Key:           "kubernetes.labels",
-				FromAttribute: "k8s.pod.labels",
-			},
-			{
-				Action:        "insert",
-				Key:           "kubernetes.namespace_name",
-				FromAttribute: "k8s.namespace.name",
-			},
-			{
-				Action:        "insert",
-				Key:           "kubernetes.container_name",
-				FromAttribute: "k8s.container.name",
+				Context: "log",
+				Statements: []string{
+					`set(attributes["kubernetes.pod"], resource.attributes["k8s.pod.name"])`,
+					`set(attributes["kubernetes.labels"], resource.attributes["k8s.pod.labels.app.kubernetes.io/name"])`,
+					`set(attributes["kubernetes.namespace_name"], resource.attributes["k8s.namespace.name"])`,
+					`set(attributes["kubernetes.container_name"], resource.attributes["k8s.container.name"])`,
+				},
 			},
 		},
 	}
@@ -649,17 +642,7 @@ func generateFluentforwardResourceProcessor() AttributesProcessor {
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
 	outputCountConnectorName := "count/output_metrics"
-<<<<<<< HEAD
 	var namedPipelines = make(map[string]Pipeline)
-=======
-
-	namedPipelines := make(map[string]Pipeline)
-	namedPipelines["logs/all"] = generateRootPipeline()
-
-	metricsPipelines := generateMetricsPipelines()
-
-	maps.Copy(namedPipelines, metricsPipelines)
->>>>>>> d87bd6ec84 (subscription debug)
 
 	tenants := []string{}
 	for tenant := range cfgInput.TenantSubscriptionMap {
@@ -708,7 +691,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 					if output.Spec.Fluentforward != nil {
 						var processors = []string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)}
 						if output.Spec.Fluentforward.MapMetadata {
-							processors = append(processors, fmt.Sprintf("attributes/fluentforward_exporter_%s", output.Name))
+							processors = append(processors, fmt.Sprintf("transform/fluentforward_exporter_%s", output.Name))
 						}
 						namedPipelines[outputPipelineName] = generatePipeline(
 							[]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},

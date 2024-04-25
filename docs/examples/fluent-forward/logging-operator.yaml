@@ -3,7 +3,8 @@ kind: Logging
 metadata:
   name: all-to-file
 spec:
-  fluentd: {}
+  fluentd:
+    logLevel: trace
   controlNamespace: default
 ---
 apiVersion: logging.banzaicloud.io/v1beta1
