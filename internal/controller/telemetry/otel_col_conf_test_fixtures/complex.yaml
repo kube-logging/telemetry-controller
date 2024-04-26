@@ -1,5 +1,5 @@
 receivers:
-    filelog/kubernetes:
+    filelog/example-tenant-a:
         exclude:
             - /var/log/pods/*/otc-container/*.log
         include:
@@ -54,25 +54,86 @@ receivers:
             - from: attributes.uid
               to: resource["k8s.pod.uid"]
               type: move
+        retry_on_failure:
+            enabled: true
+            max_elapsed_time: 0
+        start_at: end
+    filelog/example-tenant-b:
+        exclude:
+            - /var/log/pods/*/otc-container/*.log
+        include:
+            - /var/log/pods/*/*/*.log
+        include_file_name: false
+        include_file_path: true
+        operators:
+            - id: get-format
+              routes:
+                - expr: body matches "^\\{"
+                  output: parser-docker
+                - expr: body matches "^[^ Z]+Z"
+                  output: parser-containerd
+              type: router
+            - id: parser-containerd
+              output: extract_metadata_from_filepath
+              regex: ^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$
+              timestamp:
+                layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+                parse_from: attributes.time
+              type: regex_parser
+            - id: parser-docker
+              output: extract_metadata_from_filepath
+              timestamp:
+                layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+                parse_from: attributes.time
+              type: json_parser
+            - cache:
+                size: 128
+              id: extract_metadata_from_filepath
+              parse_from: attributes["log.file.path"]
+              regex: ^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9-]+)\/(?P<container_name>[^\/]+)\/(?P<restart_count>\d+)\.log$
+              type: regex_parser
+            - from: attributes.log
+              to: body
+              type: move
+            - from: attributes.stream
+              to: attributes["log.iostream"]
+              type: move
+            - from: attributes.container_name
+              to: resource["k8s.container.name"]
+              type: move
+            - from: attributes.namespace
+              to: resource["k8s.namespace.name"]
+              type: move
+            - from: attributes.pod_name
+              to: resource["k8s.pod.name"]
+              type: move
+            - from: attributes.restart_count
+              to: resource["k8s.container.restart_count"]
+              type: move
+            - from: attributes.uid
+              to: resource["k8s.pod.uid"]
+              type: move
+        retry_on_failure:
+            enabled: true
+            max_elapsed_time: 0
         start_at: end
 exporters:
     logging/debug:
         verbosity: detailed
     loki/collector_loki-test-output:
-        endpoint: loki.example-tenant-ns.svc.cluster.local:4317
+        endpoint: loki.example-tenant-a-ns.svc.cluster.local:4317
         tls:
             insecure: true
     otlp/collector_otlp-test-output:
-        endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
+        endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
         tls:
             insecure: true
     otlp/collector_otlp-test-output-2:
-        endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
+        endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
         tls:
             insecure: true
     prometheus/message_metrics_exporter:
-      endpoint: 0.0.0.0:9999
-
+        endpoint: 0.0.0.0:9999
 processors:
     attributes/exporter_name_loki-test-output:
         actions:
@@ -107,11 +168,21 @@ processors:
             - action: insert
               key: subscription
               value: subscription-example-2
-    attributes/tenant_example-tenant:
+    attributes/subscription_subscription-example-3:
+        actions:
+            - action: insert
+              key: subscription
+              value: subscription-example-3
+    attributes/tenant_example-tenant-a:
         actions:
             - action: insert
               key: tenant
-              value: example-tenant
+              value: example-tenant-a
+    attributes/tenant_example-tenant-b:
+        actions:
+            - action: insert
+              key: tenant
+              value: example-tenant-b
     deltatocumulative: {}
     k8sattributes:
         auth_type: serviceAccount
@@ -134,15 +205,15 @@ processors:
                   from: resource_attribute
                 - name: k8s.pod.name
                   from: resource_attribute
+    memory_limiter:
+        check_interval: "1s"
+        limit_percentage: 75
+        spike_limit_percentage: 25
     resource/loki_exporter_loki-test-output:
         attributes:
             - action: insert
               key: loki.resource.labels
               value: k8s.pod.name, k8s.namespace.name
-    memory_limiter:
-        check_interval: "1s"
-        limit_percentage: 75
-        spike_limit_percentage: 25
 connectors:
     count/output_metrics:
         logs:
@@ -170,54 +241,82 @@ connectors:
                     - key: k8s.container.name
                     - key: k8s.pod.name
                     - key: k8s.pod.labels.app.kubernetes.io/name
-    routing/subscription_example-tenant-ns_subscription-example-1_outputs:
+    routing/subscription_example-tenant-a-ns_subscription-example-1_outputs:
         table:
             - statement: route()
-              pipelines: [logs/output_example-tenant-ns_subscription-example-1_collector_loki-test-output, logs/output_example-tenant-ns_subscription-example-1_collector_otlp-test-output]
-    routing/subscription_example-tenant-ns_subscription-example-2_outputs:
+              pipelines: [logs/output_example-tenant-a-ns_subscription-example-1_collector_loki-test-output, logs/output_example-tenant-a-ns_subscription-example-1_collector_otlp-test-output]
+    routing/subscription_example-tenant-a-ns_subscription-example-2_outputs:
         table:
             - statement: route()
-              pipelines: [logs/output_example-tenant-ns_subscription-example-2_collector_otlp-test-output-2]
-    routing/tenant_example-tenant_subscriptions:
+              pipelines: [logs/output_example-tenant-a-ns_subscription-example-2_collector_otlp-test-output-2]
+    routing/subscription_example-tenant-b-ns_subscription-example-3_outputs:
         table:
             - statement: route()
-              pipelines: [logs/tenant_example-tenant_subscription_example-tenant-ns_subscription-example-1]
+              pipelines: [logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2]
+    routing/tenant_example-tenant-a_subscriptions:
+        table:
+            - statement: route()
+              pipelines: [logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1]
             - statement: 'route() '
-              pipelines: [logs/tenant_example-tenant_subscription_example-tenant-ns_subscription-example-2]
-    routing/tenants:
+              pipelines: [logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-2]
+    routing/tenant_example-tenant-b_subscriptions:
+        table:
+            - statement: route()
+              pipelines: [logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3]
+    routing/tenants_example-tenant-a:
         table:
             - statement: 'route() where '
-              pipelines: [logs/tenant_example-tenant]
+              pipelines: [logs/tenant_example-tenant-a]
+    routing/tenants_example-tenant-b:
+        table:
+            - statement: 'route() where '
+              pipelines: [logs/tenant_example-tenant-b]
 service:
     pipelines:
-        logs/all:
-            receivers: [filelog/kubernetes]
+        logs/all_example-tenant-a:
+            receivers: [filelog/example-tenant-a]
             processors: [memory_limiter, k8sattributes]
-            exporters: [routing/tenants]
-        logs/output_example-tenant-ns_subscription-example-1_collector_loki-test-output:
-            receivers: [routing/subscription_example-tenant-ns_subscription-example-1_outputs]
+            exporters: [routing/tenants_example-tenant-a]
+        logs/all_example-tenant-b:
+            receivers: [filelog/example-tenant-b]
+            processors: [memory_limiter, k8sattributes]
+            exporters: [routing/tenants_example-tenant-b]
+        logs/output_example-tenant-a-ns_subscription-example-1_collector_loki-test-output:
+            receivers: [routing/subscription_example-tenant-a-ns_subscription-example-1_outputs]
             processors: [memory_limiter, attributes/exporter_name_loki-test-output, attributes/loki_exporter_loki-test-output, resource/loki_exporter_loki-test-output]
             exporters: [loki/collector_loki-test-output, count/output_metrics]
-        logs/output_example-tenant-ns_subscription-example-1_collector_otlp-test-output:
-            receivers: [routing/subscription_example-tenant-ns_subscription-example-1_outputs]
+        logs/output_example-tenant-a-ns_subscription-example-1_collector_otlp-test-output:
+            receivers: [routing/subscription_example-tenant-a-ns_subscription-example-1_outputs]
             processors: [memory_limiter, attributes/exporter_name_otlp-test-output]
             exporters: [otlp/collector_otlp-test-output, count/output_metrics]
-        logs/output_example-tenant-ns_subscription-example-2_collector_otlp-test-output-2:
-            receivers: [routing/subscription_example-tenant-ns_subscription-example-2_outputs]
+        logs/output_example-tenant-a-ns_subscription-example-2_collector_otlp-test-output-2:
+            receivers: [routing/subscription_example-tenant-a-ns_subscription-example-2_outputs]
             processors: [memory_limiter, attributes/exporter_name_otlp-test-output-2]
             exporters: [otlp/collector_otlp-test-output-2, count/output_metrics]
-        logs/tenant_example-tenant:
-            receivers: [routing/tenants]
-            processors: [memory_limiter, attributes/tenant_example-tenant]
-            exporters: [routing/tenant_example-tenant_subscriptions, count/tenant_metrics]
-        logs/tenant_example-tenant_subscription_example-tenant-ns_subscription-example-1:
-            receivers: [routing/tenant_example-tenant_subscriptions]
+        logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2:
+            receivers: [routing/subscription_example-tenant-b-ns_subscription-example-3_outputs]
+            processors: [memory_limiter, attributes/exporter_name_otlp-test-output-2]
+            exporters: [otlp/collector_otlp-test-output-2, count/output_metrics]
+        logs/tenant_example-tenant-a:
+            receivers: [routing/tenants_example-tenant-a]
+            processors: [memory_limiter, attributes/tenant_example-tenant-a]
+            exporters: [routing/tenant_example-tenant-a_subscriptions, count/tenant_metrics]
+        logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1:
+            receivers: [routing/tenant_example-tenant-a_subscriptions]
             processors: [memory_limiter, attributes/subscription_subscription-example-1]
-            exporters: [routing/subscription_example-tenant-ns_subscription-example-1_outputs]
-        logs/tenant_example-tenant_subscription_example-tenant-ns_subscription-example-2:
-            receivers: [routing/tenant_example-tenant_subscriptions]
+            exporters: [routing/subscription_example-tenant-a-ns_subscription-example-1_outputs]
+        logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-2:
+            receivers: [routing/tenant_example-tenant-a_subscriptions]
             processors: [memory_limiter, attributes/subscription_subscription-example-2]
-            exporters: [routing/subscription_example-tenant-ns_subscription-example-2_outputs]
+            exporters: [routing/subscription_example-tenant-a-ns_subscription-example-2_outputs]
+        logs/tenant_example-tenant-b:
+            receivers: [routing/tenants_example-tenant-b]
+            processors: [memory_limiter, attributes/tenant_example-tenant-b]
+            exporters: [routing/tenant_example-tenant-b_subscriptions, count/tenant_metrics]
+        logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3:
+            receivers: [routing/tenant_example-tenant-b_subscriptions]
+            processors: [memory_limiter, attributes/subscription_subscription-example-3]
+            exporters: [routing/subscription_example-tenant-b-ns_subscription-example-3_outputs]
         metrics/output:
             receivers: [count/output_metrics]
             processors: [memory_limiter, deltatocumulative]
