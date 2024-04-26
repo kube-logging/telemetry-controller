@@ -263,24 +263,16 @@ connectors:
         table:
             - statement: route()
               pipelines: [logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3]
-    routing/tenants_example-tenant-a:
-        table:
-            - statement: 'route() where '
-              pipelines: [logs/tenant_example-tenant-a]
-    routing/tenants_example-tenant-b:
-        table:
-            - statement: 'route() where '
-              pipelines: [logs/tenant_example-tenant-b]
 service:
     pipelines:
-        logs/all_example-tenant-a:
+        logs/tenant_example-tenant-a:
             receivers: [filelog/example-tenant-a]
-            processors: [memory_limiter, k8sattributes]
-            exporters: [routing/tenants_example-tenant-a]
-        logs/all_example-tenant-b:
+            processors: [memory_limiter, k8sattributes, attributes/tenant_example-tenant-a]
+            exporters: [routing/tenant_example-tenant-a_subscriptions, count/tenant_metrics]
+        logs/tenant_example-tenant-b:
             receivers: [filelog/example-tenant-b]
-            processors: [memory_limiter, k8sattributes]
-            exporters: [routing/tenants_example-tenant-b]
+            processors: [memory_limiter, k8sattributes, attributes/tenant_example-tenant-b]
+            exporters: [routing/tenant_example-tenant-b_subscriptions, count/tenant_metrics]
         logs/output_example-tenant-a-ns_subscription-example-1_collector_loki-test-output:
             receivers: [routing/subscription_example-tenant-a-ns_subscription-example-1_outputs]
             processors: [memory_limiter, attributes/exporter_name_loki-test-output, attributes/loki_exporter_loki-test-output, resource/loki_exporter_loki-test-output]
@@ -297,10 +289,6 @@ service:
             receivers: [routing/subscription_example-tenant-b-ns_subscription-example-3_outputs]
             processors: [memory_limiter, attributes/exporter_name_otlp-test-output-2]
             exporters: [otlp/collector_otlp-test-output-2, count/output_metrics]
-        logs/tenant_example-tenant-a:
-            receivers: [routing/tenants_example-tenant-a]
-            processors: [memory_limiter, attributes/tenant_example-tenant-a]
-            exporters: [routing/tenant_example-tenant-a_subscriptions, count/tenant_metrics]
         logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1:
             receivers: [routing/tenant_example-tenant-a_subscriptions]
             processors: [memory_limiter, attributes/subscription_subscription-example-1]
@@ -309,10 +297,6 @@ service:
             receivers: [routing/tenant_example-tenant-a_subscriptions]
             processors: [memory_limiter, attributes/subscription_subscription-example-2]
             exporters: [routing/subscription_example-tenant-a-ns_subscription-example-2_outputs]
-        logs/tenant_example-tenant-b:
-            receivers: [routing/tenants_example-tenant-b]
-            processors: [memory_limiter, attributes/tenant_example-tenant-b]
-            exporters: [routing/tenant_example-tenant-b_subscriptions, count/tenant_metrics]
         logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3:
             receivers: [routing/tenant_example-tenant-b_subscriptions]
             processors: [memory_limiter, attributes/subscription_subscription-example-3]

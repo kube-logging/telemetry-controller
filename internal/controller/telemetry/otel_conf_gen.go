@@ -309,34 +309,6 @@ func newRoutingConnector(name string) RoutingConnector {
 	return result
 }
 
-func buildRoutingTableItemForTenant(tenant v1alpha1.Tenant) RoutingConnectorTableItem {
-	conditions := make([]string, len(tenant.Status.LogSourceNamespaces))
-
-	for i, namespace := range tenant.Status.LogSourceNamespaces {
-		conditions[i] = fmt.Sprintf(`IsMatch(attributes["k8s.namespace.name"], %q)`, namespace)
-	}
-
-	conditionString := strings.Join(conditions, " or ")
-
-	newItem := RoutingConnectorTableItem{
-		Statement: fmt.Sprintf(`route() where %s`, conditionString),
-		Pipelines: []string{fmt.Sprintf("logs/tenant_%s", tenant.Name)},
-	}
-
-	return newItem
-}
-
-func generateRootRoutingConnectors(tenants []v1alpha1.Tenant) []RoutingConnector {
-	routingConnectors := make([]RoutingConnector, 0, len(tenants))
-	for _, tenant := range tenants {
-		defaultRcForTenant := newRoutingConnector(fmt.Sprintf("routing/tenants_%s", tenant.Name))
-		tableItem := buildRoutingTableItemForTenant(tenant)
-		defaultRcForTenant.AddRoutingConnectorTableElem(tableItem)
-		routingConnectors = append(routingConnectors, defaultRcForTenant)
-	}
-	return routingConnectors
-}
-
 func buildRoutingTableItemForSubscription(tenantName string, subscription v1alpha1.Subscription, index int) RoutingConnectorTableItem {
 
 	pipelineName := fmt.Sprintf("logs/tenant_%s_subscription_%s_%s", tenantName, subscription.Namespace, subscription.Name)
@@ -398,13 +370,7 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	var connectors = make(map[string]any)
 
 	countConnectors := generateCountConnectors()
-
 	maps.Copy(connectors, countConnectors)
-
-	rootRoutingConnectors := generateRootRoutingConnectors(cfgInput.Tenants)
-	for _, rc := range rootRoutingConnectors {
-		connectors[rc.Name] = rc
-	}
 
 	for _, tenant := range cfgInput.Tenants {
 		rc := cfgInput.generateRoutingConnectorForTenantsSubscriptions(tenant.Name, cfgInput.TenantSubscriptionMap[tenant.Name])
@@ -620,19 +586,19 @@ func generateLokiExporterResourceProcessor() ResourceProcessor {
 }
 
 func generateRootPipeline(tenantName string) Pipeline {
+	tenantCountConnectorName := "count/tenant_metrics"
 	receiverName := fmt.Sprintf("filelog/%s", tenantName)
-	exporterName := fmt.Sprintf("routing/tenants_%s", tenantName)
-	return generatePipeline([]string{receiverName}, []string{"k8sattributes"}, []string{exporterName})
+	exporterName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
+	return generatePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName)}, []string{exporterName, tenantCountConnectorName})
 }
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
-	tenantCountConnectorName := "count/tenant_metrics"
 	outputCountConnectorName := "count/output_metrics"
 	var namedPipelines = make(map[string]Pipeline)
 
 	tenants := []string{}
 	for tenant := range cfgInput.TenantSubscriptionMap {
-		tenantRootPipeline := fmt.Sprintf("logs/all_%s", tenant)
+		tenantRootPipeline := fmt.Sprintf("logs/tenant_%s", tenant)
 		namedPipelines[tenantRootPipeline] = generateRootPipeline(tenant)
 		tenants = append(tenants, tenant)
 	}
@@ -642,13 +608,13 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 
 	for _, tenant := range tenants {
 		// Generate a pipeline for the tenant
-		tenantPipelineName := fmt.Sprintf("logs/tenant_%s", tenant)
+		tenantRootPipeline := fmt.Sprintf("logs/tenant_%s", tenant)
 		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenant)
-		namedPipelines[tenantPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/tenants_%s", tenant)}, []string{fmt.Sprintf("attributes/tenant_%s", tenant)}, []string{tenantRoutingName, tenantCountConnectorName})
+		namedPipelines[tenantRootPipeline] = generateRootPipeline(tenant)
 
 		// Generate pipelines for the subscriptions for the tenant
 		for _, subscription := range cfgInput.TenantSubscriptionMap[tenant] {
-			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s_%s", tenantPipelineName, subscription.Namespace, subscription.Name)
+			tenantSubscriptionPipelineName := fmt.Sprintf("%s_subscription_%s_%s", tenantRootPipeline, subscription.Namespace, subscription.Name)
 
 			namedPipelines[tenantSubscriptionPipelineName] = generatePipeline([]string{tenantRoutingName}, []string{fmt.Sprintf("attributes/subscription_%s", subscription.Name)}, []string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)})
 
