@@ -75,9 +75,10 @@ type CountConnectorAttributeConfig struct {
 }
 
 type CountConnectorMetricInfo struct {
-	Description string                          `yaml:"description,omitempty"`
-	Conditions  []string                        `yaml:"conditions,omitempty"`
-	Attributes  []CountConnectorAttributeConfig `yaml:"attributes,omitempty"`
+	Description        string                          `yaml:"description,omitempty"`
+	Conditions         []string                        `yaml:"conditions,omitempty"`
+	Attributes         []CountConnectorAttributeConfig `yaml:"attributes,omitempty"`
+	ResourceAttributes []CountConnectorAttributeConfig `yaml:"resource_attributes,omitempty"`
 }
 
 type DeltatoCumulativeConfig struct {
@@ -441,30 +442,61 @@ func generateCountConnectors() map[string]any {
 
 	countConnectors["count/tenant_metrics"] = map[string]any{
 		"logs": map[string]CountConnectorMetricInfo{
-			"otelcollector_tenant_log_count": {
+			"telemetry_controller_tenant_log_count": {
 				Description: "The number of logs from each tenant pipeline.",
 				Attributes: []CountConnectorAttributeConfig{{
-					Key:          "tenant",
-					DefaultValue: "no_tenant",
+					Key: "tenant",
 				}},
+				ResourceAttributes: []CountConnectorAttributeConfig{
+					{
+						Key: "k8s.namespace.name",
+					},
+					{
+						Key: "k8s.node.name",
+					},
+					{
+						Key: "k8s.container.name",
+					},
+					{
+						Key: "k8s.pod.name",
+					},
+					{
+						Key: "k8s.pod.labels.app.kubernetes.io/name",
+					},
+				},
 			},
 		},
 	}
 
 	countConnectors["count/output_metrics"] = map[string]any{
 		"logs": map[string]CountConnectorMetricInfo{
-			"otelcollector_output_log_count": {
+			"telemetry_controller_output_log_count": {
 				Description: "The number of logs sent out from each exporter.",
-				Attributes: []CountConnectorAttributeConfig{{
-					Key:          "tenant",
-					DefaultValue: "no_tenant",
-				}, {
-					Key:          "subscription",
-					DefaultValue: "no_subscription",
-				}, {
-					Key:          "exporter",
-					DefaultValue: "no_exporter",
-				}},
+				Attributes: []CountConnectorAttributeConfig{
+					{
+						Key: "tenant",
+					}, {
+						Key: "subscription",
+					}, {
+						Key: "exporter",
+					}},
+				ResourceAttributes: []CountConnectorAttributeConfig{
+					{
+						Key: "k8s.namespace.name",
+					},
+					{
+						Key: "k8s.node.name",
+					},
+					{
+						Key: "k8s.container.name",
+					},
+					{
+						Key: "k8s.pod.name",
+					},
+					{
+						Key: "k8s.pod.labels.app.kubernetes.io/name",
+					},
+				},
 			},
 		},
 	}
