@@ -108,6 +108,11 @@ func TestOtelColConfComplex(t *testing.T) {
 						},
 					},
 				},
+				Status: v1alpha1.TenantStatus{
+					LogSourceNamespaces: []string{
+						"example-tenant-a",
+					},
+				},
 			},
 			{
 				ObjectMeta: metav1.ObjectMeta{
@@ -127,6 +132,11 @@ func TestOtelColConfComplex(t *testing.T) {
 								"nsSelector": "example-tenant-b",
 							},
 						},
+					},
+				},
+				Status: v1alpha1.TenantStatus{
+					LogSourceNamespaces: []string{
+						"example-tenant-b",
 					},
 				},
 			},

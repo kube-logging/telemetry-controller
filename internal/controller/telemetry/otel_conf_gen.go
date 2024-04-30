@@ -718,7 +718,7 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[str
 	return k8sProcessor
 }
 
-func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[string]any {
+func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver(namespaces []string) map[string]any {
 
 	// TODO: fix parser-crio
 	operators := []map[string]any{
@@ -801,8 +801,14 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver() map[stri
 		},
 	}
 
+	includeList := make([]string, 0, len(namespaces))
+	for _, ns := range namespaces {
+		include := fmt.Sprintf("/var/log/pods/%s_*/*/*.log", ns)
+		includeList = append(includeList, include)
+	}
+
 	k8sReceiver := map[string]any{
-		"include":           []string{"/var/log/pods/*/*/*.log"},
+		"include":           includeList,
 		"exclude":           []string{"/var/log/pods/*/otc-container/*.log"},
 		"start_at":          "end",
 		"include_file_path": true,
@@ -828,9 +834,14 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Con
 	result.Processors = cfgInput.generateProcessors()
 
 	result.Receivers = make(map[string]any)
-	for tenant := range cfgInput.TenantSubscriptionMap {
-		k8sReceiverName := fmt.Sprintf("filelog/%s", tenant)
-		result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver()
+	for tenantName := range cfgInput.TenantSubscriptionMap {
+		if tenantIdx := slices.IndexFunc(cfgInput.Tenants, func(t v1alpha1.Tenant) bool {
+			return tenantName == t.Name
+		}); tenantIdx != -1 {
+			k8sReceiverName := fmt.Sprintf("filelog/%s", tenantName)
+			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
+			result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver(namespaces)
+		}
 	}
 
 	result.Connectors = cfgInput.generateConnectors()

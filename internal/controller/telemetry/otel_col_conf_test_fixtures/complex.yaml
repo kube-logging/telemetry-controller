@@ -3,7 +3,7 @@ receivers:
         exclude:
             - /var/log/pods/*/otc-container/*.log
         include:
-            - /var/log/pods/*/*/*.log
+            - /var/log/pods/example-tenant-a_*/*/*.log
         include_file_name: false
         include_file_path: true
         operators:
@@ -62,7 +62,7 @@ receivers:
         exclude:
             - /var/log/pods/*/otc-container/*.log
         include:
-            - /var/log/pods/*/*/*.log
+            - /var/log/pods/example-tenant-b_*/*/*.log
         include_file_name: false
         include_file_path: true
         operators:
@@ -184,6 +184,7 @@ processors:
               key: tenant
               value: example-tenant-b
     deltatocumulative: {}
+                
     k8sattributes:
         auth_type: serviceAccount
         extract:
