@@ -35,10 +35,10 @@ var otelColTargetYaml string
 func TestOtelColConfComplex(t *testing.T) {
 	// Required inputs
 	var subscriptions = map[v1alpha1.NamespacedName]v1alpha1.Subscription{
-		{Name: "subscription-example-1", Namespace: "example-tenant-ns"}: {
+		{Name: "subscription-example-1", Namespace: "example-tenant-a-ns"}: {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "subscription-example-1",
-				Namespace: "example-tenant-ns",
+				Namespace: "example-tenant-a-ns",
 			},
 			Spec: v1alpha1.SubscriptionSpec{
 				OTTL: "route()",
@@ -54,10 +54,25 @@ func TestOtelColConfComplex(t *testing.T) {
 				},
 			},
 		},
-		{Name: "subscription-example-2", Namespace: "example-tenant-ns"}: {
+		{Name: "subscription-example-2", Namespace: "example-tenant-a-ns"}: {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "subscription-example-2",
-				Namespace: "example-tenant-ns",
+				Namespace: "example-tenant-a-ns",
+			},
+			Spec: v1alpha1.SubscriptionSpec{
+				OTTL: "route()",
+				Outputs: []v1alpha1.NamespacedName{
+					{
+						Name:      "otlp-test-output-2",
+						Namespace: "collector",
+					},
+				},
+			},
+		},
+		{Name: "subscription-example-3", Namespace: "example-tenant-b-ns"}: {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "subscription-example-3",
+				Namespace: "example-tenant-b-ns",
 			},
 			Spec: v1alpha1.SubscriptionSpec{
 				OTTL: "route()",
@@ -75,20 +90,72 @@ func TestOtelColConfComplex(t *testing.T) {
 		Tenants: []v1alpha1.Tenant{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-tenant",
+					Name: "example-tenant-a",
 				},
 				Spec: v1alpha1.TenantSpec{
 					SubscriptionNamespaceSelectors: []metav1.LabelSelector{
 						{
 							MatchLabels: map[string]string{
-								"nsSelector": "example-tenant",
+								"nsSelector": "example-tenant-a",
 							},
 						},
 					},
 					LogSourceNamespaceSelectors: []metav1.LabelSelector{
 						{
 							MatchLabels: map[string]string{
-								"nsSelector": "example-tenant",
+								"nsSelector": "example-tenant-a",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.TenantStatus{
+					LogSourceNamespaces: []string{
+						"example-tenant-a",
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-tenant-b",
+				},
+				Spec: v1alpha1.TenantSpec{
+					SubscriptionNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-b",
+							},
+						},
+					},
+					LogSourceNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-b",
+							},
+						},
+					},
+				},
+				Status: v1alpha1.TenantStatus{
+					LogSourceNamespaces: []string{
+						"example-tenant-b",
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "example-tenant-a",
+				},
+				Spec: v1alpha1.TenantSpec{
+					SubscriptionNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-a",
+							},
+						},
+					},
+					LogSourceNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-a",
 							},
 						},
 					},
@@ -104,7 +171,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				Spec: v1alpha1.OtelOutputSpec{
 					OTLP: &v1alpha1.OTLP{
 						GRPCClientConfig: v1alpha1.GRPCClientConfig{
-							Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
+							Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
 								Insecure: true,
 							},
@@ -120,7 +187,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				Spec: v1alpha1.OtelOutputSpec{
 					OTLP: &v1alpha1.OTLP{
 						GRPCClientConfig: v1alpha1.GRPCClientConfig{
-							Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
+							Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
 								Insecure: true,
 							},
@@ -136,7 +203,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				Spec: v1alpha1.OtelOutputSpec{
 					Loki: &v1alpha1.Loki{
 						HTTPClientConfig: v1alpha1.HTTPClientConfig{
-							Endpoint: "loki.example-tenant-ns.svc.cluster.local:4317",
+							Endpoint: "loki.example-tenant-a-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
 								Insecure: true,
 							},
@@ -161,9 +228,22 @@ func TestOtelColConfComplex(t *testing.T) {
 	inputCfg.SubscriptionOutputMap = subscriptionOutputMap
 
 	inputCfg.TenantSubscriptionMap = map[string][]v1alpha1.NamespacedName{}
-	tenant := inputCfg.Tenants[0]
+	tenantA := inputCfg.Tenants[0]
+	tenantASubscriptions := make(map[v1alpha1.NamespacedName]v1alpha1.Subscription)
+	for subName, sub := range inputCfg.Subscriptions {
+		if subName.Namespace != "example-tenant-b-ns" {
+			tenantASubscriptions[subName] = sub
+		}
+	}
+	inputCfg.TenantSubscriptionMap[tenantA.Name] = seqs.ToSlice(mapseqs.KeysOf(tenantASubscriptions))
 
-	inputCfg.TenantSubscriptionMap[tenant.Name] = seqs.ToSlice(mapseqs.KeysOf(inputCfg.Subscriptions))
+	tenantB := inputCfg.Tenants[1]
+	inputCfg.TenantSubscriptionMap[tenantB.Name] = []v1alpha1.NamespacedName{
+		{
+			Name:      "subscription-example-3",
+			Namespace: "example-tenant-b-ns",
+		},
+	}
 
 	// IR
 	generatedIR := inputCfg.ToIntermediateRepresentation(ctx)
@@ -199,7 +279,7 @@ func TestOtelColConfComplex(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(actualUniversalMap, expectedUniversalMap) {
-		t.Logf(`yaml mismatch:
+		t.Fatalf(`yaml mismatch:
 expected=
 ---
 %s
@@ -208,73 +288,8 @@ actual=
 ---
 %s
 ---`, otelColTargetYaml, actualYAML)
-		t.Fatalf(`yaml marshaling failed
-expected=
----
-%v
----,
-actual=
----
-%v
----`,
-			expectedUniversalMap, actualUniversalMap)
 	}
 }
-
-func Test_generateRootRoutingConnector(t *testing.T) {
-	type args struct {
-		tenants []v1alpha1.Tenant
-	}
-	tests := []struct {
-		name string
-		args args
-		want RoutingConnector
-	}{
-		{
-			name: "two_tenants",
-			args: args{
-				tenants: []v1alpha1.Tenant{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "tenantA",
-						},
-						Status: v1alpha1.TenantStatus{
-							LogSourceNamespaces: []string{"a", "b"},
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "tenantB",
-						},
-						Status: v1alpha1.TenantStatus{
-							LogSourceNamespaces: []string{"c", "d"},
-						},
-					},
-				},
-			},
-			want: RoutingConnector{
-				Name: "routing/tenants",
-				Table: []RoutingConnectorTableItem{
-					{
-						Statement: `route() where IsMatch(attributes["k8s.namespace.name"], "a") or IsMatch(attributes["k8s.namespace.name"], "b")`,
-						Pipelines: []string{"logs/tenant_tenantA"},
-					},
-					{
-						Statement: `route() where IsMatch(attributes["k8s.namespace.name"], "c") or IsMatch(attributes["k8s.namespace.name"], "d")`,
-						Pipelines: []string{"logs/tenant_tenantB"},
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := generateRootRoutingConnector(tt.args.tenants)
-			assert.Equal(t, got, tt.want)
-		})
-	}
-}
-
 func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *testing.T) {
 	type fields struct {
 		Tenants               []v1alpha1.Tenant
