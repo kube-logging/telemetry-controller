@@ -25,6 +25,13 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+ifeq ($(go env GOOS),darwin)
+  TIMEOUT_CMD=gtimeout
+else
+  TIMEOUT_CMD=timeout
+endif
+
+
 # CONTAINER_TOOL defines the container tool to be used for building images.
 # Be aware that the target commands are only tested with Docker which is
 # scaffolded by default. However, you might want to replace it to use other
@@ -212,7 +219,7 @@ tidy: ## Tidy Go modules
 
 .PHONY: e2e-test
 e2e-test: ## Run e2e tests
-	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) NO_KIND_CLEANUP=$(NO_KIND_CLEANUP) && timeout --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
+	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) NO_KIND_CLEANUP=$(NO_KIND_CLEANUP) && $(TIMEOUT_CMD) --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
 
 .PHONY: e2e-test-ci
 e2e-test-ci: CI_MODE_ENABLED=1 
