@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 set -eou pipefail
 
@@ -13,6 +13,15 @@ NO_KIND_CLEANUP=${NO_KIND_CLEANUP:-}
 CI_MODE=${CI_MODE:-}
   # Backup current kubernetes context
 CURRENT_K8S_CTX=$(kubectl config view | grep "current" | cut -f 2 -d : | xargs)
+
+if GOOS="darwin"
+then
+  TIMEOUT_CMD=gtimeout
+else
+  TIMEOUT_CMD=timeout
+fi
+
+
 
 # Prepare env
 kind create cluster --name "${KIND_CLUSTER_NAME}" --wait 5m
@@ -41,7 +50,7 @@ kubectl wait --namespace opentelemetry-operator-system --for=condition=available
 kubectl apply -f ../e2e/testdata/one_tenant_two_subscriptions
 
 if [[ -z "${CI_MODE}" ]]; then
-  $(cd .. && timeout 5m make run &)
+  $(cd .. && $(TIMEOUT_CMD) 5m make run &)
 else
   kind load docker-image controller:latest --name "${KIND_CLUSTER_NAME}"
   cd .. && make deploy && cd -
