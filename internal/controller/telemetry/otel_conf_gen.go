@@ -522,6 +522,36 @@ func generateMetricsProcessors() map[string]any {
 
 	metricsProcessors["deltatocumulative"] = DeltatoCumulativeConfig{}
 
+	metricsProcessors["attributes/metricattributes"] = AttributesProcessor{
+		Actions: []AttributesProcessorAction{
+			{
+				Action:        "insert",
+				Key:           "app",
+				FromAttribute: "k8s.pod.labels.app.kubernetes.io/name",
+			},
+			{
+				Action:        "insert",
+				Key:           "host",
+				FromAttribute: "k8s.node.name",
+			},
+			{
+				Action:        "insert",
+				Key:           "namespace",
+				FromAttribute: "k8s.namespace.name",
+			},
+			{
+				Action:        "insert",
+				Key:           "container",
+				FromAttribute: "k8s.container.name",
+			},
+			{
+				Action:        "insert",
+				Key:           "pod",
+				FromAttribute: "k8s.pod.name",
+			},
+		},
+	}
+
 	return metricsProcessors
 }
 
@@ -654,13 +684,13 @@ func generateMetricsPipelines() map[string]Pipeline {
 
 	metricsPipelines["metrics/tenant"] = Pipeline{
 		Receivers:  []string{"count/tenant_metrics"},
-		Processors: []string{"deltatocumulative"},
+		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
 		Exporters:  []string{"prometheus/message_metrics_exporter"},
 	}
 
 	metricsPipelines["metrics/output"] = Pipeline{
 		Receivers:  []string{"count/output_metrics"},
-		Processors: []string{"deltatocumulative"},
+		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
 		Exporters:  []string{"prometheus/message_metrics_exporter"},
 	}
 
