@@ -224,14 +224,6 @@ processors:
             - action: insert
               key: loki.resource.labels
               value: k8s.pod.name, k8s.namespace.name
-    transform/fluentforward_exporter_fluentforward-test-output:
-        log_statements:
-            - context: log
-              statements:
-                - set(attributes["kubernetes.pod"], resource.attributes["k8s.pod.name"])
-                - set(attributes["kubernetes.labels"], resource.attributes["k8s.pod.labels.app.kubernetes.io/name"])
-                - set(attributes["kubernetes.namespace_name"], resource.attributes["k8s.namespace.name"])
-                - set(attributes["kubernetes.container_name"], resource.attributes["k8s.container.name"])
 connectors:
     count/output_metrics:
         logs:
@@ -312,7 +304,7 @@ service:
             exporters: [otlp/collector_otlp-test-output-2, count/output_metrics]
         logs/output_example-tenant-b-ns_subscription-example-3_collector_fluentforward-test-output:
             receivers: [routing/subscription_example-tenant-b-ns_subscription-example-3_outputs]
-            processors: [memory_limiter, attributes/exporter_name_fluentforward-test-output, transform/fluentforward_exporter_fluentforward-test-output]
+            processors: [memory_limiter, attributes/exporter_name_fluentforward-test-output]
             exporters: [fluentforwardexporter/collector_fluentforward-test-output, count/output_metrics]
         logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1:
             receivers: [routing/tenant_example-tenant-a_subscriptions]
