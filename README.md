@@ -108,6 +108,50 @@ kubectl -n openobserve port-forward svc/openobserve 5080:5080
 ```
 ![Openobserve logs](docs/assets/openobserve-logs.png)
 
+### Sending logs to logging-operator (example)
+
+Install dependencies (cert-manager and opentelemetry-operator):
+
+```sh
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
+```
+
+```sh
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.98.0/opentelemetry-operator.yaml
+# Wait for the opentelemtry-operator to be running
+kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
+```
+
+Deploy latest telemetry-controller:
+
+```sh
+kubectl apply -k github.com/kube-logging/telemetry-controller/config/default
+```
+
+Install logging-operator
+
+```sh
+helm upgrade --install logging-operator oci://ghcr.io/kube-logging/helm-charts/logging-operator --version=4.6.0 -n logging-operator --create-namespace
+```
+
+Install log-generator
+
+```sh
+helm upgrade --install --wait log-generator oci://ghcr.io/kube-logging/helm-charts/log-generator -n log-generator --create-namespace
+```
+
+Apply the provided example resource for logging-operator: [logging-operator.yaml](./docs/examples/fluent-forward/logging-operator.yaml)
+
+```sh
+kubectl apply -f logging-operator.yaml
+```
+
+Apply the provided example resource for telemetry-controller: [telemetry-controller.yaml](./docs/examples/fluent-forward/telemetry-controller.yaml)
+
+```sh
+kubectl apply -f telemetry-controller.yaml
+```
+
 
 ## Contributing
 
