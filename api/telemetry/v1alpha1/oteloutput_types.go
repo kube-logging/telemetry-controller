@@ -66,8 +66,12 @@ type Fluentforward struct {
 	QueueConfig QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
 	RetryConfig BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
 
-	// Enable mapping
-	MapMetadata bool `json:"map_metadata,omitempty" yaml:"-"`
+	Kubernetes *KubernetesMetadata `json:"kubernetes_metadata,omitempty" yaml:"kubernetes_metadata,omitempty"`
+}
+
+type KubernetesMetadata struct {
+	Key              string `json:"key" yaml:"key,omitempty"`
+	IncludePodLabels bool   `json:"include_pod_labels" yaml:"include_pod_labels,omitempty"`
 }
 
 type TCPClientSettings struct {

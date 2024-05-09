@@ -24,7 +24,6 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/cisco-open/operator-tools/pkg/reconciler"
-	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -37,6 +36,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
 const (
@@ -167,7 +168,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			UpgradeStrategy: "none",
 			Config:          otelConfig,
 			Mode:            otelv1alpha1.ModeDaemonSet,
-			Image:           "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.98.0-axoflow-1",
+			Image:           "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.98.0-axoflow-1-SNAPSHOT-0d858cc-arm64",
 			ServiceAccount:  saName.Name,
 			VolumeMounts: []corev1.VolumeMount{
 				{

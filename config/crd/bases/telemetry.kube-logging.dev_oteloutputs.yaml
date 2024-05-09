@@ -59,9 +59,16 @@ spec:
                   endpoint:
                     description: 'The target endpoint URI to send data to (e.g.: some.url:24224).'
                     type: string
-                  map_metadata:
-                    description: Enable mapping
-                    type: boolean
+                  kubernetes_metadata:
+                    properties:
+                      include_pod_labels:
+                        type: boolean
+                      key:
+                        type: string
+                    required:
+                    - include_pod_labels
+                    - key
+                    type: object
                   require_ack:
                     description: RequireAck enables the acknowledgement feature.
                     type: boolean

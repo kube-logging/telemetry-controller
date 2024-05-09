@@ -8,19 +8,21 @@ spec:
   controlNamespace: default
 ---
 apiVersion: logging.banzaicloud.io/v1beta1
-kind: Flow
+kind: ClusterFlow
 metadata:
   name: all
 spec:
   filters:
     - stdout: {}
   match:
-    - select: {}
-  localOutputRefs:
+    - select:
+        namespaces:
+          - log-generator
+  globalOutputRefs:
     - nullout
 ---
 apiVersion: logging.banzaicloud.io/v1beta1
-kind: Output
+kind: ClusterOutput
 metadata:
   name: nullout
 spec:

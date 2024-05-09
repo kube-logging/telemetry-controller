@@ -28,9 +28,10 @@ import (
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
 type OtelColConfigInput struct {
@@ -525,14 +526,10 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	}
 
 	for _, output := range cfgInput.Outputs {
-
 		processors[fmt.Sprintf("attributes/exporter_name_%s", output.Name)] = generateOutputExporterNameProcessor(output)
 		if output.Spec.Loki != nil {
 			processors[fmt.Sprintf("attributes/loki_exporter_%s", output.Name)] = generateLokiExporterAttributeProcessor()
 			processors[fmt.Sprintf("resource/loki_exporter_%s", output.Name)] = generateLokiExporterResourceProcessor()
-		}
-		if output.Spec.Fluentforward != nil && output.Spec.Fluentforward.MapMetadata {
-			processors[fmt.Sprintf("transform/fluentforward_exporter_%s", output.Name)] = generateFluentforwardResourceProcessor()
 		}
 	}
 
@@ -623,23 +620,6 @@ func generateRootPipeline(tenantName string) Pipeline {
 	return generatePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName)}, []string{exporterName, tenantCountConnectorName})
 }
 
-func generateFluentforwardResourceProcessor() TransformProcessor {
-	processor := TransformProcessor{
-		LogStatements: []Statement{
-			{
-				Context: "log",
-				Statements: []string{
-					`set(attributes["kubernetes.pod"], resource.attributes["k8s.pod.name"])`,
-					`set(attributes["kubernetes.labels"], resource.attributes["k8s.pod.labels.app.kubernetes.io/name"])`,
-					`set(attributes["kubernetes.namespace_name"], resource.attributes["k8s.namespace.name"])`,
-					`set(attributes["kubernetes.container_name"], resource.attributes["k8s.container.name"])`,
-				},
-			},
-		},
-	}
-	return processor
-}
-
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
 	outputCountConnectorName := "count/output_metrics"
 	var namedPipelines = make(map[string]Pipeline)
@@ -676,28 +656,29 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 				if idx != -1 {
 					output := cfgInput.Outputs[idx]
 
+					receivers := []string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}
+					processors := []string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)}
+					var exporters []string
+
 					if output.Spec.Loki != nil {
-						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
-							[]string{fmt.Sprintf("attributes/exporter_name_%s", output.Name), fmt.Sprintf("attributes/loki_exporter_%s", output.Name), fmt.Sprintf("resource/loki_exporter_%s", output.Name)},
-							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
+						processors = append(processors,
+							fmt.Sprintf("attributes/loki_exporter_%s", output.Name),
+							fmt.Sprintf("resource/loki_exporter_%s", output.Name))
+						exporters = []string{GetExporterNameForOtelOutput(output), outputCountConnectorName}
 					}
 
 					if output.Spec.OTLP != nil {
-						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
-							[]string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)},
-							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
+						exporters = []string{GetExporterNameForOtelOutput(output), outputCountConnectorName}
 					}
 
 					if output.Spec.Fluentforward != nil {
-						var processors = []string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)}
-						if output.Spec.Fluentforward.MapMetadata {
-							processors = append(processors, fmt.Sprintf("transform/fluentforward_exporter_%s", output.Name))
-						}
-						namedPipelines[outputPipelineName] = generatePipeline(
-							[]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
-							processors,
-							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
+						exporters = []string{GetExporterNameForOtelOutput(output), outputCountConnectorName}
 					}
+					if cfgInput.Debug {
+						exporters = append(exporters, "logging/debug")
+					}
+
+					namedPipelines[outputPipelineName] = generatePipeline(receivers, processors, exporters)
 				}
 			}
 		}
