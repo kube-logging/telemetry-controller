@@ -28,9 +28,10 @@ import (
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
 type OtelColConfigInput struct {
@@ -186,6 +187,15 @@ type ResourceProcessorAction struct {
 	FromContext   string `yaml:"from_context,omitempty"`
 }
 
+type TransformProcessor struct {
+	LogStatements []Statement `yaml:"log_statements,omitempty"`
+}
+
+type Statement struct {
+	Context    string   `yaml:"context"`
+	Statements []string `yaml:"statements"`
+}
+
 type Pipeline struct {
 	Receivers  []string `yaml:"receivers,omitempty,flow"`
 	Processors []string `yaml:"processors,omitempty,flow"`
@@ -219,6 +229,7 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 	maps.Copy(exporters, generateMetricsExporters())
 	maps.Copy(exporters, cfgInput.generateOTLPExporters(ctx))
 	maps.Copy(exporters, cfgInput.generateLokiExporters(ctx))
+	maps.Copy(exporters, cfgInput.generateFluentforwardExporters(ctx))
 	exporters["logging/debug"] = map[string]any{
 		"verbosity": "detailed",
 	}
@@ -241,7 +252,7 @@ func generateMetricsExporters() map[string]any {
 
 func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) map[string]any {
 	logger := log.FromContext(ctx)
-	var result = make(map[string]any)
+	result := make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.OTLP != nil {
@@ -265,7 +276,7 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) m
 func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) map[string]any {
 	logger := log.FromContext(ctx)
 
-	var result = make(map[string]any)
+	result := make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.Loki != nil {
@@ -287,8 +298,33 @@ func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) m
 	return result
 }
 
+func (cfgInput *OtelColConfigInput) generateFluentforwardExporters(ctx context.Context) map[string]any {
+	logger := log.FromContext(ctx)
+
+	result := make(map[string]any)
+
+	for _, output := range cfgInput.Outputs {
+		if output.Spec.Fluentforward != nil {
+			// TODO: add proper error handling
+			name := fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
+			fluentForwardMarshaled, err := yaml.Marshal(output.Spec.Fluentforward)
+			if err != nil {
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+			}
+			var fluetForwardValues map[string]any
+			if err := yaml.Unmarshal(fluentForwardMarshaled, &fluetForwardValues); err != nil {
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+			}
+
+			result[name] = fluetForwardValues
+		}
+	}
+
+	return result
+}
+
 func generatePipeline(receivers, processors, exporters []string) Pipeline {
-	var result = Pipeline{}
+	result := Pipeline{}
 
 	result.Receivers = receivers
 	result.Processors = processors
@@ -310,7 +346,6 @@ func newRoutingConnector(name string) RoutingConnector {
 }
 
 func buildRoutingTableItemForSubscription(tenantName string, subscription v1alpha1.Subscription, index int) RoutingConnectorTableItem {
-
 	pipelineName := fmt.Sprintf("logs/tenant_%s_subscription_%s_%s", tenantName, subscription.Namespace, subscription.Name)
 
 	appendedSpaces := strings.Repeat(" ", index)
@@ -367,7 +402,7 @@ func (cfgInput *OtelColConfigInput) generateRoutingConnectorForSubscriptionsOutp
 }
 
 func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
-	var connectors = make(map[string]any)
+	connectors := make(map[string]any)
 
 	countConnectors := generateCountConnectors()
 	maps.Copy(connectors, countConnectors)
@@ -383,16 +418,14 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	}
 
 	return connectors
-
 }
 
 func (cfgInput *OtelColConfigInput) generateProcessorMemoryLimiter() map[string]any {
-	var memoryLimiter = make(map[string]any)
+	memoryLimiter := make(map[string]any)
 
 	memoryLimiter["check_interval"] = cfgInput.MemoryLimiter.CheckInterval.String()
 	if cfgInput.MemoryLimiter.MemoryLimitMiB != 0 {
 		memoryLimiter["limit_mib"] = cfgInput.MemoryLimiter.MemoryLimitMiB
-
 	}
 	if cfgInput.MemoryLimiter.MemorySpikeLimitMiB != 0 {
 		memoryLimiter["spike_limit_mib"] = cfgInput.MemoryLimiter.MemorySpikeLimitMiB
@@ -474,7 +507,7 @@ func generateCountConnectors() map[string]any {
 }
 
 func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
-	var processors = make(map[string]any)
+	processors := make(map[string]any)
 
 	k8sProcessorName := "k8sattributes"
 	processors[k8sProcessorName] = cfgInput.generateDefaultKubernetesProcessor()
@@ -493,7 +526,6 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	}
 
 	for _, output := range cfgInput.Outputs {
-
 		processors[fmt.Sprintf("attributes/exporter_name_%s", output.Name)] = generateOutputExporterNameProcessor(output)
 		if output.Spec.Loki != nil {
 			processors[fmt.Sprintf("attributes/loki_exporter_%s", output.Name)] = generateLokiExporterAttributeProcessor()
@@ -502,7 +534,6 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	}
 
 	return processors
-
 }
 
 func generateOutputExporterNameProcessor(output v1alpha1.OtelOutput) AttributesProcessor {
@@ -566,7 +597,6 @@ func generateTenantAttributeProcessor(tenant v1alpha1.Tenant) AttributesProcesso
 		},
 	}
 	return processor
-
 }
 
 func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) AttributesProcessor {
@@ -580,7 +610,6 @@ func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) 
 		},
 	}
 	return processor
-
 }
 
 func generateLokiExporterAttributeProcessor() AttributesProcessor {
@@ -612,7 +641,6 @@ func generateLokiExporterResourceProcessor() ResourceProcessor {
 		},
 	}
 	return processor
-
 }
 
 func generateRootPipeline(tenantName string) Pipeline {
@@ -658,17 +686,29 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 				if idx != -1 {
 					output := cfgInput.Outputs[idx]
 
+					receivers := []string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}
+					processors := []string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)}
+					var exporters []string
+
 					if output.Spec.Loki != nil {
-						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
-							[]string{fmt.Sprintf("attributes/exporter_name_%s", output.Name), fmt.Sprintf("attributes/loki_exporter_%s", output.Name), fmt.Sprintf("resource/loki_exporter_%s", output.Name)},
-							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
+						processors = append(processors,
+							fmt.Sprintf("attributes/loki_exporter_%s", output.Name),
+							fmt.Sprintf("resource/loki_exporter_%s", output.Name))
+						exporters = []string{GetExporterNameForOtelOutput(output), outputCountConnectorName}
 					}
 
 					if output.Spec.OTLP != nil {
-						namedPipelines[outputPipelineName] = generatePipeline([]string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)},
-							[]string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)},
-							[]string{GetExporterNameForOtelOutput(output), outputCountConnectorName})
+						exporters = []string{GetExporterNameForOtelOutput(output), outputCountConnectorName}
 					}
+
+					if output.Spec.Fluentforward != nil {
+						exporters = []string{GetExporterNameForOtelOutput(output), outputCountConnectorName}
+					}
+					if cfgInput.Debug {
+						exporters = append(exporters, "logging/debug")
+					}
+
+					namedPipelines[outputPipelineName] = generatePipeline(receivers, processors, exporters)
 				}
 			}
 		}
@@ -676,7 +716,6 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 	}
 
 	return namedPipelines
-
 }
 
 func generateMetricsPipelines() map[string]Pipeline {
@@ -714,11 +753,11 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[str
 		},
 	}
 
-	var defaultPodAssociation = []map[string]any{
+	defaultPodAssociation := []map[string]any{
 		{"sources": defaultSources},
 	}
 
-	var defaultMetadata = []string{
+	defaultMetadata := []string{
 		"k8s.pod.name",
 		"k8s.pod.uid",
 		"k8s.deployment.name",
@@ -727,7 +766,7 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[str
 		"k8s.pod.start_time",
 	}
 
-	var defaultLabels = []map[string]string{
+	defaultLabels := []map[string]string{
 		{
 			"from":      "pod",
 			"tag_name":  "all_labels",
@@ -851,7 +890,6 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver(namespaces
 	}
 
 	return k8sReceiver
-
 }
 
 func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Context) *OtelColConfigIR {
@@ -880,13 +918,18 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Con
 	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
 	result.Services.Telemetry = make(map[string]any)
 
-	if cfgInput.Debug {
-		result.Services.Telemetry = map[string]any{
-			"logs": map[string]string{"level": "debug"},
-		}
-	} else {
-		result.Services.Telemetry = map[string]any{}
+	result.Services.Telemetry = make(map[string]any)
+
+	result.Services.Telemetry["metrics"] = map[string]string{
+		"level": "detailed",
 	}
+
+	if cfgInput.Debug {
+		result.Services.Telemetry["logs"] = map[string]string{
+			"level": "debug",
+		}
+	}
+
 	if _, ok := result.Processors["memory_limiter"]; ok {
 		for name, namedPipeline := range result.Services.Pipelines.NamedPipelines {
 			// From memorylimiterprocessor's README:

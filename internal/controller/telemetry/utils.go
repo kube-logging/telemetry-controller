@@ -26,6 +26,8 @@ func GetExporterNameForOtelOutput(output v1alpha1.OtelOutput) string {
 		exporterName = fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)
 	} else if output.Spec.OTLP != nil {
 		exporterName = fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
+	} else if output.Spec.Fluentforward != nil {
+		exporterName = fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
 	}
 
 	return exporterName

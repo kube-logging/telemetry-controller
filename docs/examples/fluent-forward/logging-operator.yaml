@@ -1,0 +1,29 @@
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: Logging
+metadata:
+  name: all-to-file
+spec:
+  fluentd:
+    logLevel: trace
+  controlNamespace: default
+---
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: ClusterFlow
+metadata:
+  name: all
+spec:
+  filters:
+    - stdout: {}
+  match:
+    - select:
+        namespaces:
+          - log-generator
+  globalOutputRefs:
+    - nullout
+---
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: ClusterOutput
+metadata:
+  name: nullout
+spec:
+  nullout: {}

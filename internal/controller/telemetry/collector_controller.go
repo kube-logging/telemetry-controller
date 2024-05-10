@@ -24,7 +24,6 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/cisco-open/operator-tools/pkg/reconciler"
-	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -37,10 +36,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-const tenantReferenceField = ".status.tenant"
-const requeueDelayOnFailedTenant = 20 * time.Second
+const (
+	tenantReferenceField       = ".status.tenant"
+	requeueDelayOnFailedTenant = 20 * time.Second
+)
 
 // CollectorReconciler reconciles a Collector object
 type CollectorReconciler struct {
@@ -141,7 +144,6 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err != nil {
 		if errors.Is(err, &TenantFailedError{}) {
 			return ctrl.Result{RequeueAfter: requeueDelayOnFailedTenant}, err
-
 		}
 		return ctrl.Result{}, err
 	}
@@ -166,7 +168,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			UpgradeStrategy: "none",
 			Config:          otelConfig,
 			Mode:            otelv1alpha1.ModeDaemonSet,
-			Image:           "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.98.0-axoflow-1",
+			Image:           "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.98.0-fluentforward",
 			ServiceAccount:  saName.Name,
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -318,7 +320,6 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *CollectorReconciler) reconcileRBAC(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
-
 	errCR := r.reconcileClusterRole(ctx, collector)
 
 	sa, errSA := r.reconcileServiceAccount(ctx, collector)
@@ -420,7 +421,6 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 }
 
 func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, labelSelector metav1.LabelSelector) ([]v1alpha1.Tenant, error) {
-
 	selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
 	if err != nil {
 		return nil, err

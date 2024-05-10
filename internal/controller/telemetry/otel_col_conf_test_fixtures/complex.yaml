@@ -124,6 +124,10 @@ exporters:
         endpoint: loki.example-tenant-a-ns.svc.cluster.local:4317
         tls:
             insecure: true
+    fluentforwardexporter/collector_fluentforward-test-output:
+         endpoint:     fluentforward.example-tenant-ns.svc.cluster.local:8888
+         tls:
+           insecure: true
     otlp/collector_otlp-test-output:
         endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
         tls:
@@ -135,6 +139,11 @@ exporters:
     prometheus/message_metrics_exporter:
         endpoint: 0.0.0.0:9999
 processors:
+    attributes/exporter_name_fluentforward-test-output:
+        actions:
+            - action: insert
+              key: exporter
+              value: fluentforwardexporter/collector_fluentforward-test-output
     attributes/exporter_name_loki-test-output:
         actions:
             - action: insert
@@ -270,7 +279,7 @@ connectors:
     routing/subscription_example-tenant-b-ns_subscription-example-3_outputs:
         table:
             - statement: route()
-              pipelines: [logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2]
+              pipelines: [logs/output_example-tenant-b-ns_subscription-example-3_collector_fluentforward-test-output, logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2]
     routing/tenant_example-tenant-a_subscriptions:
         table:
             - statement: route()
@@ -282,6 +291,9 @@ connectors:
             - statement: route()
               pipelines: [logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3]
 service:
+    telemetry:
+      metrics:
+        level: detailed
     pipelines:
         logs/tenant_example-tenant-a:
             receivers: [filelog/example-tenant-a]
@@ -307,6 +319,10 @@ service:
             receivers: [routing/subscription_example-tenant-b-ns_subscription-example-3_outputs]
             processors: [memory_limiter, attributes/exporter_name_otlp-test-output-2]
             exporters: [otlp/collector_otlp-test-output-2, count/output_metrics]
+        logs/output_example-tenant-b-ns_subscription-example-3_collector_fluentforward-test-output:
+            receivers: [routing/subscription_example-tenant-b-ns_subscription-example-3_outputs]
+            processors: [memory_limiter, attributes/exporter_name_fluentforward-test-output]
+            exporters: [fluentforwardexporter/collector_fluentforward-test-output, count/output_metrics]
         logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1:
             receivers: [routing/tenant_example-tenant-a_subscriptions]
             processors: [memory_limiter, attributes/subscription_subscription-example-1]

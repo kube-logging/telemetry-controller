@@ -21,12 +21,13 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/siliconbrain/go-mapseqs/mapseqs"
 	"github.com/siliconbrain/go-seqs/seqs"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
 //go:embed otel_col_conf_test_fixtures/complex.yaml
@@ -79,6 +80,10 @@ func TestOtelColConfComplex(t *testing.T) {
 				Outputs: []v1alpha1.NamespacedName{
 					{
 						Name:      "otlp-test-output-2",
+						Namespace: "collector",
+					},
+					{
+						Name:      "fluentforward-test-output",
 						Namespace: "collector",
 					},
 				},
@@ -204,6 +209,22 @@ func TestOtelColConfComplex(t *testing.T) {
 					Loki: &v1alpha1.Loki{
 						HTTPClientConfig: v1alpha1.HTTPClientConfig{
 							Endpoint: "loki.example-tenant-a-ns.svc.cluster.local:4317",
+							TLSSetting: v1alpha1.TLSClientSetting{
+								Insecure: true,
+							},
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "fluentforward-test-output",
+					Namespace: "collector",
+				},
+				Spec: v1alpha1.OtelOutputSpec{
+					Fluentforward: &v1alpha1.Fluentforward{
+						TCPClientSettings: v1alpha1.TCPClientSettings{
+							Endpoint: "fluentforward.example-tenant-ns.svc.cluster.local:8888",
 							TLSSetting: v1alpha1.TLSClientSetting{
 								Insecure: true,
 							},

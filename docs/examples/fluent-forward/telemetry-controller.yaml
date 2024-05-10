@@ -1,0 +1,49 @@
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Collector
+metadata:
+  name: kubernetes
+spec:
+  debug: true
+  controlNamespace: default
+  tenantSelector:
+    matchLabels:
+      collectorLabel: kubernetes
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  labels:
+    collectorLabel: kubernetes
+  name: default
+spec:
+  subscriptionNamespaceSelectors:
+    - matchLabels:
+        kubernetes.io/metadata.name: default
+  logSourceNamespaceSelectors:
+    - matchLabels:
+        kubernetes.io/metadata.name: log-generator
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: all-logs
+  namespace: default
+spec:
+  debug: true
+  ottl: 'route()'
+  outputs:
+    - name: fluent
+      namespace: default
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: OtelOutput
+metadata:
+  name: fluent
+  namespace: default
+spec:
+  fluentforward:
+    endpoint: all-to-file-fluentd.default:24240
+    tag: otelcol
+    kubernetes_metadata:
+      key: kubernetes
+      include_pod_labels: true
