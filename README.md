@@ -39,7 +39,7 @@ kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releas
 
 Deploy latest telemetry-controller:
 ```sh
-kubectl apply -k github.com/kube-logging/telemetry-controller/config/default
+kubectl apply -k github.com/kube-logging/telemetry-controller/config/default --server-side
 ```
 
 ### Deployment steps for devs
@@ -125,7 +125,7 @@ kubectl wait --namespace opentelemetry-operator-system --for=condition=available
 Deploy latest telemetry-controller:
 
 ```sh
-kubectl apply -k github.com/kube-logging/telemetry-controller/config/default
+kubectl apply -k github.com/kube-logging/telemetry-controller/config/default --server-side
 ```
 
 Install logging-operator
