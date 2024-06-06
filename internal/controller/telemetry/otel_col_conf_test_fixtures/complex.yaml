@@ -171,7 +171,7 @@ processors:
         actions:
             - action: insert
               key: app
-              from_attribute: k8s.pod.labels.app.kubernetes.io/name
+              from_attribute: k8s.pod.labels.app
             - action: insert
               key: host
               from_attribute: k8s.node.name
@@ -256,6 +256,7 @@ connectors:
                     - key: k8s.container.name
                     - key: k8s.pod.name
                     - key: k8s.pod.labels.app.kubernetes.io/name
+                    - key: k8s.pod.labels.app
     count/tenant_metrics:
         logs:
             telemetry_controller_tenant_log_count:
@@ -268,6 +269,7 @@ connectors:
                     - key: k8s.container.name
                     - key: k8s.pod.name
                     - key: k8s.pod.labels.app.kubernetes.io/name
+                    - key: k8s.pod.labels.app
     routing/subscription_example-tenant-a-ns_subscription-example-1_outputs:
         table:
             - statement: route()

@@ -465,6 +465,9 @@ func generateCountConnectors() map[string]any {
 					{
 						Key: "k8s.pod.labels.app.kubernetes.io/name",
 					},
+					{
+						Key: "k8s.pod.labels.app",
+					},
 				},
 			},
 		},
@@ -497,6 +500,9 @@ func generateCountConnectors() map[string]any {
 					},
 					{
 						Key: "k8s.pod.labels.app.kubernetes.io/name",
+					},
+					{
+						Key: "k8s.pod.labels.app",
 					},
 				},
 			},
@@ -558,9 +564,8 @@ func generateMetricsProcessors() map[string]any {
 			{
 				Action:        "insert",
 				Key:           "app",
-				FromAttribute: "k8s.pod.labels.app.kubernetes.io/name",
-			},
-			{
+				FromAttribute: "k8s.pod.labels.app",
+			}, {
 				Action:        "insert",
 				Key:           "host",
 				FromAttribute: "k8s.node.name",
