@@ -266,26 +266,17 @@ func TestOtelColConfComplex(t *testing.T) {
 		},
 	}
 
-	// IR
-	generatedIR := inputCfg.ToIntermediateRepresentation(ctx)
+	// Config
+	generatedConfig := inputCfg.AssembleConfig(ctx)
 
-	// Final YAML
-	_, err := generatedIR.ToYAML()
+	generatedYaml, err := yaml.Marshal(generatedConfig)
 	if err != nil {
-		t.Fatalf("YAML formatting failed, err=%v", err)
-	}
-
-	actualYAMLBytes, err := generatedIR.ToYAMLRepresentation()
-	if err != nil {
-		t.Fatalf("error %v", err)
-	}
-	actualYAML, err := generatedIR.ToYAML()
-	if err != nil {
-		t.Fatalf("error %v", err)
+		t.Fatal("Failed to marshal generated config")
+		return
 	}
 
 	var actualUniversalMap map[string]any
-	if err := yaml.Unmarshal(actualYAMLBytes, &actualUniversalMap); err != nil {
+	if err := yaml.Unmarshal(generatedYaml, &actualUniversalMap); err != nil {
 		t.Fatalf("error: %v", err)
 	}
 
@@ -308,7 +299,7 @@ expected=
 actual=
 ---
 %s
----`, otelColTargetYaml, actualYAML)
+---`, otelColTargetYaml, generatedYaml)
 	}
 }
 func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *testing.T) {

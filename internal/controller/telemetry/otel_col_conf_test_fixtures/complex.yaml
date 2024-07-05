@@ -118,16 +118,16 @@ receivers:
             max_elapsed_time: 0
         start_at: end
 exporters:
+    fluentforwardexporter/collector_fluentforward-test-output:
+        endpoint: fluentforward.example-tenant-ns.svc.cluster.local:8888
+        tls:
+            insecure: true
     logging/debug:
         verbosity: detailed
     loki/collector_loki-test-output:
         endpoint: loki.example-tenant-a-ns.svc.cluster.local:4317
         tls:
             insecure: true
-    fluentforwardexporter/collector_fluentforward-test-output:
-         endpoint:     fluentforward.example-tenant-ns.svc.cluster.local:8888
-         tls:
-           insecure: true
     otlp/collector_otlp-test-output:
         endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
         tls:
@@ -210,7 +210,6 @@ processors:
               key: tenant
               value: example-tenant-b
     deltatocumulative: {}
-                
     k8sattributes:
         auth_type: serviceAccount
         extract:
@@ -233,7 +232,7 @@ processors:
                 - name: k8s.pod.name
                   from: resource_attribute
     memory_limiter:
-        check_interval: "1s"
+        check_interval: 1s
         limit_percentage: 75
         spike_limit_percentage: 25
     resource/loki_exporter_loki-test-output:
@@ -294,54 +293,115 @@ connectors:
               pipelines: [logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3]
 service:
     telemetry:
-      metrics:
-        level: detailed
+        metrics:
+            level: detailed
     pipelines:
-        logs/tenant_example-tenant-a:
-            receivers: [filelog/example-tenant-a]
-            processors: [memory_limiter, k8sattributes, attributes/tenant_example-tenant-a]
-            exporters: [routing/tenant_example-tenant-a_subscriptions, count/tenant_metrics]
-        logs/tenant_example-tenant-b:
-            receivers: [filelog/example-tenant-b]
-            processors: [memory_limiter, k8sattributes, attributes/tenant_example-tenant-b]
-            exporters: [routing/tenant_example-tenant-b_subscriptions, count/tenant_metrics]
         logs/output_example-tenant-a-ns_subscription-example-1_collector_loki-test-output:
-            receivers: [routing/subscription_example-tenant-a-ns_subscription-example-1_outputs]
-            processors: [memory_limiter, attributes/exporter_name_loki-test-output, attributes/loki_exporter_loki-test-output, resource/loki_exporter_loki-test-output]
-            exporters: [loki/collector_loki-test-output, count/output_metrics]
+            exporters:
+                - loki/collector_loki-test-output
+                - count/output_metrics
+            processors:
+                - memory_limiter
+                - attributes/exporter_name_loki-test-output
+                - attributes/loki_exporter_loki-test-output
+                - resource/loki_exporter_loki-test-output
+            receivers:
+                - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
         logs/output_example-tenant-a-ns_subscription-example-1_collector_otlp-test-output:
-            receivers: [routing/subscription_example-tenant-a-ns_subscription-example-1_outputs]
-            processors: [memory_limiter, attributes/exporter_name_otlp-test-output]
-            exporters: [otlp/collector_otlp-test-output, count/output_metrics]
+            exporters:
+                - otlp/collector_otlp-test-output
+                - count/output_metrics
+            processors:
+                - memory_limiter
+                - attributes/exporter_name_otlp-test-output
+            receivers:
+                - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
         logs/output_example-tenant-a-ns_subscription-example-2_collector_otlp-test-output-2:
-            receivers: [routing/subscription_example-tenant-a-ns_subscription-example-2_outputs]
-            processors: [memory_limiter, attributes/exporter_name_otlp-test-output-2]
-            exporters: [otlp/collector_otlp-test-output-2, count/output_metrics]
-        logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2:
-            receivers: [routing/subscription_example-tenant-b-ns_subscription-example-3_outputs]
-            processors: [memory_limiter, attributes/exporter_name_otlp-test-output-2]
-            exporters: [otlp/collector_otlp-test-output-2, count/output_metrics]
+            exporters:
+                - otlp/collector_otlp-test-output-2
+                - count/output_metrics
+            processors:
+                - memory_limiter
+                - attributes/exporter_name_otlp-test-output-2
+            receivers:
+                - routing/subscription_example-tenant-a-ns_subscription-example-2_outputs
         logs/output_example-tenant-b-ns_subscription-example-3_collector_fluentforward-test-output:
-            receivers: [routing/subscription_example-tenant-b-ns_subscription-example-3_outputs]
-            processors: [memory_limiter, attributes/exporter_name_fluentforward-test-output]
-            exporters: [fluentforwardexporter/collector_fluentforward-test-output, count/output_metrics]
+            exporters:
+                - fluentforwardexporter/collector_fluentforward-test-output
+                - count/output_metrics
+            processors:
+                - memory_limiter
+                - attributes/exporter_name_fluentforward-test-output
+            receivers:
+                - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
+        logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2:
+            exporters:
+                - otlp/collector_otlp-test-output-2
+                - count/output_metrics
+            processors:
+                - memory_limiter
+                - attributes/exporter_name_otlp-test-output-2
+            receivers:
+                - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
+        logs/tenant_example-tenant-a:
+            exporters:
+                - routing/tenant_example-tenant-a_subscriptions
+                - count/tenant_metrics
+            processors:
+                - memory_limiter
+                - k8sattributes
+                - attributes/tenant_example-tenant-a
+            receivers:
+                - filelog/example-tenant-a
         logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1:
-            receivers: [routing/tenant_example-tenant-a_subscriptions]
-            processors: [memory_limiter, attributes/subscription_subscription-example-1]
-            exporters: [routing/subscription_example-tenant-a-ns_subscription-example-1_outputs]
+            exporters:
+                - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
+            processors:
+                - memory_limiter
+                - attributes/subscription_subscription-example-1
+            receivers:
+                - routing/tenant_example-tenant-a_subscriptions
         logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-2:
-            receivers: [routing/tenant_example-tenant-a_subscriptions]
-            processors: [memory_limiter, attributes/subscription_subscription-example-2]
-            exporters: [routing/subscription_example-tenant-a-ns_subscription-example-2_outputs]
+            exporters:
+                - routing/subscription_example-tenant-a-ns_subscription-example-2_outputs
+            processors:
+                - memory_limiter
+                - attributes/subscription_subscription-example-2
+            receivers:
+                - routing/tenant_example-tenant-a_subscriptions
+        logs/tenant_example-tenant-b:
+            exporters:
+                - routing/tenant_example-tenant-b_subscriptions
+                - count/tenant_metrics
+            processors:
+                - memory_limiter
+                - k8sattributes
+                - attributes/tenant_example-tenant-b
+            receivers:
+                - filelog/example-tenant-b
         logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3:
-            receivers: [routing/tenant_example-tenant-b_subscriptions]
-            processors: [memory_limiter, attributes/subscription_subscription-example-3]
-            exporters: [routing/subscription_example-tenant-b-ns_subscription-example-3_outputs]
+            exporters:
+                - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
+            processors:
+                - memory_limiter
+                - attributes/subscription_subscription-example-3
+            receivers:
+                - routing/tenant_example-tenant-b_subscriptions
         metrics/output:
-            receivers: [count/output_metrics]
-            processors: [memory_limiter, deltatocumulative, attributes/metricattributes]
-            exporters: [prometheus/message_metrics_exporter]
+            exporters:
+                - prometheus/message_metrics_exporter
+            processors:
+                - memory_limiter
+                - deltatocumulative
+                - attributes/metricattributes
+            receivers:
+                - count/output_metrics
         metrics/tenant:
-            receivers: [count/tenant_metrics]
-            processors: [memory_limiter, deltatocumulative, attributes/metricattributes]
-            exporters: [prometheus/message_metrics_exporter]
+            exporters:
+                - prometheus/message_metrics_exporter
+            processors:
+                - memory_limiter
+                - deltatocumulative
+                - attributes/metricattributes
+            receivers:
+                - count/tenant_metrics

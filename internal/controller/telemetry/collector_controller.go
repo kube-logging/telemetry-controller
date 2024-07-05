@@ -24,7 +24,7 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/cisco-open/operator-tools/pkg/reconciler"
-	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
+	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -148,54 +148,53 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	otelConfig, err := otelConfigInput.ToIntermediateRepresentation(ctx).ToYAML()
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	otelConfig := otelConfigInput.AssembleConfig(ctx)
 
 	saName, err := r.reconcileRBAC(ctx, collector)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("%+v", err)
 	}
 
-	otelCollector := otelv1alpha1.OpenTelemetryCollector{
+	otelCollector := otelv1beta1.OpenTelemetryCollector{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("otelcollector-%s", collector.Name),
 			Namespace: collector.Spec.ControlNamespace,
 		},
-		Spec: otelv1alpha1.OpenTelemetryCollectorSpec{
+		Spec: otelv1beta1.OpenTelemetryCollectorSpec{
 			UpgradeStrategy: "none",
 			Config:          otelConfig,
-			Mode:            otelv1alpha1.ModeDaemonSet,
-			Image:           "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.98.0-1",
-			ServiceAccount:  saName.Name,
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "varlog",
-					ReadOnly:  true,
-					MountPath: "/var/log",
-				},
-				{
-					Name:      "varlibdockercontainers",
-					ReadOnly:  true,
-					MountPath: "/var/lib/docker/containers",
-				},
-			},
-			Volumes: []corev1.Volume{
-				{
-					Name: "varlog",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/log",
-						},
+			Mode:            otelv1beta1.ModeDaemonSet,
+			OpenTelemetryCommonFields: otelv1beta1.OpenTelemetryCommonFields{
+				Image:          "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.103.0-1",
+				ServiceAccount: saName.Name,
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "varlog",
+						ReadOnly:  true,
+						MountPath: "/var/log",
+					},
+					{
+						Name:      "varlibdockercontainers",
+						ReadOnly:  true,
+						MountPath: "/var/lib/docker/containers",
 					},
 				},
-				{
-					Name: "varlibdockercontainers",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/lib/docker/containers",
+				Volumes: []corev1.Volume{
+					{
+						Name: "varlog",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/var/log",
+							},
+						},
+					},
+					{
+						Name: "varlibdockercontainers",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/var/lib/docker/containers",
+							},
 						},
 					},
 				},
@@ -315,7 +314,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Owns(&otelv1alpha1.OpenTelemetryCollector{}).
+		Owns(&otelv1beta1.OpenTelemetryCollector{}).
 		Complete(r)
 }
 

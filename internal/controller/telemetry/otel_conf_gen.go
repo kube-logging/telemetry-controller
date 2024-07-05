@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
+	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
@@ -323,14 +324,14 @@ func (cfgInput *OtelColConfigInput) generateFluentforwardExporters(ctx context.C
 	return result
 }
 
-func generatePipeline(receivers, processors, exporters []string) Pipeline {
-	result := Pipeline{}
+func generatePipeline(receivers, processors, exporters []string) *otelv1beta1.Pipeline {
+	result := otelv1beta1.Pipeline{}
 
 	result.Receivers = receivers
 	result.Processors = processors
 	result.Exporters = exporters
 
-	return result
+	return &result
 }
 
 func (rc *RoutingConnector) AddRoutingConnectorTableElem(newTableItem RoutingConnectorTableItem) {
@@ -648,16 +649,16 @@ func generateLokiExporterResourceProcessor() ResourceProcessor {
 	return processor
 }
 
-func generateRootPipeline(tenantName string) Pipeline {
+func generateRootPipeline(tenantName string) *otelv1beta1.Pipeline {
 	tenantCountConnectorName := "count/tenant_metrics"
 	receiverName := fmt.Sprintf("filelog/%s", tenantName)
 	exporterName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
 	return generatePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName)}, []string{exporterName, tenantCountConnectorName})
 }
 
-func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
+func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1beta1.Pipeline {
 	outputCountConnectorName := "count/output_metrics"
-	var namedPipelines = make(map[string]Pipeline)
+	var namedPipelines = make(map[string]*otelv1beta1.Pipeline)
 
 	tenants := []string{}
 	for tenant := range cfgInput.TenantSubscriptionMap {
@@ -723,16 +724,16 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 	return namedPipelines
 }
 
-func generateMetricsPipelines() map[string]Pipeline {
-	metricsPipelines := make(map[string]Pipeline)
+func generateMetricsPipelines() map[string]*otelv1beta1.Pipeline {
+	metricsPipelines := make(map[string]*otelv1beta1.Pipeline)
 
-	metricsPipelines["metrics/tenant"] = Pipeline{
+	metricsPipelines["metrics/tenant"] = &otelv1beta1.Pipeline{
 		Receivers:  []string{"count/tenant_metrics"},
 		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
 		Exporters:  []string{"prometheus/message_metrics_exporter"},
 	}
 
-	metricsPipelines["metrics/output"] = Pipeline{
+	metricsPipelines["metrics/output"] = &otelv1beta1.Pipeline{
 		Receivers:  []string{"count/output_metrics"},
 		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
 		Exporters:  []string{"prometheus/message_metrics_exporter"},
@@ -900,27 +901,27 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver(namespaces
 func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Context) *OtelColConfigIR {
 	result := OtelColConfigIR{}
 
-	// Get  outputs based tenant names
-	result.Exporters = cfgInput.generateExporters(ctx)
+	// // Get  outputs based tenant names
+	// result.Exporters = cfgInput.generateExporters(ctx)
 
-	// Add processors
-	result.Processors = cfgInput.generateProcessors()
+	// // Add processors
+	// result.Processors = cfgInput.generateProcessors()
 
-	result.Receivers = make(map[string]any)
-	for tenantName := range cfgInput.TenantSubscriptionMap {
-		if tenantIdx := slices.IndexFunc(cfgInput.Tenants, func(t v1alpha1.Tenant) bool {
-			return tenantName == t.Name
-		}); tenantIdx != -1 {
-			k8sReceiverName := fmt.Sprintf("filelog/%s", tenantName)
-			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
-			result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver(namespaces)
-		}
-	}
+	// result.Receivers = make(map[string]any)
+	// for tenantName := range cfgInput.TenantSubscriptionMap {
+	// 	if tenantIdx := slices.IndexFunc(cfgInput.Tenants, func(t v1alpha1.Tenant) bool {
+	// 		return tenantName == t.Name
+	// 	}); tenantIdx != -1 {
+	// 		k8sReceiverName := fmt.Sprintf("filelog/%s", tenantName)
+	// 		namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
+	// 		result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver(namespaces)
+	// 	}
+	// }
 
-	result.Connectors = cfgInput.generateConnectors()
-	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
+	// //result.Connectors = cfgInput.generateConnectors()
+	// result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
 
-	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
+	// result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
 	result.Services.Telemetry = make(map[string]any)
 
 	result.Services.Telemetry = make(map[string]any)
@@ -949,21 +950,60 @@ func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Con
 	return &result
 }
 
-func (cfg *OtelColConfigIR) ToYAML() (string, error) {
-	bytes, err := cfg.ToYAMLRepresentation()
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
-}
+func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1beta1.Config {
+	exporters := cfgInput.generateExporters(ctx)
 
-func (cfg *OtelColConfigIR) ToYAMLRepresentation() ([]byte, error) {
-	if cfg != nil {
-		bytes, err := yaml.Marshal(cfg)
-		if err != nil {
-			return []byte{}, err
+	processors := cfgInput.generateProcessors()
+
+	receivers := make(map[string]any)
+
+	for tenantName := range cfgInput.TenantSubscriptionMap {
+		if tenantIdx := slices.IndexFunc(cfgInput.Tenants, func(t v1alpha1.Tenant) bool {
+			return tenantName == t.Name
+		}); tenantIdx != -1 {
+			k8sReceiverName := fmt.Sprintf("filelog/%s", tenantName)
+			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
+			receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver(namespaces)
 		}
-		return bytes, nil
 	}
-	return []byte{}, nil
+
+	connectors := cfgInput.generateConnectors()
+
+	pipelines := make(map[string]*otelv1beta1.Pipeline)
+
+	pipelines = cfgInput.generateNamedPipelines()
+
+	telemetry := make(map[string]any)
+
+	telemetry["metrics"] = map[string]string{
+		"level": "detailed",
+	}
+
+	if cfgInput.Debug {
+		telemetry["logs"] = map[string]string{
+			"level": "debug",
+		}
+	}
+
+	if _, ok := processors["memory_limiter"]; ok {
+		for name, pipeline := range pipelines {
+			// From memorylimiterprocessor's README:
+			// > For the memory_limiter processor, the best practice is to add it as the first processor in a pipeline.
+			memProcessors := []string{"memory_limiter"}
+			memProcessors = append(memProcessors, pipeline.Processors...)
+			pipeline.Processors = memProcessors
+			pipelines[name] = pipeline
+		}
+	}
+
+	return otelv1beta1.Config{
+		Receivers:  otelv1beta1.AnyConfig{Object: receivers},
+		Exporters:  otelv1beta1.AnyConfig{Object: exporters},
+		Processors: &otelv1beta1.AnyConfig{Object: processors},
+		Connectors: &otelv1beta1.AnyConfig{Object: connectors},
+		Service: otelv1beta1.Service{
+			Telemetry: &otelv1beta1.AnyConfig{Object: telemetry},
+			Pipelines: pipelines,
+		},
+	}
 }
