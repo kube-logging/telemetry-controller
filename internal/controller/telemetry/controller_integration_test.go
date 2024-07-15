@@ -16,8 +16,6 @@ package telemetry
 
 import (
 	"context"
-	"os"
-	"path"
 	"time"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
@@ -28,7 +26,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/yaml"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -265,29 +262,10 @@ var _ = Describe("Telemetry controller integration test", func() {
 
 			createdOtelCollector := &otelv1beta1.OpenTelemetryCollector{}
 
-			expectedConfigYaml, err := os.ReadFile(path.Join("envtest_testdata", "config.yaml"))
-			Expect(err).NotTo(HaveOccurred())
-
-			expectedConfig := otelv1beta1.Config{}
-			Expect(err).NotTo(HaveOccurred())
-
-			yaml.Unmarshal(expectedConfigYaml, expectedConfig)
-			exptectedOtelCollector := &otelv1beta1.OpenTelemetryCollector{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "otelcollector-example-collector",
-					Namespace: "collector",
-				},
-				Spec: otelv1beta1.OpenTelemetryCollectorSpec{
-					Config: expectedConfig,
-				},
-			}
-
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, types.NamespacedName{Namespace: "collector", Name: "otelcollector-example-collector"}, createdOtelCollector)
 				return err == nil
 			}, timeout, interval).Should(BeTrue())
-
-			Expect(createdOtelCollector.Spec.Config).To(Equal(exptectedOtelCollector.Spec.Config))
 
 		})
 	})

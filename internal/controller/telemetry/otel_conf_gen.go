@@ -49,12 +49,12 @@ type OtelColConfigInput struct {
 
 type RoutingConnectorTableItem struct {
 	Statement string   `json:"statement"`
-	Pipelines []string `json:"pipelines,flow"`
+	Pipelines []string `json:"pipelines"`
 }
 
 type RoutingConnector struct {
 	Name             string                      `json:"-"`
-	DefaultPipelines []string                    `json:"default_pipelines,flow,omitempty"`
+	DefaultPipelines []string                    `json:"default_pipelines,omitempty"`
 	Table            []RoutingConnectorTableItem `json:"table"`
 }
 
@@ -144,7 +144,7 @@ type HTTPServerConfig struct {
 
 type TLSServerConfig struct {
 	// squash ensures fields are correctly decoded in embedded struct.
-	v1alpha1.TLSSetting `json:",squash"`
+	v1alpha1.TLSSetting `json:",inline"`
 
 	// These are config options specific to server connections.
 
@@ -202,9 +202,9 @@ type Statement struct {
 }
 
 type Pipeline struct {
-	Receivers  []string `json:"receivers,omitempty,flow"`
-	Processors []string `json:"processors,omitempty,flow"`
-	Exporters  []string `json:"exporters,omitempty,flow"`
+	Receivers  []string `json:"receivers,omitempty"`
+	Processors []string `json:"processors,omitempty"`
+	Exporters  []string `json:"exporters,omitempty"`
 }
 
 type Pipelines struct {
@@ -921,9 +921,7 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1be
 
 	connectors := cfgInput.generateConnectors()
 
-	pipelines := make(map[string]*otelv1beta1.Pipeline)
-
-	pipelines = cfgInput.generateNamedPipelines()
+	pipelines := cfgInput.generateNamedPipelines()
 
 	telemetry := make(map[string]any)
 
