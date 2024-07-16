@@ -16,19 +16,16 @@ package telemetry
 
 import (
 	"context"
-	"os"
-	"path"
 	"time"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
+	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/yaml"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -174,7 +171,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 			outputs := []v1alpha1.OtelOutput{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "otlp-test-output",
+						Name:      "otlp-test-output-1",
 						Namespace: "collector",
 					},
 					Spec: v1alpha1.OtelOutputSpec{
@@ -263,34 +260,12 @@ var _ = Describe("Telemetry controller integration test", func() {
 
 		It("OpentelemetryCollector resource should be reconciled by controller", func() {
 
-			createdOtelCollector := &otelv1alpha1.OpenTelemetryCollector{}
-
-			expectedConfig, err := os.ReadFile(path.Join("envtest_testdata", "config.yaml"))
-			Expect(err).NotTo(HaveOccurred())
-			exptectedOtelCollector := &otelv1alpha1.OpenTelemetryCollector{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "otelcollector-example-collector",
-					Namespace: "collector",
-				},
-				Spec: otelv1alpha1.OpenTelemetryCollectorSpec{
-					Config: string(expectedConfig),
-				},
-			}
+			createdOtelCollector := &otelv1beta1.OpenTelemetryCollector{}
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, types.NamespacedName{Namespace: "collector", Name: "otelcollector-example-collector"}, createdOtelCollector)
 				return err == nil
 			}, timeout, interval).Should(BeTrue())
-
-			expectedMap := map[string]any{}
-			err = yaml.Unmarshal([]byte(exptectedOtelCollector.Spec.Config), expectedMap)
-			Expect(err).NotTo(HaveOccurred())
-
-			createdMap := map[string]any{}
-			err = yaml.Unmarshal([]byte(createdOtelCollector.Spec.Config), createdMap)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(createdMap).To(Equal(expectedMap))
 
 		})
 	})

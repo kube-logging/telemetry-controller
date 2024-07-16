@@ -28,7 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
+	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
@@ -48,109 +48,114 @@ type OtelColConfigInput struct {
 }
 
 type RoutingConnectorTableItem struct {
-	Statement string   `yaml:"statement"`
-	Pipelines []string `yaml:"pipelines,flow"`
+	Statement string   `json:"statement"`
+	Pipelines []string `json:"pipelines"`
 }
 
 type RoutingConnector struct {
-	Name             string                      `yaml:"-"`
-	DefaultPipelines []string                    `yaml:"default_pipelines,flow,omitempty"`
-	Table            []RoutingConnectorTableItem `yaml:"table"`
+	Name             string                      `json:"-"`
+	DefaultPipelines []string                    `json:"default_pipelines,omitempty"`
+	Table            []RoutingConnectorTableItem `json:"table"`
 }
 
 type AttributesProcessor struct {
-	Actions []AttributesProcessorAction `yaml:"actions"`
+	Actions []AttributesProcessorAction `json:"actions"`
 }
 
 type AttributesProcessorAction struct {
-	Action        string `yaml:"action"`
-	Key           string `yaml:"key"`
-	Value         string `yaml:"value,omitempty"`
-	FromAttribute string `yaml:"from_attribute,omitempty"`
-	FromContext   string `yaml:"from_context,omitempty"`
+	Action        string `json:"action"`
+	Key           string `json:"key"`
+	Value         string `json:"value,omitempty"`
+	FromAttribute string `json:"from_attribute,omitempty"`
+	FromContext   string `json:"from_context,omitempty"`
 }
 
 type CountConnectorAttributeConfig struct {
-	Key          string `yaml:"key,omitempty"`
-	DefaultValue string `yaml:"default_value,omitempty"`
+	Key          string `json:"key,omitempty"`
+	DefaultValue string `json:"default_value,omitempty"`
 }
 
 type CountConnectorMetricInfo struct {
-	Description        string                          `yaml:"description,omitempty"`
-	Conditions         []string                        `yaml:"conditions,omitempty"`
-	Attributes         []CountConnectorAttributeConfig `yaml:"attributes,omitempty"`
-	ResourceAttributes []CountConnectorAttributeConfig `yaml:"resource_attributes,omitempty"`
+	Description        string                          `json:"description,omitempty"`
+	Conditions         []string                        `json:"conditions,omitempty"`
+	Attributes         []CountConnectorAttributeConfig `json:"attributes,omitempty"`
+	ResourceAttributes []CountConnectorAttributeConfig `json:"resource_attributes,omitempty"`
 }
 
 type DeltatoCumulativeConfig struct {
-	MaxStale   time.Duration `yaml:"max_stale,omitempty"`
-	MaxStreams int           `yaml:"max_streams,omitempty"`
+	MaxStale   time.Duration `json:"max_stale,omitempty"`
+	MaxStreams int           `json:"max_streams,omitempty"`
 }
 
 type PrometheusExporterConfig struct {
-	HTTPServerConfig `yaml:",inline"`
+	HTTPServerConfig `json:",inline"`
 
 	// Namespace if set, exports metrics under the provided value.
-	Namespace string `yaml:"namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 
 	// ConstLabels are values that are applied for every exported metric.
-	ConstLabels prometheus.Labels `yaml:"const_labels,omitempty"`
+	ConstLabels prometheus.Labels `json:"const_labels,omitempty"`
 
 	// SendTimestamps will send the underlying scrape timestamp with the export
-	SendTimestamps bool `yaml:"send_timestamps,omitempty"`
+	SendTimestamps bool `json:"send_timestamps,omitempty"`
 
 	// MetricExpiration defines how long metrics are kept without updates
-	MetricExpiration time.Duration `yaml:"metric_expiration,omitempty"`
+	MetricExpiration time.Duration `json:"metric_expiration,omitempty"`
 
 	// ResourceToTelemetrySettings defines configuration for converting resource attributes to metric labels.
-	ResourceToTelemetrySettings resourcetotelemetry.Settings `yaml:"resource_to_telemetry_conversion,omitempty"`
+	ResourceToTelemetrySettings ResourceToTelemetrySettings `json:"resource_to_telemetry_conversion,omitempty"`
 
 	// EnableOpenMetrics enables the use of the OpenMetrics encoding option for the prometheus exporter.
-	EnableOpenMetrics bool `yaml:"enable_open_metrics,omitempty"`
+	EnableOpenMetrics bool `json:"enable_open_metrics,omitempty"`
 
 	// AddMetricSuffixes controls whether suffixes are added to metric names. Defaults to true.
-	AddMetricSuffixes bool `yaml:"add_metric_suffixes,omitempty"`
+	AddMetricSuffixes bool `json:"add_metric_suffixes,omitempty"`
+}
+
+type ResourceToTelemetrySettings struct {
+	// Enabled indicates whether to convert resource attributes to telemetry attributes. Default is `false`.
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 type HTTPServerConfig struct {
 	// Endpoint configures the listening address for the server.
-	Endpoint string `yaml:"endpoint,omitempty"`
+	Endpoint string `json:"endpoint,omitempty"`
 
 	// TLSSetting struct exposes TLS client configuration.
-	TLSSetting *TLSServerConfig `yaml:"tls,omitempty"`
+	TLSSetting *TLSServerConfig `json:"tls,omitempty"`
 
 	// CORS configures the server for HTTP cross-origin resource sharing (CORS).
-	CORS *CORSConfig `yaml:"cors,omitempty"`
+	CORS *CORSConfig `json:"cors,omitempty"`
 
 	// Auth for this receiver
-	Auth *configauth.Authentication `yaml:"auth,omitempty"`
+	Auth *configauth.Authentication `json:"auth,omitempty"`
 
 	// MaxRequestBodySize sets the maximum request body size in bytes
-	MaxRequestBodySize int64 `yaml:"max_request_body_size,omitempty"`
+	MaxRequestBodySize int64 `json:"max_request_body_size,omitempty"`
 
 	// IncludeMetadata propagates the client metadata from the incoming requests to the downstream consumers
 	// Experimental: *NOTE* this option is subject to change or removal in the future.
-	IncludeMetadata bool `yaml:"include_metadata,omitempty"`
+	IncludeMetadata bool `json:"include_metadata,omitempty"`
 
 	// Additional headers attached to each HTTP response sent to the client.
 	// Header values are opaque since they may be sensitive.
-	ResponseHeaders map[string]configopaque.String `yaml:"response_headers,omitempty"`
+	ResponseHeaders map[string]configopaque.String `json:"response_headers,omitempty"`
 }
 
 type TLSServerConfig struct {
 	// squash ensures fields are correctly decoded in embedded struct.
-	v1alpha1.TLSSetting `yaml:",squash"`
+	v1alpha1.TLSSetting `json:",inline"`
 
 	// These are config options specific to server connections.
 
 	// Path to the TLS cert to use by the server to verify a client certificate. (optional)
 	// This sets the ClientCAs and ClientAuth to RequireAndVerifyClientCert in the TLSConfig. Please refer to
 	// https://godoc.org/crypto/tls#Config for more information. (optional)
-	ClientCAFile string `yaml:"client_ca_file"`
+	ClientCAFile string `json:"client_ca_file"`
 
 	// Reload the ClientCAs file when it is modified
 	// (optional, default false)
-	ReloadClientCAFile bool `yaml:"client_ca_file_reload"`
+	ReloadClientCAFile bool `json:"client_ca_file_reload"`
 }
 
 // CORSConfig configures a receiver for HTTP cross-origin resource sharing (CORS).
@@ -160,67 +165,67 @@ type CORSConfig struct {
 	// HTTP/JSON requests to an OTLP receiver. An origin may contain a
 	// wildcard (*) to replace 0 or more characters (e.g.,
 	// "http://*.domain.com", or "*" to allow any origin).
-	AllowedOrigins []string `yaml:"allowed_origins"`
+	AllowedOrigins []string `json:"allowed_origins"`
 
 	// AllowedHeaders sets what headers will be allowed in CORS requests.
 	// The Accept, Accept-Language, Content-Type, and Content-Language
 	// headers are implicitly allowed. If no headers are listed,
 	// X-Requested-With will also be accepted by default. Include "*" to
 	// allow any request header.
-	AllowedHeaders []string `yaml:"allowed_headers"`
+	AllowedHeaders []string `json:"allowed_headers"`
 
 	// MaxAge sets the value of the Access-Control-Max-Age response header.
 	// Set it to the number of seconds that browsers should cache a CORS
 	// preflight response for.
-	MaxAge int `yaml:"max_age"`
+	MaxAge int `json:"max_age"`
 }
 
 type ResourceProcessor struct {
-	Actions []ResourceProcessorAction `yaml:"attributes"`
+	Actions []ResourceProcessorAction `json:"attributes"`
 }
 
 type ResourceProcessorAction struct {
-	Action        string `yaml:"action"`
-	Key           string `yaml:"key"`
-	Value         string `yaml:"value,omitempty"`
-	FromAttribute string `yaml:"from_attribute,omitempty"`
-	FromContext   string `yaml:"from_context,omitempty"`
+	Action        string `json:"action"`
+	Key           string `json:"key"`
+	Value         string `json:"value,omitempty"`
+	FromAttribute string `json:"from_attribute,omitempty"`
+	FromContext   string `json:"from_context,omitempty"`
 }
 
 type TransformProcessor struct {
-	LogStatements []Statement `yaml:"log_statements,omitempty"`
+	LogStatements []Statement `json:"log_statements,omitempty"`
 }
 
 type Statement struct {
-	Context    string   `yaml:"context"`
-	Statements []string `yaml:"statements"`
+	Context    string   `json:"context"`
+	Statements []string `json:"statements"`
 }
 
 type Pipeline struct {
-	Receivers  []string `yaml:"receivers,omitempty,flow"`
-	Processors []string `yaml:"processors,omitempty,flow"`
-	Exporters  []string `yaml:"exporters,omitempty,flow"`
+	Receivers  []string `json:"receivers,omitempty"`
+	Processors []string `json:"processors,omitempty"`
+	Exporters  []string `json:"exporters,omitempty"`
 }
 
 type Pipelines struct {
-	Traces         Pipeline            `yaml:"traces,omitempty"`
-	Metrics        Pipeline            `yaml:"metrics,omitempty"`
-	Logs           Pipeline            `yaml:"logs,omitempty"`
-	NamedPipelines map[string]Pipeline `yaml:",inline,omitempty"`
+	Traces         Pipeline            `json:"traces,omitempty"`
+	Metrics        Pipeline            `json:"metrics,omitempty"`
+	Logs           Pipeline            `json:"logs,omitempty"`
+	NamedPipelines map[string]Pipeline `json:",inline,omitempty"`
 }
 
 type Services struct {
-	Extensions map[string]any `yaml:"extensions,omitempty"`
-	Pipelines  Pipelines      `yaml:"pipelines,omitempty"`
-	Telemetry  map[string]any `yaml:"telemetry,omitempty"`
+	Extensions map[string]any `json:"extensions,omitempty"`
+	Pipelines  Pipelines      `json:"pipelines,omitempty"`
+	Telemetry  map[string]any `json:"telemetry,omitempty"`
 }
 
 type OtelColConfigIR struct {
-	Receivers  map[string]any `yaml:"receivers,omitempty"`
-	Exporters  map[string]any `yaml:"exporters,omitempty"`
-	Processors map[string]any `yaml:"processors,omitempty"`
-	Connectors map[string]any `yaml:"connectors,omitempty"`
-	Services   Services       `yaml:"service,omitempty"`
+	Receivers  map[string]any `json:"receivers,omitempty"`
+	Exporters  map[string]any `json:"exporters,omitempty"`
+	Processors map[string]any `json:"processors,omitempty"`
+	Connectors map[string]any `json:"connectors,omitempty"`
+	Services   Services       `json:"service,omitempty"`
 }
 
 func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[string]any {
@@ -323,14 +328,14 @@ func (cfgInput *OtelColConfigInput) generateFluentforwardExporters(ctx context.C
 	return result
 }
 
-func generatePipeline(receivers, processors, exporters []string) Pipeline {
-	result := Pipeline{}
+func generatePipeline(receivers, processors, exporters []string) *otelv1beta1.Pipeline {
+	result := otelv1beta1.Pipeline{}
 
 	result.Receivers = receivers
 	result.Processors = processors
 	result.Exporters = exporters
 
-	return result
+	return &result
 }
 
 func (rc *RoutingConnector) AddRoutingConnectorTableElem(newTableItem RoutingConnectorTableItem) {
@@ -648,16 +653,16 @@ func generateLokiExporterResourceProcessor() ResourceProcessor {
 	return processor
 }
 
-func generateRootPipeline(tenantName string) Pipeline {
+func generateRootPipeline(tenantName string) *otelv1beta1.Pipeline {
 	tenantCountConnectorName := "count/tenant_metrics"
 	receiverName := fmt.Sprintf("filelog/%s", tenantName)
 	exporterName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
 	return generatePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName)}, []string{exporterName, tenantCountConnectorName})
 }
 
-func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline {
+func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1beta1.Pipeline {
 	outputCountConnectorName := "count/output_metrics"
-	var namedPipelines = make(map[string]Pipeline)
+	var namedPipelines = make(map[string]*otelv1beta1.Pipeline)
 
 	tenants := []string{}
 	for tenant := range cfgInput.TenantSubscriptionMap {
@@ -723,16 +728,16 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]Pipeline
 	return namedPipelines
 }
 
-func generateMetricsPipelines() map[string]Pipeline {
-	metricsPipelines := make(map[string]Pipeline)
+func generateMetricsPipelines() map[string]*otelv1beta1.Pipeline {
+	metricsPipelines := make(map[string]*otelv1beta1.Pipeline)
 
-	metricsPipelines["metrics/tenant"] = Pipeline{
+	metricsPipelines["metrics/tenant"] = &otelv1beta1.Pipeline{
 		Receivers:  []string{"count/tenant_metrics"},
 		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
 		Exporters:  []string{"prometheus/message_metrics_exporter"},
 	}
 
-	metricsPipelines["metrics/output"] = Pipeline{
+	metricsPipelines["metrics/output"] = &otelv1beta1.Pipeline{
 		Receivers:  []string{"count/output_metrics"},
 		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
 		Exporters:  []string{"prometheus/message_metrics_exporter"},
@@ -743,8 +748,8 @@ func generateMetricsPipelines() map[string]Pipeline {
 
 func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[string]any {
 	type Source struct {
-		Name string `yaml:"name,omitempty"`
-		From string `yaml:"from,omitempty"`
+		Name string `json:"name,omitempty"`
+		From string `json:"from,omitempty"`
 	}
 
 	defaultSources := []Source{
@@ -897,73 +902,58 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver(namespaces
 	return k8sReceiver
 }
 
-func (cfgInput *OtelColConfigInput) ToIntermediateRepresentation(ctx context.Context) *OtelColConfigIR {
-	result := OtelColConfigIR{}
+func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1beta1.Config {
+	exporters := cfgInput.generateExporters(ctx)
 
-	// Get  outputs based tenant names
-	result.Exporters = cfgInput.generateExporters(ctx)
+	processors := cfgInput.generateProcessors()
 
-	// Add processors
-	result.Processors = cfgInput.generateProcessors()
+	receivers := make(map[string]any)
 
-	result.Receivers = make(map[string]any)
 	for tenantName := range cfgInput.TenantSubscriptionMap {
 		if tenantIdx := slices.IndexFunc(cfgInput.Tenants, func(t v1alpha1.Tenant) bool {
 			return tenantName == t.Name
 		}); tenantIdx != -1 {
 			k8sReceiverName := fmt.Sprintf("filelog/%s", tenantName)
 			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
-			result.Receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver(namespaces)
+			receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver(namespaces)
 		}
 	}
 
-	result.Connectors = cfgInput.generateConnectors()
-	result.Services.Pipelines.NamedPipelines = make(map[string]Pipeline)
+	connectors := cfgInput.generateConnectors()
 
-	result.Services.Pipelines.NamedPipelines = cfgInput.generateNamedPipelines()
-	result.Services.Telemetry = make(map[string]any)
+	pipelines := cfgInput.generateNamedPipelines()
 
-	result.Services.Telemetry = make(map[string]any)
+	telemetry := make(map[string]any)
 
-	result.Services.Telemetry["metrics"] = map[string]string{
+	telemetry["metrics"] = map[string]string{
 		"level": "detailed",
 	}
 
 	if cfgInput.Debug {
-		result.Services.Telemetry["logs"] = map[string]string{
+		telemetry["logs"] = map[string]string{
 			"level": "debug",
 		}
 	}
 
-	if _, ok := result.Processors["memory_limiter"]; ok {
-		for name, namedPipeline := range result.Services.Pipelines.NamedPipelines {
+	if _, ok := processors["memory_limiter"]; ok {
+		for name, pipeline := range pipelines {
 			// From memorylimiterprocessor's README:
 			// > For the memory_limiter processor, the best practice is to add it as the first processor in a pipeline.
-			processors := []string{"memory_limiter"}
-			processors = append(processors, namedPipeline.Processors...)
-			namedPipeline.Processors = processors
-			result.Services.Pipelines.NamedPipelines[name] = namedPipeline
+			memProcessors := []string{"memory_limiter"}
+			memProcessors = append(memProcessors, pipeline.Processors...)
+			pipeline.Processors = memProcessors
+			pipelines[name] = pipeline
 		}
 	}
 
-	return &result
-}
-
-func (cfg *OtelColConfigIR) ToYAML() (string, error) {
-	bytes, err := cfg.ToYAMLRepresentation()
-	if err != nil {
-		return "", err
+	return otelv1beta1.Config{
+		Receivers:  otelv1beta1.AnyConfig{Object: receivers},
+		Exporters:  otelv1beta1.AnyConfig{Object: exporters},
+		Processors: &otelv1beta1.AnyConfig{Object: processors},
+		Connectors: &otelv1beta1.AnyConfig{Object: connectors},
+		Service: otelv1beta1.Service{
+			Telemetry: &otelv1beta1.AnyConfig{Object: telemetry},
+			Pipelines: pipelines,
+		},
 	}
-	return string(bytes), nil
-}
-
-func (cfg *OtelColConfigIR) ToYAMLRepresentation() ([]byte, error) {
-	if cfg != nil {
-		bytes, err := yaml.Marshal(cfg)
-		if err != nil {
-			return []byte{}, err
-		}
-		return bytes, nil
-	}
-	return []byte{}, nil
 }

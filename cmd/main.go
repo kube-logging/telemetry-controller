@@ -37,7 +37,7 @@ import (
 
 	// +kubebuilder:scaffold:imports
 
-	otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
+	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 )
 
 var (
@@ -48,7 +48,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(otelv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(otelv1beta1.AddToScheme(scheme))
 
 	utilruntime.Must(rbacv1.AddToScheme(scheme))
 	utilruntime.Must(telemetryv1alpha1.AddToScheme(scheme))

@@ -16,22 +16,23 @@ package telemetry
 
 import (
 	_ "embed"
-	"reflect"
+	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/siliconbrain/go-mapseqs/mapseqs"
 	"github.com/siliconbrain/go-seqs/seqs"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-//go:embed otel_col_conf_test_fixtures/complex.yaml
-var otelColTargetYaml string
+//go:embed otel_col_conf_test_fixtures/complex.json
+var otelColTargetJSON string
 
 func TestOtelColConfComplex(t *testing.T) {
 	// Required inputs
@@ -266,49 +267,28 @@ func TestOtelColConfComplex(t *testing.T) {
 		},
 	}
 
-	// IR
-	generatedIR := inputCfg.ToIntermediateRepresentation(ctx)
+	// Config
+	// Hack is needed here, to actually be able to compare the expected and generated config, because of underlying JSON/YAML tagged structs
 
-	// Final YAML
-	_, err := generatedIR.ToYAML()
-	if err != nil {
-		t.Fatalf("YAML formatting failed, err=%v", err)
-	}
-
-	actualYAMLBytes, err := generatedIR.ToYAMLRepresentation()
-	if err != nil {
-		t.Fatalf("error %v", err)
-	}
-	actualYAML, err := generatedIR.ToYAML()
-	if err != nil {
-		t.Fatalf("error %v", err)
-	}
-
-	var actualUniversalMap map[string]any
-	if err := yaml.Unmarshal(actualYAMLBytes, &actualUniversalMap); err != nil {
+	var expectedMap map[string]any
+	if err := json.Unmarshal([]byte(otelColTargetJSON), &expectedMap); err != nil {
 		t.Fatalf("error: %v", err)
 	}
 
-	var expectedUniversalMap map[string]any
-	if err := yaml.Unmarshal([]byte(otelColTargetYaml), &expectedUniversalMap); err != nil {
+	generatedConfig := inputCfg.AssembleConfig(ctx)
+
+	var generatedMap map[string]any
+	if err := mapstructure.Decode(generatedConfig, &generatedMap); err != nil {
 		t.Fatalf("error: %v", err)
 	}
+	generatedJSON, _ := json.MarshalIndent(generatedMap, "", "  ")
 
-	// use dyff for YAML comparison
-	if diff := cmp.Diff(expectedUniversalMap, actualUniversalMap); diff != "" {
-		t.Logf("mismatch:\n---%s\n---\n", diff)
+	var unmarshaledMap map[string]any
+	if err := json.Unmarshal(generatedJSON, &unmarshaledMap); err != nil {
+		t.Fatalf("error: %v", err)
 	}
-
-	if !reflect.DeepEqual(actualUniversalMap, expectedUniversalMap) {
-		t.Fatalf(`yaml mismatch:
-expected=
----
-%s
----
-actual=
----
-%s
----`, otelColTargetYaml, actualYAML)
+	if diff := cmp.Diff(expectedMap, unmarshaledMap); diff != "" {
+		t.Errorf("mismatch:\n---%s\n---\n", diff)
 	}
 }
 func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *testing.T) {
