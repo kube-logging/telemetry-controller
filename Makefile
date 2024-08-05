@@ -149,7 +149,7 @@ endif
 .PHONY: install-deps
 install-deps: ## Install dependencies into the actual K8s cluster
 	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
-	kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.98.0/opentelemetry-operator.yaml
+	kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.104.0/opentelemetry-operator.yaml
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
