@@ -34,7 +34,7 @@ minikube start --container-runtime=containerd
 Install dependencies (cert-manager and opentelemetry-operator):
 ```sh
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.98.0/opentelemetry-operator.yaml
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.104.0/opentelemetry-operator.yaml
 ```
 
 Deploy latest telemetry-controller:
@@ -117,7 +117,7 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 ```
 
 ```sh
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.98.0/opentelemetry-operator.yaml
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.104.0/opentelemetry-operator.yaml
 # Wait for the opentelemtry-operator to be running
 kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
 ```
