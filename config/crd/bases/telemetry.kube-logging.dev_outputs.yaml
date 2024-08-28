@@ -409,8 +409,7 @@ spec:
                     type: integer
                 type: object
               otlp:
-                description: Foo is an example field of Output. Edit output_types.go
-                  to remove/update
+                description: 'OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go'
                 properties:
                   auth:
                     description: Auth configuration for outgoing RPCs.

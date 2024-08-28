@@ -28,7 +28,6 @@ type OutputSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Output. Edit output_types.go to remove/update
 	OTLP          *OTLP          `json:"otlp,omitempty"`
 	Loki          *Loki          `json:"loki,omitempty"`
 	Fluentforward *Fluentforward `json:"fluentforward,omitempty"`
@@ -90,8 +89,6 @@ type TCPClientSettings struct {
 
 // OutputStatus defines the observed state of Output
 type OutputStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // +kubebuilder:object:root=true
