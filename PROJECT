@@ -39,7 +39,7 @@ resources:
     namespaced: true
   domain: kube-logging.dev
   group: telemetry
-  kind: OtelOutput
+  kind: Output
   path: github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1
   version: v1alpha1
 version: "3"

@@ -23,12 +23,12 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// OtelOutputSpec defines the desired state of OtelOutput
-type OtelOutputSpec struct {
+// OutputSpec defines the desired state of Output
+type OutputSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of OtelOutput. Edit oteloutput_types.go to remove/update
+	// Foo is an example field of Output. Edit output_types.go to remove/update
 	OTLP          *OTLP          `json:"otlp,omitempty"`
 	Loki          *Loki          `json:"loki,omitempty"`
 	Fluentforward *Fluentforward `json:"fluentforward,omitempty"`
@@ -88,8 +88,8 @@ type TCPClientSettings struct {
 	SharedKey string `json:"shared_key,omitempty" yaml:"shared_key,omitempty"`
 }
 
-// OtelOutputStatus defines the observed state of OtelOutput
-type OtelOutputStatus struct {
+// OutputStatus defines the observed state of Output
+type OutputStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -98,28 +98,28 @@ type OtelOutputStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:categories=telemetry-all
 
-// OtelOutput is the Schema for the oteloutputs API
-type OtelOutput struct {
+// Output is the Schema for the outputs API
+type Output struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   OtelOutputSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
-	Status OtelOutputStatus `json:"status,omitempty" `
+	Spec   OutputSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status OutputStatus `json:"status,omitempty" `
 }
 
 // +kubebuilder:object:root=true
 
-// OtelOutputList contains a list of OtelOutput
-type OtelOutputList struct {
+// OutputList contains a list of Output
+type OutputList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []OtelOutput `json:"items"`
+	Items           []Output `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&OtelOutput{}, &OtelOutputList{})
+	SchemeBuilder.Register(&Output{}, &OutputList{})
 }
 
-func (o *OtelOutput) NamespacedName() NamespacedName {
+func (o *Output) NamespacedName() NamespacedName {
 	return NamespacedName{Namespace: o.Namespace, Name: o.Name}
 }

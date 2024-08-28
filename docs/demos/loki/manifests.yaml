@@ -56,7 +56,7 @@ spec:
       namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: OtelOutput
+kind: Output
 metadata:
   name: loki
   namespace: collector
@@ -94,7 +94,7 @@ spec:
       namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: OtelOutput
+kind: Output
 metadata:
   name: openobserve-1
   namespace: collector
@@ -109,7 +109,7 @@ spec:
       insecure: true
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: OtelOutput
+kind: Output
 metadata:
   name: openobserve-2
   namespace: collector

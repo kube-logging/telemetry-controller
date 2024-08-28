@@ -3,5 +3,5 @@ resources:
 - telemetry_v1alpha1_collector.yaml
 - telemetry_v1alpha1_subscription.yaml
 - telemetry_v1alpha1_tenant.yaml
-- telemetry_v1alpha1_oteloutput.yaml
+- telemetry_v1alpha1_output.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

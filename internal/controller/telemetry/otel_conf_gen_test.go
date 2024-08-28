@@ -168,13 +168,13 @@ func TestOtelColConfComplex(t *testing.T) {
 				},
 			},
 		},
-		Outputs: []v1alpha1.OtelOutput{
+		Outputs: []v1alpha1.Output{
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "otlp-test-output",
 					Namespace: "collector",
 				},
-				Spec: v1alpha1.OtelOutputSpec{
+				Spec: v1alpha1.OutputSpec{
 					OTLP: &v1alpha1.OTLP{
 						GRPCClientConfig: v1alpha1.GRPCClientConfig{
 							Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
@@ -190,7 +190,7 @@ func TestOtelColConfComplex(t *testing.T) {
 					Name:      "otlp-test-output-2",
 					Namespace: "collector",
 				},
-				Spec: v1alpha1.OtelOutputSpec{
+				Spec: v1alpha1.OutputSpec{
 					OTLP: &v1alpha1.OTLP{
 						GRPCClientConfig: v1alpha1.GRPCClientConfig{
 							Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
@@ -206,7 +206,7 @@ func TestOtelColConfComplex(t *testing.T) {
 					Name:      "loki-test-output",
 					Namespace: "collector",
 				},
-				Spec: v1alpha1.OtelOutputSpec{
+				Spec: v1alpha1.OutputSpec{
 					Loki: &v1alpha1.Loki{
 						HTTPClientConfig: v1alpha1.HTTPClientConfig{
 							Endpoint: "loki.example-tenant-a-ns.svc.cluster.local:4317",
@@ -222,7 +222,7 @@ func TestOtelColConfComplex(t *testing.T) {
 					Name:      "fluentforward-test-output",
 					Namespace: "collector",
 				},
-				Spec: v1alpha1.OtelOutputSpec{
+				Spec: v1alpha1.OutputSpec{
 					Fluentforward: &v1alpha1.Fluentforward{
 						TCPClientSettings: v1alpha1.TCPClientSettings{
 							Endpoint: "fluentforward.example-tenant-ns.svc.cluster.local:8888",
@@ -295,7 +295,7 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 	type fields struct {
 		Tenants               []v1alpha1.Tenant
 		Subscriptions         map[v1alpha1.NamespacedName]v1alpha1.Subscription
-		Outputs               []v1alpha1.OtelOutput
+		Outputs               []v1alpha1.Output
 		TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
 		SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
 	}
@@ -354,7 +354,7 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 						}, OTTL: `set(attributes["subscription"], "subscriptionB")`},
 					},
 				},
-				Outputs: []v1alpha1.OtelOutput{},
+				Outputs: []v1alpha1.Output{},
 				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
 					"tenantA": {
 						{

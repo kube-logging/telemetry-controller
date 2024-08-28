@@ -64,7 +64,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 
 	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelector)
 	subscriptions := make(map[v1alpha1.NamespacedName]v1alpha1.Subscription)
-	outputs := []v1alpha1.OtelOutput{}
+	outputs := []v1alpha1.Output{}
 
 	if err != nil {
 		logger.Error(errors.WithStack(err), "failed listing tenants")
@@ -96,7 +96,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		subscriptionOutputMap[subscription.NamespacedName()] = outputNames
 
 		for _, outputName := range outputNames {
-			queriedOutput := &v1alpha1.OtelOutput{}
+			queriedOutput := &v1alpha1.Output{}
 			if err = r.Client.Get(ctx, types.NamespacedName(outputName), queriedOutput); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting outputs for subscription", "subscription", subscription.NamespacedName().String())
 				return OtelColConfigInput{}, err
@@ -118,8 +118,8 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 	return otelConfigInput, nil
 }
 
-// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;oteloutputs;,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status;tenants/status;subscriptions/status;oteloutputs/status;,verbs=get;update;patch
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;outputs;,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status;tenants/status;subscriptions/status;outputs/status;,verbs=get;update;patch
 // +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=nodes;namespaces;endpoints;nodes/proxy,verbs=get;list;watch
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles;clusterrolebindings;roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
@@ -282,7 +282,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&v1alpha1.OtelOutput{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&v1alpha1.Output{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			collectors := &v1alpha1.CollectorList{}

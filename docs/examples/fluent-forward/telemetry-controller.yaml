@@ -36,7 +36,7 @@ spec:
       namespace: default
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: OtelOutput
+kind: Output
 metadata:
   name: fluent
   namespace: default

@@ -38,7 +38,7 @@ type OtelColConfigInput struct {
 	// These must only include resources that are selected by the collector, tenant labelselectors, and listed outputs in the subscriptions
 	Tenants       []v1alpha1.Tenant
 	Subscriptions map[v1alpha1.NamespacedName]v1alpha1.Subscription
-	Outputs       []v1alpha1.OtelOutput
+	Outputs       []v1alpha1.Output
 	MemoryLimiter v1alpha1.MemoryLimiter
 
 	// Subscriptions map, where the key is the Tenants' name, value is a slice of subscriptions' namespaced name
@@ -261,7 +261,7 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) m
 
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.OTLP != nil {
-			name := GetExporterNameForOtelOutput(output)
+			name := GetExporterNameForOutput(output)
 			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
@@ -286,7 +286,7 @@ func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) m
 	for _, output := range cfgInput.Outputs {
 		if output.Spec.Loki != nil {
 
-			name := GetExporterNameForOtelOutput(output)
+			name := GetExporterNameForOutput(output)
 			lokiHTTPValuesMarshaled, err := yaml.Marshal(output.Spec.Loki)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
@@ -547,12 +547,12 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	return processors
 }
 
-func generateOutputExporterNameProcessor(output v1alpha1.OtelOutput) AttributesProcessor {
+func generateOutputExporterNameProcessor(output v1alpha1.Output) AttributesProcessor {
 	processor := AttributesProcessor{
 		Actions: []AttributesProcessorAction{{
 			Action: "insert",
 			Key:    "exporter",
-			Value:  GetExporterNameForOtelOutput(output),
+			Value:  GetExporterNameForOutput(output),
 		}},
 	}
 
@@ -689,7 +689,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 			for _, outputRef := range cfgInput.SubscriptionOutputMap[subscription] {
 				outputPipelineName := fmt.Sprintf("logs/output_%s_%s_%s_%s", subscription.Namespace, subscription.Name, outputRef.Namespace, outputRef.Name)
 
-				idx := slices.IndexFunc(cfgInput.Outputs, func(elem v1alpha1.OtelOutput) bool {
+				idx := slices.IndexFunc(cfgInput.Outputs, func(elem v1alpha1.Output) bool {
 					return outputRef == elem.NamespacedName()
 				})
 
@@ -704,15 +704,15 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 						processors = append(processors,
 							fmt.Sprintf("attributes/loki_exporter_%s", output.Name),
 							fmt.Sprintf("resource/loki_exporter_%s", output.Name))
-						exporters = []string{GetExporterNameForOtelOutput(output), outputCountConnectorName}
+						exporters = []string{GetExporterNameForOutput(output), outputCountConnectorName}
 					}
 
 					if output.Spec.OTLP != nil {
-						exporters = []string{GetExporterNameForOtelOutput(output), outputCountConnectorName}
+						exporters = []string{GetExporterNameForOutput(output), outputCountConnectorName}
 					}
 
 					if output.Spec.Fluentforward != nil {
-						exporters = []string{GetExporterNameForOtelOutput(output), outputCountConnectorName}
+						exporters = []string{GetExporterNameForOutput(output), outputCountConnectorName}
 					}
 					if cfgInput.Debug {
 						exporters = append(exporters, "logging/debug")
