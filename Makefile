@@ -14,7 +14,7 @@ KIND_CLUSTER ?= kind
 CI_MODE_ENABLED := ""
 NO_KIND_CLEANUP := ""
 
-IMG ?= controller:latest
+IMG ?= ghcr.io/kube-logging/telemetry-controller:0.0.9
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.0
 
@@ -73,11 +73,6 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
-
-.PHONY: chart
-chart: kustomize manifests generate ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubesplit --helm  charts/dummy
-	$(KUSTOMIZE) build config/default | kubesplit --helm  charts/dummy
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

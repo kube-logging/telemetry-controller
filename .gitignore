@@ -32,3 +32,5 @@ crddir
 .DS_Store
 
 go.work.sum
+
+**/charts/*.tgz

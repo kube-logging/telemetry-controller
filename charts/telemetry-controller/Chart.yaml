@@ -21,4 +21,9 @@ version: 0.1.0
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "1.16.0"
+appVersion: "0.0.9"
+
+dependencies:
+  - name: opentelemetry-operator
+    version: 0.68.1
+    repository: https://open-telemetry.github.io/opentelemetry-helm-charts

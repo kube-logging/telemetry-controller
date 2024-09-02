@@ -31,6 +31,18 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
+Provides the namespace the chart will be installed in using the builtin .Release.Namespace,
+or, if provided, a manually overwritten namespace value.
+*/}}
+{{- define "telemetry-controller.namespace" -}}
+{{- if .Values.namespaceOverride -}}
+{{ .Values.namespaceOverride -}}
+{{- else -}}
+{{ .Release.Namespace }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Common labels
 */}}
 {{- define "telemetry-controller.labels" -}}
