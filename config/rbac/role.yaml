@@ -75,7 +75,7 @@ rules:
   - telemetry.kube-logging.dev
   resources:
   - collectors
-  - oteloutputs
+  - outputs
   - subscriptions
   - tenants
   verbs:
@@ -96,7 +96,7 @@ rules:
   - telemetry.kube-logging.dev
   resources:
   - collectors/status
-  - oteloutputs/status
+  - outputs/status
   - subscriptions/status
   - tenants/status
   verbs:

@@ -10,5 +10,5 @@ metadata:
   name: subscription-sample
 spec:
   outputs:
-    - name: oteloutput-sample
+    - name: output-sample
       namespace: collector

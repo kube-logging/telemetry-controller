@@ -168,13 +168,13 @@ var _ = Describe("Telemetry controller integration test", func() {
 
 		It("Outputs should be created", func() {
 
-			outputs := []v1alpha1.OtelOutput{
+			outputs := []v1alpha1.Output{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "otlp-test-output-1",
 						Namespace: "collector",
 					},
-					Spec: v1alpha1.OtelOutputSpec{
+					Spec: v1alpha1.OutputSpec{
 						OTLP: &v1alpha1.OTLP{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
 								Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
@@ -190,7 +190,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 						Name:      "otlp-test-output-2",
 						Namespace: "collector",
 					},
-					Spec: v1alpha1.OtelOutputSpec{
+					Spec: v1alpha1.OutputSpec{
 						OTLP: &v1alpha1.OTLP{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
 								Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",

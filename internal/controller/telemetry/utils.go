@@ -20,7 +20,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-func GetExporterNameForOtelOutput(output v1alpha1.OtelOutput) string {
+func GetExporterNameForOutput(output v1alpha1.Output) string {
 	var exporterName string
 	if output.Spec.Loki != nil {
 		exporterName = fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)

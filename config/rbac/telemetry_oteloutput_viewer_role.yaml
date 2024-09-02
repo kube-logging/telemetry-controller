@@ -1,20 +1,20 @@
-# permissions for end users to view oteloutputs.
+# permissions for end users to view outputs.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: oteloutput-viewer-role
+    app.kubernetes.io/instance: output-viewer-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: telemetry-controller
     app.kubernetes.io/part-of: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
-  name: oteloutput-viewer-role
+  name: output-viewer-role
 rules:
   - apiGroups:
       - telemetry.kube-logging.dev
     resources:
-      - oteloutputs
+      - outputs
     verbs:
       - get
       - list
@@ -22,6 +22,6 @@ rules:
   - apiGroups:
       - telemetry.kube-logging.dev
     resources:
-      - oteloutputs/status
+      - outputs/status
     verbs:
       - get

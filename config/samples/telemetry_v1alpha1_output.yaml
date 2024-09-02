@@ -1,13 +1,13 @@
 apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: OtelOutput
+kind: Output
 metadata:
   labels:
-    app.kubernetes.io/name: oteloutput
-    app.kubernetes.io/instance: oteloutput-sample
+    app.kubernetes.io/name: output
+    app.kubernetes.io/instance: output-sample
     app.kubernetes.io/part-of: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: telemetry-controller
-  name: oteloutput-sample
+  name: output-sample
 spec:
   otlp:
     endpoint: receiver.svc.cluster.local:4317

@@ -88,7 +88,7 @@ spec:
       namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: OtelOutput
+kind: Output
 metadata:
   name: otlp-test-output-1
   namespace: collector
@@ -99,7 +99,7 @@ spec:
       insecure: true
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: OtelOutput
+kind: Output
 metadata:
   name: otlp-test-output-2
   namespace: collector

@@ -5,7 +5,7 @@ resources:
 - bases/telemetry.kube-logging.dev_collectors.yaml
 - bases/telemetry.kube-logging.dev_subscriptions.yaml
 - bases/telemetry.kube-logging.dev_tenants.yaml
-- bases/telemetry.kube-logging.dev_oteloutputs.yaml
+- bases/telemetry.kube-logging.dev_outputs.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:
@@ -14,7 +14,7 @@ patches:
 #- path: patches/webhook_in_collectors.yaml
 #- path: patches/webhook_in_telemetry_subscriptions.yaml
 #- path: patches/webhook_in_telemetry_tenants.yaml
-#- path: patches/webhook_in_telemetry_oteloutputs.yaml
+#- path: patches/webhook_in_telemetry_outputs.yaml
 #+kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.
@@ -22,7 +22,7 @@ patches:
 #- path: patches/cainjection_in_collectors.yaml
 #- path: patches/cainjection_in_telemetry_subscriptions.yaml
 #- path: patches/cainjection_in_telemetry_tenants.yaml
-#- path: patches/cainjection_in_telemetry_oteloutputs.yaml
+#- path: patches/cainjection_in_telemetry_outputs.yaml
 #+kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # [WEBHOOK] To enable webhook, uncomment the following section
