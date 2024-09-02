@@ -74,6 +74,11 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
 
+.PHONY: chart
+chart: kustomize manifests generate ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubesplit --helm  charts/dummy
+	$(KUSTOMIZE) build config/default | kubesplit --helm  charts/dummy
+
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...
