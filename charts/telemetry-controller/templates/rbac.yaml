@@ -2,12 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: telemetry-controller
-    app.kubernetes.io/instance: leader-election-role
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: role
-    app.kubernetes.io/part-of: telemetry-controller
+{{ include "telemetry-controller.labels" . | indent 4 }}
   name: telemetry-controller-leader-election-role
   namespace: "{{.Release.Namespace}}"
 rules:
