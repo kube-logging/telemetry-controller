@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -eou pipefail
+set -o xtrace
 
 create_if_does_not_exist() {
   local resource_type=$1
@@ -14,47 +15,20 @@ CI_MODE=${CI_MODE:-}
   # Backup current kubernetes context
 CURRENT_K8S_CTX=$(kubectl config view | grep "current" | cut -f 2 -d : | xargs)
 
-if GOOS="darwin"
-then
-  TIMEOUT_CMD=gtimeout
-else
-  TIMEOUT_CMD=timeout
-fi
+TIMEOUT_CMD=timeout
 
 
+# HELM BASED DEPLOYMENT
 
 # Prepare env
 kind create cluster --name "${KIND_CLUSTER_NAME}" --wait 5m
 kubectl config set-context kind-"${KIND_CLUSTER_NAME}"
 
-# Install prerequisites
-
-helm upgrade \
-  --install \
-  --repo https://charts.jetstack.io \
-  cert-manager cert-manager \
-  --namespace cert-manager \
-  --create-namespace \
-  --version v1.13.3 \
-  --set installCRDs=true \
-  --wait
-
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.103.0/opentelemetry-operator.yaml --wait
-echo "Wait until otel operator pod is in ready state..."
-kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
-
-# Create subscription operator resources
-(cd .. && make manifests generate install)
+# Install telemetry-controller and opentelemetry-operator
+helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller --version 0.0.10-dev.1
 
 # Use example
 kubectl apply -f ../e2e/testdata/one_tenant_two_subscriptions
-
-if [[ -z "${CI_MODE}" ]]; then
-  $(cd .. && $(TIMEOUT_CMD) 5m make run &)
-else
-  kind load docker-image controller:latest --name "${KIND_CLUSTER_NAME}"
-  cd .. && make deploy && cd -
-fi
 
 # Create log-generator
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
@@ -76,7 +50,7 @@ while
   [[ $? -ne 0 ]]
 do true; done
 
-echo "E2E test: PASSED"
+echo "E2E (helm) test: PASSED"
 
 
 # Check if cluster should be removed, ctx restored
