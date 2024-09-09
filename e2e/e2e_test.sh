@@ -27,6 +27,9 @@ kubectl config set-context kind-"${KIND_CLUSTER_NAME}"
 # Install telemetry-controller and opentelemetry-operator
 helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller --version 0.0.10-dev.1
 
+# Wait for the pod to be ready, without it the webhook backend service will be unavailable.
+sleep 10
+
 # Use example
 kubectl apply -f ../e2e/testdata/one_tenant_two_subscriptions
 
@@ -34,20 +37,19 @@ kubectl apply -f ../e2e/testdata/one_tenant_two_subscriptions
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
 
 
-# Check for received messages - subscription-sample
+# Check for received messages - subscription-sample-1
+# NOTE: We should not use grep -q, because it causes a SIGPIPE for kubectl and we have -o pipefail
+echo "Checking for subscription-sample-1 in deployments/receiver-collector logs"
 while
-  echo "Checking for subscription-sample-1 in deployments/receiver-collector logs"
-  kubectl logs --namespace example-tenant-ns deployments/receiver-collector | grep -q "subscription-sample-1"
+  ! kubectl logs --namespace example-tenant-ns deployments/receiver-collector |  grep "subscription-sample-1"
   
-  [[ $? -ne 0 ]]
 do true; done
 
 # Check for received messages - subscription-sample-2
+echo "Checking for subscription-sample-2 in deployments/receiver-collector logs"
 while
-  echo "Checking for subscription-sample-2 in deployments/receiver-collector logs"
-  kubectl logs --namespace example-tenant-ns deployments/receiver-collector | grep -q "subscription-sample-2"
+  ! kubectl logs --namespace example-tenant-ns deployments/receiver-collector |  grep "subscription-sample-2"
 
-  [[ $? -ne 0 ]]
 do true; done
 
 echo "E2E (helm) test: PASSED"
