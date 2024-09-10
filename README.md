@@ -34,7 +34,7 @@ minikube start --container-runtime=containerd
 Deploy latest telemetry-controller:
 ```sh
 # Install telemetry-controller, and opentelemetry-operator as a sub-chart
-helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller --version 0.0.10
+helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller
 ```
 
 ### Deployment steps for devs
