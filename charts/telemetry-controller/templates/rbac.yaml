@@ -3,7 +3,7 @@ kind: Role
 metadata:
   labels:
 {{ include "telemetry-controller.labels" . | indent 4 }}
-  name: telemetry-controller-leader-election-role
+  name: "{{.Release.Name}}-leader-election-role"
   namespace: "{{.Release.Namespace}}"
 rules:
   - apiGroups:
@@ -41,7 +41,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: telemetry-controller-manager-role
+  name: "{{.Release.Name}}-manager-role"
 rules:
   - apiGroups:
       - ""
@@ -148,7 +148,7 @@ kind: ClusterRole
 metadata:
   labels:
 {{ include "telemetry-controller.labels" . | indent 4 }}
-  name: telemetry-controller-metrics-reader
+  name: "{{.Release.Name}}-metrics-reader"
 rules:
   - nonResourceURLs:
       - /metrics
@@ -160,7 +160,7 @@ kind: ClusterRole
 metadata:
   labels:
 {{ include "telemetry-controller.labels" . | indent 4 }}
-  name: telemetry-controller-proxy-role
+  name: "{{.Release.Name}}-proxy-role"
 rules:
   - apiGroups:
       - authentication.k8s.io
@@ -180,12 +180,12 @@ kind: RoleBinding
 metadata:
   labels:
 {{ include "telemetry-controller.labels" . | indent 4 }}
-  name: telemetry-controller-leader-election-rolebinding
+  name: "{{.Release.Name}}-leader-election-rolebinding"
   namespace: "{{.Release.Namespace}}"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: telemetry-controller-leader-election-role
+  name: "{{.Release.Name}}-leader-election-role"
 subjects:
   - kind: ServiceAccount
     name: '{{ include "telemetry-controller.serviceAccountName" . }}'
@@ -196,11 +196,11 @@ kind: ClusterRoleBinding
 metadata:
   labels:
 {{ include "telemetry-controller.labels" . | indent 4 }}
-  name: telemetry-controller-manager-rolebinding
+  name: "{{.Release.Name}}-manager-rolebinding"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: telemetry-controller-manager-role
+  name: "{{.Release.Name}}-manager-role"
 subjects:
   - kind: ServiceAccount
     name: '{{ include "telemetry-controller.serviceAccountName" . }}'
@@ -211,11 +211,11 @@ kind: ClusterRoleBinding
 metadata:
   labels:
 {{ include "telemetry-controller.labels" . | indent 4 }}
-  name: telemetry-controller-proxy-rolebinding
+  name: "{{.Release.Name}}-proxy-rolebinding"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: telemetry-controller-proxy-role
+  name: "{{.Release.Name}}-proxy-role"
 subjects:
   - kind: ServiceAccount
     name: '{{ include "telemetry-controller.serviceAccountName" . }}'
