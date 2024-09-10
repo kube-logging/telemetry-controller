@@ -147,12 +147,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/component: kube-rbac-proxy
-    app.kubernetes.io/created-by: telemetry-controller
-    app.kubernetes.io/instance: metrics-reader
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/part-of: telemetry-controller
+{{ include "telemetry-controller.labels" . | indent 4 }}
   name: telemetry-controller-metrics-reader
 rules:
   - nonResourceURLs:
@@ -164,12 +159,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/component: kube-rbac-proxy
-    app.kubernetes.io/created-by: telemetry-controller
-    app.kubernetes.io/instance: proxy-role
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/part-of: telemetry-controller
+{{ include "telemetry-controller.labels" . | indent 4 }}
   name: telemetry-controller-proxy-role
 rules:
   - apiGroups:
@@ -189,12 +179,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: telemetry-controller
-    app.kubernetes.io/instance: leader-election-rolebinding
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: rolebinding
-    app.kubernetes.io/part-of: telemetry-controller
+{{ include "telemetry-controller.labels" . | indent 4 }}
   name: telemetry-controller-leader-election-rolebinding
   namespace: "{{.Release.Namespace}}"
 roleRef:
@@ -210,12 +195,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: telemetry-controller
-    app.kubernetes.io/instance: manager-rolebinding
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: clusterrolebinding
-    app.kubernetes.io/part-of: telemetry-controller
+{{ include "telemetry-controller.labels" . | indent 4 }}
   name: telemetry-controller-manager-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -230,12 +210,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
-    app.kubernetes.io/component: kube-rbac-proxy
-    app.kubernetes.io/created-by: telemetry-controller
-    app.kubernetes.io/instance: proxy-rolebinding
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: clusterrolebinding
-    app.kubernetes.io/part-of: telemetry-controller
+{{ include "telemetry-controller.labels" . | indent 4 }}
   name: telemetry-controller-proxy-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
