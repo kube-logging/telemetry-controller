@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -eou pipefail
+set -o xtrace
 
 create_if_does_not_exist() {
   local resource_type=$1
@@ -14,69 +15,44 @@ CI_MODE=${CI_MODE:-}
   # Backup current kubernetes context
 CURRENT_K8S_CTX=$(kubectl config view | grep "current" | cut -f 2 -d : | xargs)
 
-if GOOS="darwin"
-then
-  TIMEOUT_CMD=gtimeout
-else
-  TIMEOUT_CMD=timeout
-fi
+TIMEOUT_CMD=timeout
 
 
+# HELM BASED DEPLOYMENT
 
 # Prepare env
 kind create cluster --name "${KIND_CLUSTER_NAME}" --wait 5m
 kubectl config set-context kind-"${KIND_CLUSTER_NAME}"
 
-# Install prerequisites
+# Install telemetry-controller and opentelemetry-operator
+helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller
 
-helm upgrade \
-  --install \
-  --repo https://charts.jetstack.io \
-  cert-manager cert-manager \
-  --namespace cert-manager \
-  --create-namespace \
-  --version v1.13.3 \
-  --set installCRDs=true \
-  --wait
-
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.103.0/opentelemetry-operator.yaml --wait
-echo "Wait until otel operator pod is in ready state..."
-kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
-
-# Create subscription operator resources
-(cd .. && make manifests generate install)
+# Wait for the pod to be ready, without it the webhook backend service will be unavailable.
+sleep 10
 
 # Use example
 kubectl apply -f ../e2e/testdata/one_tenant_two_subscriptions
-
-if [[ -z "${CI_MODE}" ]]; then
-  $(cd .. && $(TIMEOUT_CMD) 5m make run &)
-else
-  kind load docker-image controller:latest --name "${KIND_CLUSTER_NAME}"
-  cd .. && make deploy && cd -
-fi
 
 # Create log-generator
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
 
 
-# Check for received messages - subscription-sample
+# Check for received messages - subscription-sample-1
+# NOTE: We should not use grep -q, because it causes a SIGPIPE for kubectl and we have -o pipefail
+echo "Checking for subscription-sample-1 in deployments/receiver-collector logs"
 while
-  echo "Checking for subscription-sample-1 in deployments/receiver-collector logs"
-  kubectl logs --namespace example-tenant-ns deployments/receiver-collector | grep -q "subscription-sample-1"
+  ! kubectl logs --namespace example-tenant-ns deployments/receiver-collector |  grep "subscription-sample-1"
   
-  [[ $? -ne 0 ]]
 do true; done
 
 # Check for received messages - subscription-sample-2
+echo "Checking for subscription-sample-2 in deployments/receiver-collector logs"
 while
-  echo "Checking for subscription-sample-2 in deployments/receiver-collector logs"
-  kubectl logs --namespace example-tenant-ns deployments/receiver-collector | grep -q "subscription-sample-2"
+  ! kubectl logs --namespace example-tenant-ns deployments/receiver-collector |  grep "subscription-sample-2"
 
-  [[ $? -ne 0 ]]
 do true; done
 
-echo "E2E test: PASSED"
+echo "E2E (helm) test: PASSED"
 
 
 # Check if cluster should be removed, ctx restored

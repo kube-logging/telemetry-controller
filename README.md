@@ -31,15 +31,10 @@ minikube start --container-runtime=containerd
 
 ### Deployment steps for users
 
-Install dependencies (cert-manager and opentelemetry-operator):
-```sh
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.104.0/opentelemetry-operator.yaml
-```
-
 Deploy latest telemetry-controller:
 ```sh
-kubectl apply -k github.com/kube-logging/telemetry-controller/config/default --server-side
+# Install telemetry-controller, and opentelemetry-operator as a sub-chart
+helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller
 ```
 
 ### Deployment steps for devs
@@ -47,7 +42,7 @@ kubectl apply -k github.com/kube-logging/telemetry-controller/config/default --s
 #### Install deps, CRDs and RBAC
 
 ```sh
-# Install dependencies (cert-manager and opentelemtry-operator):
+# Install dependencies (opentelemtry-operator):
 make install-deps
 
 # Install the CRDs and RBAC into the cluster:

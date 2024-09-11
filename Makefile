@@ -14,7 +14,7 @@ KIND_CLUSTER ?= kind
 CI_MODE_ENABLED := ""
 NO_KIND_CLEANUP := ""
 
-IMG ?= controller:latest
+IMG ?= ghcr.io/kube-logging/telemetry-controller:0.0.10
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.0
 
@@ -25,11 +25,7 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-ifeq ($(go env GOOS),darwin)
-  TIMEOUT_CMD=gtimeout
-else
-  TIMEOUT_CMD=timeout
-endif
+TIMEOUT_CMD=timeout
 
 
 # CONTAINER_TOOL defines the container tool to be used for building images.
@@ -148,7 +144,6 @@ endif
 
 .PHONY: install-deps
 install-deps: ## Install dependencies into the actual K8s cluster
-	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
 	kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.104.0/opentelemetry-operator.yaml
 
 .PHONY: install

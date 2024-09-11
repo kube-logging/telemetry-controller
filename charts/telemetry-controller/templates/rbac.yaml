@@ -1,0 +1,222 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+{{ include "telemetry-controller.labels" . | indent 4 }}
+  name: "{{.Release.Name}}-leader-election-role"
+  namespace: "{{.Release.Namespace}}"
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: "{{.Release.Name}}-manager-role"
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+      - namespaces
+      - nodes
+      - nodes/proxy
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+      - pods
+      - serviceaccounts
+      - services
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - daemonsets
+      - replicasets
+      - statefulsets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - opentelemetry.io
+    resources:
+      - opentelemetrycollectors
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterrolebindings
+      - clusterroles
+      - rolebindings
+      - roles
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - telemetry.kube-logging.dev
+    resources:
+      - collectors
+      - outputs
+      - subscriptions
+      - tenants
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - telemetry.kube-logging.dev
+    resources:
+      - collectors/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - telemetry.kube-logging.dev
+    resources:
+      - collectors/status
+      - outputs/status
+      - subscriptions/status
+      - tenants/status
+    verbs:
+      - get
+      - patch
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+{{ include "telemetry-controller.labels" . | indent 4 }}
+  name: "{{.Release.Name}}-metrics-reader"
+rules:
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+{{ include "telemetry-controller.labels" . | indent 4 }}
+  name: "{{.Release.Name}}-proxy-role"
+rules:
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+{{ include "telemetry-controller.labels" . | indent 4 }}
+  name: "{{.Release.Name}}-leader-election-rolebinding"
+  namespace: "{{.Release.Namespace}}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: "{{.Release.Name}}-leader-election-role"
+subjects:
+  - kind: ServiceAccount
+    name: '{{ include "telemetry-controller.serviceAccountName" . }}'
+    namespace: "{{.Release.Namespace}}"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+{{ include "telemetry-controller.labels" . | indent 4 }}
+  name: "{{.Release.Name}}-manager-rolebinding"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: "{{.Release.Name}}-manager-role"
+subjects:
+  - kind: ServiceAccount
+    name: '{{ include "telemetry-controller.serviceAccountName" . }}'
+    namespace: "{{.Release.Namespace}}"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+{{ include "telemetry-controller.labels" . | indent 4 }}
+  name: "{{.Release.Name}}-proxy-rolebinding"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: "{{.Release.Name}}-proxy-role"
+subjects:
+  - kind: ServiceAccount
+    name: '{{ include "telemetry-controller.serviceAccountName" . }}'
+    namespace: "{{.Release.Namespace}}"

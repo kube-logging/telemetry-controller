@@ -1,0 +1,13 @@
+apiVersion: v2
+name: telemetry-controller
+description: A Helm chart for deploying telemetry-controller
+
+type: application
+
+version: 0.0.0
+appVersion: latest
+
+dependencies:
+  - name: opentelemetry-operator
+    version: 0.68.1
+    repository: https://open-telemetry.github.io/opentelemetry-helm-charts
