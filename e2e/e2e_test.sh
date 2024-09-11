@@ -25,7 +25,7 @@ kind create cluster --name "${KIND_CLUSTER_NAME}" --wait 5m
 kubectl config set-context kind-"${KIND_CLUSTER_NAME}"
 
 # Install telemetry-controller and opentelemetry-operator
-helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller --version 0.0.10-dev.1
+helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller
 
 # Wait for the pod to be ready, without it the webhook backend service will be unavailable.
 sleep 10
