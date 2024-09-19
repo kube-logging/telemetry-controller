@@ -22,10 +22,10 @@ import (
 
 func GetExporterNameForOutput(output v1alpha1.Output) string {
 	var exporterName string
-	if output.Spec.Loki != nil {
-		exporterName = fmt.Sprintf("loki/%s_%s", output.Namespace, output.Name)
-	} else if output.Spec.OTLP != nil {
+	if output.Spec.OTLPGRPC != nil {
 		exporterName = fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
+	} else if output.Spec.OTLPHTTP != nil {
+		exporterName = fmt.Sprintf("otlphttp/%s_%s", output.Namespace, output.Name)
 	} else if output.Spec.Fluentforward != nil {
 		exporterName = fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
 	}

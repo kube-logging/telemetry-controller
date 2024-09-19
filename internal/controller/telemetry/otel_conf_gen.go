@@ -25,8 +25,8 @@ import (
 	"go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"golang.org/x/exp/maps"
-	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	"github.com/prometheus/client_golang/prometheus"
@@ -232,8 +232,8 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 	exporters := map[string]any{}
 
 	maps.Copy(exporters, generateMetricsExporters())
-	maps.Copy(exporters, cfgInput.generateOTLPExporters(ctx))
-	maps.Copy(exporters, cfgInput.generateLokiExporters(ctx))
+	maps.Copy(exporters, cfgInput.generateOTLPGRPCExporters(ctx))
+	maps.Copy(exporters, cfgInput.generateOTLPHTTPExporters(ctx))
 	maps.Copy(exporters, cfgInput.generateFluentforwardExporters(ctx))
 	exporters["logging/debug"] = map[string]any{
 		"verbosity": "detailed",
@@ -255,14 +255,14 @@ func generateMetricsExporters() map[string]any {
 	return metricsExporters
 }
 
-func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) map[string]any {
+func (cfgInput *OtelColConfigInput) generateOTLPGRPCExporters(ctx context.Context) map[string]any {
 	logger := log.FromContext(ctx)
 	result := make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
-		if output.Spec.OTLP != nil {
+		if output.Spec.OTLPGRPC != nil {
 			name := GetExporterNameForOutput(output)
-			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLP)
+			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLPGRPC)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
 			}
@@ -278,25 +278,23 @@ func (cfgInput *OtelColConfigInput) generateOTLPExporters(ctx context.Context) m
 	return result
 }
 
-func (cfgInput *OtelColConfigInput) generateLokiExporters(ctx context.Context) map[string]any {
+func (cfgInput *OtelColConfigInput) generateOTLPHTTPExporters(ctx context.Context) map[string]any {
 	logger := log.FromContext(ctx)
-
 	result := make(map[string]any)
 
 	for _, output := range cfgInput.Outputs {
-		if output.Spec.Loki != nil {
-
+		if output.Spec.OTLPHTTP != nil {
 			name := GetExporterNameForOutput(output)
-			lokiHTTPValuesMarshaled, err := yaml.Marshal(output.Spec.Loki)
+			otlpHttpValuesMarshaled, err := yaml.Marshal(output.Spec.OTLPHTTP)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
 			}
-			var lokiHTTPValues map[string]any
-			if err := yaml.Unmarshal(lokiHTTPValuesMarshaled, &lokiHTTPValues); err != nil {
+			var otlpHttpValues map[string]any
+			if err := yaml.Unmarshal(otlpHttpValuesMarshaled, &otlpHttpValues); err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
 			}
 
-			result[name] = lokiHTTPValues
+			result[name] = otlpHttpValues
 		}
 	}
 
@@ -538,10 +536,6 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 
 	for _, output := range cfgInput.Outputs {
 		processors[fmt.Sprintf("attributes/exporter_name_%s", output.Name)] = generateOutputExporterNameProcessor(output)
-		if output.Spec.Loki != nil {
-			processors[fmt.Sprintf("attributes/loki_exporter_%s", output.Name)] = generateLokiExporterAttributeProcessor()
-			processors[fmt.Sprintf("resource/loki_exporter_%s", output.Name)] = generateLokiExporterResourceProcessor()
-		}
 	}
 
 	return processors
@@ -622,37 +616,6 @@ func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) 
 	return processor
 }
 
-func generateLokiExporterAttributeProcessor() AttributesProcessor {
-	processor := AttributesProcessor{
-		Actions: []AttributesProcessorAction{
-			{
-				Action:        "insert",
-				Key:           "loki.tenant",
-				FromAttribute: "tenant",
-			},
-			{
-				Action: "insert",
-				Key:    "loki.attribute.labels",
-				Value:  "tenant",
-			},
-		},
-	}
-	return processor
-}
-
-func generateLokiExporterResourceProcessor() ResourceProcessor {
-	processor := ResourceProcessor{
-		Actions: []ResourceProcessorAction{
-			{
-				Action: "insert",
-				Key:    "loki.resource.labels",
-				Value:  "k8s.pod.name, k8s.namespace.name",
-			},
-		},
-	}
-	return processor
-}
-
 func generateRootPipeline(tenantName string) *otelv1beta1.Pipeline {
 	tenantCountConnectorName := "count/tenant_metrics"
 	receiverName := fmt.Sprintf("filelog/%s", tenantName)
@@ -700,14 +663,11 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 					processors := []string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)}
 					var exporters []string
 
-					if output.Spec.Loki != nil {
-						processors = append(processors,
-							fmt.Sprintf("attributes/loki_exporter_%s", output.Name),
-							fmt.Sprintf("resource/loki_exporter_%s", output.Name))
+					if output.Spec.OTLPGRPC != nil {
 						exporters = []string{GetExporterNameForOutput(output), outputCountConnectorName}
 					}
 
-					if output.Spec.OTLP != nil {
+					if output.Spec.OTLPHTTP != nil {
 						exporters = []string{GetExporterNameForOutput(output), outputCountConnectorName}
 					}
 
