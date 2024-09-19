@@ -5,4 +5,4 @@ kind: Kustomization
 images:
   - name: controller
     newName: ghcr.io/kube-logging/telemetry-controller
-    newTag: 0.0.10
+    newTag: 0.0.11-dev.2
