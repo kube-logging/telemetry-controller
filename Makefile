@@ -14,7 +14,7 @@ KIND_CLUSTER ?= kind
 CI_MODE_ENABLED := ""
 NO_KIND_CLEANUP := ""
 
-IMG ?= ghcr.io/kube-logging/telemetry-controller:0.0.10
+IMG ?= ghcr.io/kube-logging/telemetry-controller:0.0.11
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.0
 
@@ -65,6 +65,7 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./api/..." output:crd:artifacts:config=config/crd/bases
+	cp config/crd/bases/* charts/telemetry-controller/crds/
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.

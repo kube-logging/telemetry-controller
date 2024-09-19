@@ -22,11 +22,22 @@ kind: Collector
 metadata:
   name: kubernetes
 spec:
-  #debug: true
+  debug: true
   controlNamespace: collector
   tenantSelector:
     matchLabels:
       collectorLabel: kubernetes
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: loki
+  namespace: collector
+spec:
+  otlphttp:
+    endpoint: http://loki.loki.svc.cluster.local:3100/otlp/
+    tls:
+      insecure: true
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Tenant
@@ -56,17 +67,6 @@ spec:
       namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Output
-metadata:
-  name: loki
-  namespace: collector
-spec:
-  loki:
-    endpoint: http://loki.loki.svc.cluster.local:3100/loki/api/v1/push
-    tls:
-      insecure: true
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Tenant
 metadata:
   labels:
@@ -92,33 +92,3 @@ spec:
       namespace: collector
     - name: openobserve-2
       namespace: collector
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Output
-metadata:
-  name: openobserve-1
-  namespace: collector
-spec:
-  otlp:
-    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
-    headers:
-      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTphUGJUZzljTE9PWFp4SVA1"
-      organization: demo-1
-      stream-name: all-logs
-    tls:
-      insecure: true
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Output
-metadata:
-  name: openobserve-2
-  namespace: collector
-spec:
-  otlp:
-    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
-    headers:
-      Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTphUGJUZzljTE9PWFp4SVA1"
-      organization: demo-2
-      stream-name: all-logs
-    tls:
-      insecure: true

@@ -18,7 +18,6 @@ require (
 )
 
 require (
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.103.0
 	go.opentelemetry.io/collector/config/configauth v0.103.0
 	go.opentelemetry.io/collector/config/configopaque v1.7.0
 )
@@ -49,8 +48,6 @@ require (
 	go.opentelemetry.io/collector/component v0.103.0 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.103.0 // indirect
 	go.opentelemetry.io/collector/confmap v0.103.0 // indirect
-	go.opentelemetry.io/collector/consumer v0.103.0 // indirect
-	go.opentelemetry.io/collector/exporter v0.103.0 // indirect
 	go.opentelemetry.io/collector/extension v0.103.0 // indirect
 	go.opentelemetry.io/collector/extension/auth v0.103.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.10.0 // indirect
@@ -63,6 +60,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.27.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/grpc v1.64.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 
 )
 
@@ -116,7 +114,6 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.30.2
 	k8s.io/apiextensions-apiserver v0.30.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect

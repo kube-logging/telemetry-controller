@@ -28,20 +28,20 @@ type OutputSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	OTLP          *OTLP          `json:"otlp,omitempty"`
-	Loki          *Loki          `json:"loki,omitempty"`
+	OTLPGRPC      *OTLPGRPC      `json:"otlp,omitempty"`
 	Fluentforward *Fluentforward `json:"fluentforward,omitempty"`
+	OTLPHTTP      *OTLPHTTP      `json:"otlphttp,omitempty"`
 }
 
 // OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
-type OTLP struct {
+type OTLPGRPC struct {
 	QueueConfig      QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
 	RetryConfig      BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
 	TimeoutSettings  `json:",inline" yaml:",inline"`
 	GRPCClientConfig `json:",inline" yaml:",inline"`
 }
 
-type Loki struct {
+type OTLPHTTP struct {
 	QueueConfig      QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
 	RetryConfig      BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
 	HTTPClientConfig `json:",inline" yaml:",inline"`

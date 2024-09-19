@@ -17,10 +17,11 @@ package telemetry
 import (
 	_ "embed"
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
+	"sigs.k8s.io/yaml"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/siliconbrain/go-mapseqs/mapseqs"
@@ -31,8 +32,8 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-//go:embed otel_col_conf_test_fixtures/complex.json
-var otelColTargetJSON string
+//go:embed otel_col_conf_test_fixtures/complex.yaml
+var otelColTargetYAML string
 
 func TestOtelColConfComplex(t *testing.T) {
 	// Required inputs
@@ -175,7 +176,7 @@ func TestOtelColConfComplex(t *testing.T) {
 					Namespace: "collector",
 				},
 				Spec: v1alpha1.OutputSpec{
-					OTLP: &v1alpha1.OTLP{
+					OTLPGRPC: &v1alpha1.OTLPGRPC{
 						GRPCClientConfig: v1alpha1.GRPCClientConfig{
 							Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
@@ -191,7 +192,7 @@ func TestOtelColConfComplex(t *testing.T) {
 					Namespace: "collector",
 				},
 				Spec: v1alpha1.OutputSpec{
-					OTLP: &v1alpha1.OTLP{
+					OTLPGRPC: &v1alpha1.OTLPGRPC{
 						GRPCClientConfig: v1alpha1.GRPCClientConfig{
 							Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
@@ -207,7 +208,7 @@ func TestOtelColConfComplex(t *testing.T) {
 					Namespace: "collector",
 				},
 				Spec: v1alpha1.OutputSpec{
-					Loki: &v1alpha1.Loki{
+					OTLPHTTP: &v1alpha1.OTLPHTTP{
 						HTTPClientConfig: v1alpha1.HTTPClientConfig{
 							Endpoint: "loki.example-tenant-a-ns.svc.cluster.local:4317",
 							TLSSetting: v1alpha1.TLSClientSetting{
@@ -268,29 +269,48 @@ func TestOtelColConfComplex(t *testing.T) {
 	}
 
 	// Config
-	// Hack is needed here, to actually be able to compare the expected and generated config, because of underlying JSON/YAML tagged structs
 
-	var expectedMap map[string]any
-	if err := json.Unmarshal([]byte(otelColTargetJSON), &expectedMap); err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
+	// The receiver and exporter entries are not serialized because of tags on the underlying data structure. The tests won't contain them, this is a known issue.
 	generatedConfig := inputCfg.AssembleConfig(ctx)
+	actualJSONBytes, err1 := json.Marshal(generatedConfig)
+	if err1 != nil {
+		t.Fatalf("error %v", err1)
 
-	var generatedMap map[string]any
-	if err := mapstructure.Decode(generatedConfig, &generatedMap); err != nil {
+	}
+	print(actualJSONBytes)
+	actualYAMLBytes, err := yaml.Marshal(generatedConfig)
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
+
+	var actualUniversalMap map[string]any
+	if err := yaml.Unmarshal(actualYAMLBytes, &actualUniversalMap); err != nil {
 		t.Fatalf("error: %v", err)
 	}
-	generatedJSON, _ := json.MarshalIndent(generatedMap, "", "  ")
 
-	var unmarshaledMap map[string]any
-	if err := json.Unmarshal(generatedJSON, &unmarshaledMap); err != nil {
+	var expectedUniversalMap map[string]any
+	if err := yaml.Unmarshal([]byte(otelColTargetYAML), &expectedUniversalMap); err != nil {
 		t.Fatalf("error: %v", err)
 	}
-	if diff := cmp.Diff(expectedMap, unmarshaledMap); diff != "" {
-		t.Errorf("mismatch:\n---%s\n---\n", diff)
+
+	// use dyff for YAML comparison
+	if diff := cmp.Diff(expectedUniversalMap, actualUniversalMap); diff != "" {
+		t.Logf("mismatch:\n---%s\n---\n", diff)
+	}
+
+	if !reflect.DeepEqual(actualUniversalMap, expectedUniversalMap) {
+		t.Fatalf(`yaml mismatch:
+expected=
+---
+%s
+---
+actual=
+---
+%s
+---`, otelColTargetYAML, string(actualYAMLBytes))
 	}
 }
+
 func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *testing.T) {
 	type fields struct {
 		Tenants               []v1alpha1.Tenant

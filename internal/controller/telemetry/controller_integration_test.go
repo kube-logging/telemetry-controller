@@ -175,7 +175,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 						Namespace: "collector",
 					},
 					Spec: v1alpha1.OutputSpec{
-						OTLP: &v1alpha1.OTLP{
+						OTLPGRPC: &v1alpha1.OTLPGRPC{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
 								Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
 								TLSSetting: v1alpha1.TLSClientSetting{
@@ -191,7 +191,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 						Namespace: "collector",
 					},
 					Spec: v1alpha1.OutputSpec{
-						OTLP: &v1alpha1.OTLP{
+						OTLPGRPC: &v1alpha1.OTLPGRPC{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
 								Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
 								TLSSetting: v1alpha1.TLSClientSetting{
