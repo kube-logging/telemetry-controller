@@ -202,7 +202,206 @@ spec:
                         type: string
                     type: object
                 type: object
-              loki:
+              otlp:
+                description: 'OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go'
+                properties:
+                  auth:
+                    description: Auth configuration for outgoing RPCs.
+                    type: string
+                  authority:
+                    description: |-
+                      WithAuthority parameter configures client to rewrite ":authority" header
+                      (godoc.org/google.golang.org/grpc#WithAuthority)
+                    type: string
+                  balancer_name:
+                    description: |-
+                      Sets the balancer in grpclb_policy to discover the servers. Default is pick_first.
+                      https://github.com/grpc/grpc-go/blob/master/examples/features/load_balancing/README.md
+                    type: string
+                  compression:
+                    description: The compression key for supported compression types
+                      within collector.
+                    type: string
+                  endpoint:
+                    description: |-
+                      The target to which the exporter is going to send traces or metrics,
+                      using the gRPC protocol. The valid syntax is described at
+                      https://github.com/grpc/grpc/blob/master/doc/naming.md.
+                    type: string
+                  headers:
+                    additionalProperties:
+                      type: string
+                    description: The headers associated with gRPC requests.
+                    type: object
+                  keepalive:
+                    description: |-
+                      The keepalive parameters for gRPC client. See grpc.WithKeepaliveParams.
+                      (https://godoc.org/google.golang.org/grpc#WithKeepaliveParams).
+                    properties:
+                      permit_without_stream:
+                        type: boolean
+                      time:
+                        description: |-
+                          A Duration represents the elapsed time between two instants
+                          as an int64 nanosecond count. The representation limits the
+                          largest representable duration to approximately 290 years.
+                        format: int64
+                        type: integer
+                      timeout:
+                        description: |-
+                          A Duration represents the elapsed time between two instants
+                          as an int64 nanosecond count. The representation limits the
+                          largest representable duration to approximately 290 years.
+                        format: int64
+                        type: integer
+                    type: object
+                  read_buffer_size:
+                    description: |-
+                      ReadBufferSize for gRPC client. See grpc.WithReadBufferSize.
+                      (https://godoc.org/google.golang.org/grpc#WithReadBufferSize).
+                    type: integer
+                  retry_on_failure:
+                    description: |-
+                      BackOffConfig defines configuration for retrying batches in case of export failure.
+                      The current supported strategy is exponential backoff.
+                    properties:
+                      enabled:
+                        description: Enabled indicates whether to not retry sending
+                          batches in case of export failure.
+                        type: boolean
+                      initial_interval:
+                        description: InitialInterval the time to wait after the first
+                          failure before retrying.
+                        format: int64
+                        type: integer
+                      max_elapsed_time:
+                        description: |-
+                          MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
+                          Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                        format: int64
+                        type: integer
+                      max_interval:
+                        description: |-
+                          MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
+                          consecutive retries will always be `MaxInterval`.
+                        format: int64
+                        type: integer
+                      multiplier:
+                        description: Multiplier is the value multiplied by the backoff
+                          interval bounds
+                        type: string
+                      randomization_factor:
+                        description: |-
+                          RandomizationFactor is a random factor used to calculate next backoffs
+                          Randomized interval = RetryInterval * (1 ± RandomizationFactor)
+                        type: string
+                    type: object
+                  sending_queue:
+                    description: QueueSettings defines configuration for queueing
+                      batches before sending to the consumerSender.
+                    properties:
+                      enabled:
+                        description: Enabled indicates whether to not enqueue batches
+                          before sending to the consumerSender.
+                        type: boolean
+                      num_consumers:
+                        description: NumConsumers is the number of consumers from
+                          the queue.
+                        type: integer
+                      queue_size:
+                        description: QueueSize is the maximum number of batches allowed
+                          in queue at a given time.
+                        type: integer
+                      storage:
+                        description: |-
+                          StorageID if not empty, enables the persistent storage and uses the component specified
+                          as a storage extension for the persistent queue
+                        type: string
+                    type: object
+                  timeout:
+                    description: |-
+                      Timeout is the timeout for every attempt to send data to the backend.
+                      A zero timeout means no timeout.
+                    format: int64
+                    type: integer
+                  tls:
+                    description: TLSSetting struct exposes TLS client configuration.
+                    properties:
+                      ca_file:
+                        description: |-
+                          Path to the CA cert. For a client this verifies the server certificate.
+                          For a server this verifies client certificates. If empty uses system root CA.
+                          (optional)
+                        type: string
+                      ca_pem:
+                        description: In memory PEM encoded cert. (optional)
+                        type: string
+                      cert_file:
+                        description: Path to the TLS cert to use for TLS required
+                          connections. (optional)
+                        type: string
+                      cert_pem:
+                        description: In memory PEM encoded TLS cert to use for TLS
+                          required connections. (optional)
+                        type: string
+                      insecure:
+                        description: |-
+                          In gRPC when set to true, this is used to disable the client transport security.
+                          See https://godoc.org/google.golang.org/grpc#WithInsecure.
+                          In HTTP, this disables verifying the server's certificate chain and host name
+                          (InsecureSkipVerify in the tls Config). Please refer to
+                          https://godoc.org/crypto/tls#Config for more information.
+                          (optional, default false)
+                        type: boolean
+                      insecure_skip_verify:
+                        description: InsecureSkipVerify will enable TLS but not verify
+                          the certificate.
+                        type: boolean
+                      key_file:
+                        description: Path to the TLS key to use for TLS required connections.
+                          (optional)
+                        type: string
+                      key_pem:
+                        description: In memory PEM encoded TLS key to use for TLS
+                          required connections. (optional)
+                        type: string
+                      max_version:
+                        description: |-
+                          MaxVersion sets the maximum TLS version that is acceptable.
+                          If not set, refer to crypto/tls for defaults. (optional)
+                        type: string
+                      min_version:
+                        description: |-
+                          MinVersion sets the minimum TLS version that is acceptable.
+                          If not set, TLS 1.2 will be used. (optional)
+                        type: string
+                      reload_interval:
+                        description: |-
+                          ReloadInterval specifies the duration after which the certificate will be reloaded
+                          If not set, it will never be reloaded (optional)
+                        format: int64
+                        type: integer
+                      server_name_override:
+                        description: |-
+                          ServerName requested by client for virtual hosting.
+                          This sets the ServerName in the TLSConfig. Please refer to
+                          https://godoc.org/crypto/tls#Config for more information. (optional)
+                        type: string
+                    type: object
+                  wait_for_ready:
+                    description: |-
+                      WaitForReady parameter configures client to wait for ready state before sending data.
+                      (https://github.com/grpc/grpc/blob/master/doc/wait-for-ready.md)
+                    type: boolean
+                  write_buffer_size:
+                    description: |-
+                      WriteBufferSize for gRPC gRPC. See grpc.WithWriteBufferSize.
+                      (https://godoc.org/google.golang.org/grpc#WithWriteBufferSize).
+                    type: integer
+                required:
+                - endpoint
+                type: object
+              otlphttp:
                 properties:
                   auth:
                     description: Auth configuration for outgoing HTTP calls.
@@ -407,205 +606,6 @@ spec:
                   write_buffer_size:
                     description: WriteBufferSize for HTTP client. See http.Transport.WriteBufferSize.
                     type: integer
-                type: object
-              otlp:
-                description: 'OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go'
-                properties:
-                  auth:
-                    description: Auth configuration for outgoing RPCs.
-                    type: string
-                  authority:
-                    description: |-
-                      WithAuthority parameter configures client to rewrite ":authority" header
-                      (godoc.org/google.golang.org/grpc#WithAuthority)
-                    type: string
-                  balancer_name:
-                    description: |-
-                      Sets the balancer in grpclb_policy to discover the servers. Default is pick_first.
-                      https://github.com/grpc/grpc-go/blob/master/examples/features/load_balancing/README.md
-                    type: string
-                  compression:
-                    description: The compression key for supported compression types
-                      within collector.
-                    type: string
-                  endpoint:
-                    description: |-
-                      The target to which the exporter is going to send traces or metrics,
-                      using the gRPC protocol. The valid syntax is described at
-                      https://github.com/grpc/grpc/blob/master/doc/naming.md.
-                    type: string
-                  headers:
-                    additionalProperties:
-                      type: string
-                    description: The headers associated with gRPC requests.
-                    type: object
-                  keepalive:
-                    description: |-
-                      The keepalive parameters for gRPC client. See grpc.WithKeepaliveParams.
-                      (https://godoc.org/google.golang.org/grpc#WithKeepaliveParams).
-                    properties:
-                      permit_without_stream:
-                        type: boolean
-                      time:
-                        description: |-
-                          A Duration represents the elapsed time between two instants
-                          as an int64 nanosecond count. The representation limits the
-                          largest representable duration to approximately 290 years.
-                        format: int64
-                        type: integer
-                      timeout:
-                        description: |-
-                          A Duration represents the elapsed time between two instants
-                          as an int64 nanosecond count. The representation limits the
-                          largest representable duration to approximately 290 years.
-                        format: int64
-                        type: integer
-                    type: object
-                  read_buffer_size:
-                    description: |-
-                      ReadBufferSize for gRPC client. See grpc.WithReadBufferSize.
-                      (https://godoc.org/google.golang.org/grpc#WithReadBufferSize).
-                    type: integer
-                  retry_on_failure:
-                    description: |-
-                      BackOffConfig defines configuration for retrying batches in case of export failure.
-                      The current supported strategy is exponential backoff.
-                    properties:
-                      enabled:
-                        description: Enabled indicates whether to not retry sending
-                          batches in case of export failure.
-                        type: boolean
-                      initial_interval:
-                        description: InitialInterval the time to wait after the first
-                          failure before retrying.
-                        format: int64
-                        type: integer
-                      max_elapsed_time:
-                        description: |-
-                          MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
-                          Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
-                        format: int64
-                        type: integer
-                      max_interval:
-                        description: |-
-                          MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
-                          consecutive retries will always be `MaxInterval`.
-                        format: int64
-                        type: integer
-                      multiplier:
-                        description: Multiplier is the value multiplied by the backoff
-                          interval bounds
-                        type: string
-                      randomization_factor:
-                        description: |-
-                          RandomizationFactor is a random factor used to calculate next backoffs
-                          Randomized interval = RetryInterval * (1 ± RandomizationFactor)
-                        type: string
-                    type: object
-                  sending_queue:
-                    description: QueueSettings defines configuration for queueing
-                      batches before sending to the consumerSender.
-                    properties:
-                      enabled:
-                        description: Enabled indicates whether to not enqueue batches
-                          before sending to the consumerSender.
-                        type: boolean
-                      num_consumers:
-                        description: NumConsumers is the number of consumers from
-                          the queue.
-                        type: integer
-                      queue_size:
-                        description: QueueSize is the maximum number of batches allowed
-                          in queue at a given time.
-                        type: integer
-                      storage:
-                        description: |-
-                          StorageID if not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue
-                        type: string
-                    type: object
-                  timeout:
-                    description: |-
-                      Timeout is the timeout for every attempt to send data to the backend.
-                      A zero timeout means no timeout.
-                    format: int64
-                    type: integer
-                  tls:
-                    description: TLSSetting struct exposes TLS client configuration.
-                    properties:
-                      ca_file:
-                        description: |-
-                          Path to the CA cert. For a client this verifies the server certificate.
-                          For a server this verifies client certificates. If empty uses system root CA.
-                          (optional)
-                        type: string
-                      ca_pem:
-                        description: In memory PEM encoded cert. (optional)
-                        type: string
-                      cert_file:
-                        description: Path to the TLS cert to use for TLS required
-                          connections. (optional)
-                        type: string
-                      cert_pem:
-                        description: In memory PEM encoded TLS cert to use for TLS
-                          required connections. (optional)
-                        type: string
-                      insecure:
-                        description: |-
-                          In gRPC when set to true, this is used to disable the client transport security.
-                          See https://godoc.org/google.golang.org/grpc#WithInsecure.
-                          In HTTP, this disables verifying the server's certificate chain and host name
-                          (InsecureSkipVerify in the tls Config). Please refer to
-                          https://godoc.org/crypto/tls#Config for more information.
-                          (optional, default false)
-                        type: boolean
-                      insecure_skip_verify:
-                        description: InsecureSkipVerify will enable TLS but not verify
-                          the certificate.
-                        type: boolean
-                      key_file:
-                        description: Path to the TLS key to use for TLS required connections.
-                          (optional)
-                        type: string
-                      key_pem:
-                        description: In memory PEM encoded TLS key to use for TLS
-                          required connections. (optional)
-                        type: string
-                      max_version:
-                        description: |-
-                          MaxVersion sets the maximum TLS version that is acceptable.
-                          If not set, refer to crypto/tls for defaults. (optional)
-                        type: string
-                      min_version:
-                        description: |-
-                          MinVersion sets the minimum TLS version that is acceptable.
-                          If not set, TLS 1.2 will be used. (optional)
-                        type: string
-                      reload_interval:
-                        description: |-
-                          ReloadInterval specifies the duration after which the certificate will be reloaded
-                          If not set, it will never be reloaded (optional)
-                        format: int64
-                        type: integer
-                      server_name_override:
-                        description: |-
-                          ServerName requested by client for virtual hosting.
-                          This sets the ServerName in the TLSConfig. Please refer to
-                          https://godoc.org/crypto/tls#Config for more information. (optional)
-                        type: string
-                    type: object
-                  wait_for_ready:
-                    description: |-
-                      WaitForReady parameter configures client to wait for ready state before sending data.
-                      (https://github.com/grpc/grpc/blob/master/doc/wait-for-ready.md)
-                    type: boolean
-                  write_buffer_size:
-                    description: |-
-                      WriteBufferSize for gRPC gRPC. See grpc.WithWriteBufferSize.
-                      (https://godoc.org/google.golang.org/grpc#WithWriteBufferSize).
-                    type: integer
-                required:
-                - endpoint
                 type: object
             type: object
           status:
