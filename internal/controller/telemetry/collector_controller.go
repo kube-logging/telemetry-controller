@@ -55,6 +55,11 @@ type TenantFailedError struct {
 	msg string
 }
 
+type BasicAuthClientAuthConfig struct {
+	Username string
+	Password string
+}
+
 func (e *TenantFailedError) Error() string { return e.msg }
 
 func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, collector *v1alpha1.Collector) (OtelColConfigInput, error) {
@@ -64,7 +69,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 
 	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelector)
 	subscriptions := make(map[v1alpha1.NamespacedName]v1alpha1.Subscription)
-	outputs := []v1alpha1.Output{}
+	outputs := []OutputWithSecretData{}
 
 	if err != nil {
 		logger.Error(errors.WithStack(err), "failed listing tenants")
@@ -96,19 +101,40 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		subscriptionOutputMap[subscription.NamespacedName()] = outputNames
 
 		for _, outputName := range outputNames {
+			outputWithSecretData := OutputWithSecretData{}
+
 			queriedOutput := &v1alpha1.Output{}
 			if err = r.Client.Get(ctx, types.NamespacedName(outputName), queriedOutput); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting outputs for subscription", "subscription", subscription.NamespacedName().String())
 				return OtelColConfigInput{}, err
 			}
-			outputs = append(outputs, *queriedOutput)
+			outputWithSecretData.Output = *queriedOutput
+
+			if queriedOutput.Spec.Authentication != nil {
+				if queriedOutput.Spec.Authentication.BasicAuth != nil && queriedOutput.Spec.Authentication.BasicAuth.SecretRef != nil {
+					queriedSecret := &corev1.Secret{}
+					if err = r.Client.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Name}, queriedSecret); err != nil {
+						logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
+					}
+					outputWithSecretData.Secret = *queriedSecret
+				}
+				if queriedOutput.Spec.Authentication.BearerAuth != nil && queriedOutput.Spec.Authentication.BearerAuth.SecretRef != nil {
+					queriedSecret := &corev1.Secret{}
+					if err = r.Client.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Name}, queriedSecret); err != nil {
+						logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
+					}
+					outputWithSecretData.Secret = *queriedSecret
+				}
+			}
+
+			outputs = append(outputs, outputWithSecretData)
 		}
 	}
 
 	otelConfigInput := OtelColConfigInput{
 		Tenants:               tenants,
 		Subscriptions:         subscriptions,
-		Outputs:               outputs,
+		OutputsWithSecretData: outputs,
 		TenantSubscriptionMap: tenantSubscriptionMap,
 		SubscriptionOutputMap: subscriptionOutputMap,
 		Debug:                 collector.Spec.Debug,
@@ -166,7 +192,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Config:          otelConfig,
 			Mode:            otelv1beta1.ModeDaemonSet,
 			OpenTelemetryCommonFields: otelv1beta1.OpenTelemetryCommonFields{
-				Image:          "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.104.0-1",
+				Image:          "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.104.0-2",
 				ServiceAccount: saName.Name,
 				VolumeMounts: []corev1.VolumeMount{
 					{

@@ -110,7 +110,7 @@ type GRPCClientConfig struct {
 	Authority string `json:"authority,omitempty" yaml:"authority,omitempty"`
 
 	// Auth configuration for outgoing RPCs.
-	Auth string `json:"auth,omitempty" yaml:"auth,omitempty"` //TODO this is a reference *configauth.Authentication
+	Auth *Authentication `json:"auth,omitempty" yaml:"auth,omitempty"`
 }
 
 // TLSClientSetting contains TLS configurations that are specific to client
@@ -174,6 +174,11 @@ type TLSSetting struct {
 	ReloadInterval time.Duration `json:"reload_interval,omitempty" yaml:"reload_interval,omitempty"`
 }
 
+type Authentication struct {
+	// AuthenticatorID specifies the name of the extension to use in order to authenticate the incoming data point.
+	AuthenticatorID string `json:"authenticator,omitempty"`
+}
+
 // ClientConfig defines settings for creating an HTTP client.
 type HTTPClientConfig struct {
 	// The target URL to send data to (e.g.: http://some.url:9411/v1/traces).
@@ -200,7 +205,7 @@ type HTTPClientConfig struct {
 	Headers map[string]configopaque.String `json:"headers,omitempty" yaml:"headers,omitempty"`
 
 	// Auth configuration for outgoing HTTP calls.
-	Auth string `json:"auth,omitempty" yaml:"auth,omitempty"` //TODO this is a reference *configauth.Authentication
+	Auth Authentication `json:"auth,omitempty" yaml:"auth,omitempty"`
 
 	// The compression key for supported compression types within collector.
 	Compression configcompression.Type `json:"compression,omitempty" yaml:"compression,omitempty"`
