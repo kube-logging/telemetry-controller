@@ -110,21 +110,8 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 			}
 			outputWithSecretData.Output = *queriedOutput
 
-			if queriedOutput.Spec.Authentication != nil {
-				if queriedOutput.Spec.Authentication.BasicAuth != nil && queriedOutput.Spec.Authentication.BasicAuth.SecretRef != nil {
-					queriedSecret := &corev1.Secret{}
-					if err = r.Client.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Name}, queriedSecret); err != nil {
-						logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
-					}
-					outputWithSecretData.Secret = *queriedSecret
-				}
-				if queriedOutput.Spec.Authentication.BearerAuth != nil && queriedOutput.Spec.Authentication.BearerAuth.SecretRef != nil {
-					queriedSecret := &corev1.Secret{}
-					if err = r.Client.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Name}, queriedSecret); err != nil {
-						logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
-					}
-					outputWithSecretData.Secret = *queriedSecret
-				}
+			if err := r.populateSecretForOutput(ctx, queriedOutput, &outputWithSecretData); err != nil {
+				return OtelColConfigInput{}, err
 			}
 
 			outputs = append(outputs, outputWithSecretData)
@@ -142,6 +129,31 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 	}
 
 	return otelConfigInput, nil
+}
+
+func (r *CollectorReconciler) populateSecretForOutput(ctx context.Context, queriedOutput *v1alpha1.Output, outputWithSecret *OutputWithSecretData) error {
+	logger := log.FromContext(ctx)
+
+	if queriedOutput.Spec.Authentication != nil {
+		if queriedOutput.Spec.Authentication.BasicAuth != nil && queriedOutput.Spec.Authentication.BasicAuth.SecretRef != nil {
+			queriedSecret := &corev1.Secret{}
+			if err := r.Client.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Name}, queriedSecret); err != nil {
+				logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
+				return err
+			}
+			outputWithSecret.Secret = *queriedSecret
+		}
+		if queriedOutput.Spec.Authentication.BearerAuth != nil && queriedOutput.Spec.Authentication.BearerAuth.SecretRef != nil {
+			queriedSecret := &corev1.Secret{}
+			if err := r.Client.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Name}, queriedSecret); err != nil {
+				logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
+				return err
+			}
+			outputWithSecret.Secret = *queriedSecret
+		}
+	}
+
+	return nil
 }
 
 // +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;outputs;,verbs=get;list;watch;create;update;patch;delete
