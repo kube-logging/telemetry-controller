@@ -50,6 +50,7 @@ rules:
       - namespaces
       - nodes
       - nodes/proxy
+      - secrets
     verbs:
       - get
       - list

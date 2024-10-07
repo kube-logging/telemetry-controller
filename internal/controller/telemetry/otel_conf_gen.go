@@ -22,29 +22,40 @@ import (
 	"strings"
 	"time"
 
+	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"golang.org/x/exp/maps"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
-
-	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
+const (
+	defaultBasicAuthUsernameField = "username"
+	defaultBasicAuthPasswordField = "password"
+	defaultBearerAuthTokenField   = "token"
+)
+
 type OtelColConfigInput struct {
 	// These must only include resources that are selected by the collector, tenant labelselectors, and listed outputs in the subscriptions
-	Tenants       []v1alpha1.Tenant
-	Subscriptions map[v1alpha1.NamespacedName]v1alpha1.Subscription
-	Outputs       []v1alpha1.Output
-	MemoryLimiter v1alpha1.MemoryLimiter
+	Tenants               []v1alpha1.Tenant
+	Subscriptions         map[v1alpha1.NamespacedName]v1alpha1.Subscription
+	OutputsWithSecretData []OutputWithSecretData
+	MemoryLimiter         v1alpha1.MemoryLimiter
 
 	// Subscriptions map, where the key is the Tenants' name, value is a slice of subscriptions' namespaced name
 	TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
 	SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
 	Debug                 bool
+}
+
+type OutputWithSecretData struct {
+	Output v1alpha1.Output
+	Secret corev1.Secret
 }
 
 type RoutingConnectorTableItem struct {
@@ -259,16 +270,26 @@ func (cfgInput *OtelColConfigInput) generateOTLPGRPCExporters(ctx context.Contex
 	logger := log.FromContext(ctx)
 	result := make(map[string]any)
 
-	for _, output := range cfgInput.Outputs {
-		if output.Spec.OTLPGRPC != nil {
-			name := GetExporterNameForOutput(output)
-			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Spec.OTLPGRPC)
+	for _, output := range cfgInput.OutputsWithSecretData {
+		if output.Output.Spec.OTLPGRPC != nil {
+			name := GetExporterNameForOutput(output.Output)
+
+			if output.Output.Spec.Authentication != nil {
+				if output.Output.Spec.Authentication.BasicAuth != nil {
+					output.Output.Spec.OTLPGRPC.Auth = &v1alpha1.Authentication{
+						AuthenticatorID: fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name)}
+				} else if output.Output.Spec.Authentication.BearerAuth != nil {
+					output.Output.Spec.OTLPGRPC.Auth = &v1alpha1.Authentication{
+						AuthenticatorID: fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name)}
+				}
+			}
+			otlpGrpcValuesMarshaled, err := yaml.Marshal(output.Output.Spec.OTLPGRPC)
 			if err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 			var otlpGrpcValues map[string]any
 			if err := yaml.Unmarshal(otlpGrpcValuesMarshaled, &otlpGrpcValues); err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 
 			result[name] = otlpGrpcValues
@@ -282,16 +303,24 @@ func (cfgInput *OtelColConfigInput) generateOTLPHTTPExporters(ctx context.Contex
 	logger := log.FromContext(ctx)
 	result := make(map[string]any)
 
-	for _, output := range cfgInput.Outputs {
-		if output.Spec.OTLPHTTP != nil {
-			name := GetExporterNameForOutput(output)
-			otlpHttpValuesMarshaled, err := yaml.Marshal(output.Spec.OTLPHTTP)
+	for _, output := range cfgInput.OutputsWithSecretData {
+		if output.Output.Spec.OTLPHTTP != nil {
+			name := GetExporterNameForOutput(output.Output)
+
+			if output.Output.Spec.Authentication != nil {
+				if output.Output.Spec.Authentication.BasicAuth != nil {
+					output.Output.Spec.OTLPHTTP.Auth.AuthenticatorID = fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name)
+				} else if output.Output.Spec.Authentication.BearerAuth != nil {
+					output.Output.Spec.OTLPHTTP.Auth.AuthenticatorID = fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name)
+				}
+			}
+			otlpHttpValuesMarshaled, err := yaml.Marshal(output.Output.Spec.OTLPHTTP)
 			if err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 			var otlpHttpValues map[string]any
 			if err := yaml.Unmarshal(otlpHttpValuesMarshaled, &otlpHttpValues); err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 
 			result[name] = otlpHttpValues
@@ -306,17 +335,17 @@ func (cfgInput *OtelColConfigInput) generateFluentforwardExporters(ctx context.C
 
 	result := make(map[string]any)
 
-	for _, output := range cfgInput.Outputs {
-		if output.Spec.Fluentforward != nil {
+	for _, output := range cfgInput.OutputsWithSecretData {
+		if output.Output.Spec.Fluentforward != nil {
 			// TODO: add proper error handling
-			name := fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
-			fluentForwardMarshaled, err := yaml.Marshal(output.Spec.Fluentforward)
+			name := fmt.Sprintf("fluentforwardexporter/%s_%s", output.Output.Namespace, output.Output.Name)
+			fluentForwardMarshaled, err := yaml.Marshal(output.Output.Spec.Fluentforward)
 			if err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 			var fluetForwardValues map[string]any
 			if err := yaml.Unmarshal(fluentForwardMarshaled, &fluetForwardValues); err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.NamespacedName().String())
+				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 
 			result[name] = fluetForwardValues
@@ -534,8 +563,8 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 		processors[fmt.Sprintf("attributes/subscription_%s", subscription.Name)] = generateSubscriptionAttributeProcessor(subscription)
 	}
 
-	for _, output := range cfgInput.Outputs {
-		processors[fmt.Sprintf("attributes/exporter_name_%s", output.Name)] = generateOutputExporterNameProcessor(output)
+	for _, output := range cfgInput.OutputsWithSecretData {
+		processors[fmt.Sprintf("attributes/exporter_name_%s", output.Output.Name)] = generateOutputExporterNameProcessor(output.Output)
 	}
 
 	return processors
@@ -652,27 +681,27 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 			for _, outputRef := range cfgInput.SubscriptionOutputMap[subscription] {
 				outputPipelineName := fmt.Sprintf("logs/output_%s_%s_%s_%s", subscription.Namespace, subscription.Name, outputRef.Namespace, outputRef.Name)
 
-				idx := slices.IndexFunc(cfgInput.Outputs, func(elem v1alpha1.Output) bool {
-					return outputRef == elem.NamespacedName()
+				idx := slices.IndexFunc(cfgInput.OutputsWithSecretData, func(elem OutputWithSecretData) bool {
+					return outputRef == elem.Output.NamespacedName()
 				})
 
 				if idx != -1 {
-					output := cfgInput.Outputs[idx]
+					output := cfgInput.OutputsWithSecretData[idx]
 
 					receivers := []string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}
-					processors := []string{fmt.Sprintf("attributes/exporter_name_%s", output.Name)}
+					processors := []string{fmt.Sprintf("attributes/exporter_name_%s", output.Output.Name)}
 					var exporters []string
 
-					if output.Spec.OTLPGRPC != nil {
-						exporters = []string{GetExporterNameForOutput(output), outputCountConnectorName}
+					if output.Output.Spec.OTLPGRPC != nil {
+						exporters = []string{GetExporterNameForOutput(output.Output), outputCountConnectorName}
 					}
 
-					if output.Spec.OTLPHTTP != nil {
-						exporters = []string{GetExporterNameForOutput(output), outputCountConnectorName}
+					if output.Output.Spec.OTLPHTTP != nil {
+						exporters = []string{GetExporterNameForOutput(output.Output), outputCountConnectorName}
 					}
 
-					if output.Spec.Fluentforward != nil {
-						exporters = []string{GetExporterNameForOutput(output), outputCountConnectorName}
+					if output.Output.Spec.Fluentforward != nil {
+						exporters = []string{GetExporterNameForOutput(output.Output), outputCountConnectorName}
 					}
 					if cfgInput.Debug {
 						exporters = append(exporters, "logging/debug")
@@ -862,11 +891,87 @@ func (cfgInput *OtelColConfigInput) generateDefaultKubernetesReceiver(namespaces
 	return k8sReceiver
 }
 
-func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1beta1.Config {
-	exporters := cfgInput.generateExporters(ctx)
+type BasicAuthExtensionConfig struct {
+	ClientAuth BasicClientAuthConfig `json:"client_auth,omitempty"`
+}
 
-	processors := cfgInput.generateProcessors()
+type BasicClientAuthConfig struct {
+	// Username holds the username to use for client authentication.
+	Username string `json:"username"`
+	// Password holds the password to use for client authentication.
+	Password string `json:"password"`
+}
 
+func generateBasicAuthExtensionsForOutput(output OutputWithSecretData) BasicAuthExtensionConfig {
+	var effectiveUsernameField, effectivePasswordField string
+
+	if output.Output.Spec.Authentication.BasicAuth.UsernameField != "" {
+		effectiveUsernameField = output.Output.Spec.Authentication.BasicAuth.UsernameField
+	} else {
+		effectiveUsernameField = defaultBasicAuthUsernameField
+	}
+
+	if output.Output.Spec.Authentication.BasicAuth.PasswordField != "" {
+		effectivePasswordField = output.Output.Spec.Authentication.BasicAuth.PasswordField
+	} else {
+		effectivePasswordField = defaultBasicAuthPasswordField
+	}
+
+	config := BasicAuthExtensionConfig{}
+
+	if u, ok := output.Secret.Data[effectiveUsernameField]; ok {
+		config.ClientAuth.Username = string(u)
+	}
+
+	if p, ok := output.Secret.Data[effectivePasswordField]; ok {
+		config.ClientAuth.Password = string(p)
+	}
+
+	return config
+}
+
+type BearerTokenAuthExtensionConfig struct {
+	BearerToken string `json:"token,omitempty"`
+}
+
+func generateBearerAuthExtensionsForOutput(output OutputWithSecretData) BearerTokenAuthExtensionConfig {
+	var effectiveTokenField string
+
+	if output.Output.Spec.Authentication.BearerAuth.TokenField != "" {
+		effectiveTokenField = output.Output.Spec.Authentication.BasicAuth.UsernameField
+	} else {
+		effectiveTokenField = defaultBearerAuthTokenField
+	}
+
+	config := BearerTokenAuthExtensionConfig{}
+
+	if t, ok := output.Secret.Data[effectiveTokenField]; ok {
+		config.BearerToken = string(t)
+	}
+
+	return config
+}
+
+func (cfgInput *OtelColConfigInput) generateExtensions() map[string]any {
+	extensions := make(map[string]any)
+
+	for _, output := range cfgInput.OutputsWithSecretData {
+		if output.Output.Spec.Authentication != nil {
+			if output.Output.Spec.Authentication.BasicAuth != nil {
+				extName := fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name)
+				extensions[extName] = generateBasicAuthExtensionsForOutput(output)
+			}
+			if output.Output.Spec.Authentication.BearerAuth != nil {
+				extName := fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name)
+				extensions[extName] = generateBearerAuthExtensionsForOutput(output)
+			}
+		}
+	}
+
+	return extensions
+}
+
+func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
 	receivers := make(map[string]any)
 
 	for tenantName := range cfgInput.TenantSubscriptionMap {
@@ -878,6 +983,18 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1be
 			receivers[k8sReceiverName] = cfgInput.generateDefaultKubernetesReceiver(namespaces)
 		}
 	}
+
+	return receivers
+}
+
+func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1beta1.Config {
+	exporters := cfgInput.generateExporters(ctx)
+
+	processors := cfgInput.generateProcessors()
+
+	extensions := cfgInput.generateExtensions()
+
+	receivers := cfgInput.generateReceivers()
 
 	connectors := cfgInput.generateConnectors()
 
@@ -906,14 +1023,21 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1be
 		}
 	}
 
+	extensionNames := make([]string, 0, len(extensions))
+	for k := range extensions {
+		extensionNames = append(extensionNames, k)
+	}
+
 	return otelv1beta1.Config{
 		Receivers:  otelv1beta1.AnyConfig{Object: receivers},
 		Exporters:  otelv1beta1.AnyConfig{Object: exporters},
 		Processors: &otelv1beta1.AnyConfig{Object: processors},
 		Connectors: &otelv1beta1.AnyConfig{Object: connectors},
+		Extensions: &otelv1beta1.AnyConfig{Object: extensions},
 		Service: otelv1beta1.Service{
-			Telemetry: &otelv1beta1.AnyConfig{Object: telemetry},
-			Pipelines: pipelines,
+			Extensions: &extensionNames,
+			Telemetry:  &otelv1beta1.AnyConfig{Object: telemetry},
+			Pipelines:  pipelines,
 		},
 	}
 }

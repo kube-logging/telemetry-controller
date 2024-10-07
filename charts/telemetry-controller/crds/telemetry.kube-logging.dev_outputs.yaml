@@ -41,6 +41,51 @@ spec:
           spec:
             description: OutputSpec defines the desired state of Output
             properties:
+              authentication:
+                properties:
+                  basicauth:
+                    properties:
+                      passwordField:
+                        type: string
+                      secretRef:
+                        description: |-
+                          SecretReference represents a Secret Reference. It has enough information to retrieve secret
+                          in any namespace
+                        properties:
+                          name:
+                            description: name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      usernameField:
+                        type: string
+                    type: object
+                  bearerauth:
+                    properties:
+                      secretRef:
+                        description: |-
+                          SecretReference represents a Secret Reference. It has enough information to retrieve secret
+                          in any namespace
+                        properties:
+                          name:
+                            description: name is unique within a namespace to reference
+                              a secret resource.
+                            type: string
+                          namespace:
+                            description: namespace defines the space within which
+                              the secret name must be unique.
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      tokenField:
+                        type: string
+                    type: object
+                type: object
               fluentforward:
                 properties:
                   compress_gzip:
@@ -207,7 +252,12 @@ spec:
                 properties:
                   auth:
                     description: Auth configuration for outgoing RPCs.
-                    type: string
+                    properties:
+                      authenticator:
+                        description: AuthenticatorID specifies the name of the extension
+                          to use in order to authenticate the incoming data point.
+                        type: string
+                    type: object
                   authority:
                     description: |-
                       WithAuthority parameter configures client to rewrite ":authority" header
@@ -405,7 +455,12 @@ spec:
                 properties:
                   auth:
                     description: Auth configuration for outgoing HTTP calls.
-                    type: string
+                    properties:
+                      authenticator:
+                        description: AuthenticatorID specifies the name of the extension
+                          to use in order to authenticate the incoming data point.
+                        type: string
+                    type: object
                   compression:
                     description: The compression key for supported compression types
                       within collector.

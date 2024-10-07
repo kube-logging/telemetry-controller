@@ -17,6 +17,8 @@ package v1alpha1
 import (
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,9 +30,26 @@ type OutputSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	OTLPGRPC      *OTLPGRPC      `json:"otlp,omitempty"`
-	Fluentforward *Fluentforward `json:"fluentforward,omitempty"`
-	OTLPHTTP      *OTLPHTTP      `json:"otlphttp,omitempty"`
+	OTLPGRPC       *OTLPGRPC      `json:"otlp,omitempty"`
+	Fluentforward  *Fluentforward `json:"fluentforward,omitempty"`
+	OTLPHTTP       *OTLPHTTP      `json:"otlphttp,omitempty"`
+	Authentication *OutputAuth    `json:"authentication,omitempty"`
+}
+
+type OutputAuth struct {
+	BasicAuth  *BasicAuthConfig  `json:"basicauth,omitempty"`
+	BearerAuth *BearerAuthConfig `json:"bearerauth,omitempty"`
+}
+
+type BasicAuthConfig struct {
+	SecretRef     *corev1.SecretReference `json:"secretRef,omitempty"`
+	UsernameField string                  `json:"usernameField,omitempty"`
+	PasswordField string                  `json:"passwordField,omitempty"`
+}
+
+type BearerAuthConfig struct {
+	SecretRef  *corev1.SecretReference `json:"secretRef,omitempty"`
+	TokenField string                  `json:"tokenField,omitempty"`
 }
 
 // OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go

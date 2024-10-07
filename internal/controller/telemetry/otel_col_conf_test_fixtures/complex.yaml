@@ -58,6 +58,9 @@ connectors:
       - logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3
       statement: route()
 exporters: {}
+extensions:
+  bearertokenauth/collector_otlp-test-output:
+    token: testtoken
 processors:
   attributes/exporter_name_fluentforward-test-output:
     actions:
@@ -149,6 +152,8 @@ processors:
     spike_limit_percentage: 25
 receivers: {}
 service:
+  extensions:
+    - bearertokenauth/collector_otlp-test-output
   pipelines:
     logs/output_example-tenant-a-ns_subscription-example-1_collector_loki-test-output:
       exporters:

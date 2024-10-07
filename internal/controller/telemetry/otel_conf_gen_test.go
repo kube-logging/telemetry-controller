@@ -27,6 +27,8 @@ import (
 	"github.com/siliconbrain/go-mapseqs/mapseqs"
 	"github.com/siliconbrain/go-seqs/seqs"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
@@ -169,66 +171,92 @@ func TestOtelColConfComplex(t *testing.T) {
 				},
 			},
 		},
-		Outputs: []v1alpha1.Output{
+		OutputsWithSecretData: []OutputWithSecretData{
 			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "otlp-test-output",
-					Namespace: "collector",
+				Secret: corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "bearer-test-secret",
+						Namespace: "collector",
+					},
+					Data: map[string][]byte{
+						"token": []byte("testtoken"),
+					},
+					Type: "Opaque",
 				},
-				Spec: v1alpha1.OutputSpec{
-					OTLPGRPC: &v1alpha1.OTLPGRPC{
-						GRPCClientConfig: v1alpha1.GRPCClientConfig{
-							Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
-							TLSSetting: v1alpha1.TLSClientSetting{
-								Insecure: true,
+				Output: v1alpha1.Output{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "otlp-test-output",
+						Namespace: "collector",
+					},
+					Spec: v1alpha1.OutputSpec{
+						OTLPGRPC: &v1alpha1.OTLPGRPC{
+							GRPCClientConfig: v1alpha1.GRPCClientConfig{
+								Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
+								TLSSetting: v1alpha1.TLSClientSetting{
+									Insecure: true,
+								},
+							},
+						},
+						Authentication: &v1alpha1.OutputAuth{
+							BearerAuth: &v1alpha1.BearerAuthConfig{
+								SecretRef: &v1.SecretReference{
+									Name:      "bearer-test-secret",
+									Namespace: "collector",
+								},
 							},
 						},
 					},
 				},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "otlp-test-output-2",
-					Namespace: "collector",
-				},
-				Spec: v1alpha1.OutputSpec{
-					OTLPGRPC: &v1alpha1.OTLPGRPC{
-						GRPCClientConfig: v1alpha1.GRPCClientConfig{
-							Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
-							TLSSetting: v1alpha1.TLSClientSetting{
-								Insecure: true,
+				Output: v1alpha1.Output{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "otlp-test-output-2",
+						Namespace: "collector",
+					},
+					Spec: v1alpha1.OutputSpec{
+						OTLPGRPC: &v1alpha1.OTLPGRPC{
+							GRPCClientConfig: v1alpha1.GRPCClientConfig{
+								Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
+								TLSSetting: v1alpha1.TLSClientSetting{
+									Insecure: true,
+								},
 							},
 						},
 					},
 				},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "loki-test-output",
-					Namespace: "collector",
-				},
-				Spec: v1alpha1.OutputSpec{
-					OTLPHTTP: &v1alpha1.OTLPHTTP{
-						HTTPClientConfig: v1alpha1.HTTPClientConfig{
-							Endpoint: "loki.example-tenant-a-ns.svc.cluster.local:4317",
-							TLSSetting: v1alpha1.TLSClientSetting{
-								Insecure: true,
+				Output: v1alpha1.Output{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "loki-test-output",
+						Namespace: "collector",
+					},
+					Spec: v1alpha1.OutputSpec{
+						OTLPHTTP: &v1alpha1.OTLPHTTP{
+							HTTPClientConfig: v1alpha1.HTTPClientConfig{
+								Endpoint: "loki.example-tenant-a-ns.svc.cluster.local:4317",
+								TLSSetting: v1alpha1.TLSClientSetting{
+									Insecure: true,
+								},
 							},
 						},
 					},
 				},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "fluentforward-test-output",
-					Namespace: "collector",
-				},
-				Spec: v1alpha1.OutputSpec{
-					Fluentforward: &v1alpha1.Fluentforward{
-						TCPClientSettings: v1alpha1.TCPClientSettings{
-							Endpoint: "fluentforward.example-tenant-ns.svc.cluster.local:8888",
-							TLSSetting: v1alpha1.TLSClientSetting{
-								Insecure: true,
+				Output: v1alpha1.Output{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "fluentforward-test-output",
+						Namespace: "collector",
+					},
+					Spec: v1alpha1.OutputSpec{
+						Fluentforward: &v1alpha1.Fluentforward{
+							TCPClientSettings: v1alpha1.TCPClientSettings{
+								Endpoint: "fluentforward.example-tenant-ns.svc.cluster.local:8888",
+								TLSSetting: v1alpha1.TLSClientSetting{
+									Insecure: true,
+								},
 							},
 						},
 					},
@@ -315,7 +343,7 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 	type fields struct {
 		Tenants               []v1alpha1.Tenant
 		Subscriptions         map[v1alpha1.NamespacedName]v1alpha1.Subscription
-		Outputs               []v1alpha1.Output
+		OutputsWithSecretData []OutputWithSecretData
 		TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
 		SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
 	}
@@ -374,7 +402,7 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 						}, OTTL: `set(attributes["subscription"], "subscriptionB")`},
 					},
 				},
-				Outputs: []v1alpha1.Output{},
+				OutputsWithSecretData: []OutputWithSecretData{},
 				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
 					"tenantA": {
 						{
@@ -417,12 +445,13 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfgInput := &OtelColConfigInput{
 				Tenants:               tt.fields.Tenants,
 				Subscriptions:         tt.fields.Subscriptions,
-				Outputs:               tt.fields.Outputs,
+				OutputsWithSecretData: tt.fields.OutputsWithSecretData,
 				TenantSubscriptionMap: tt.fields.TenantSubscriptionMap,
 				SubscriptionOutputMap: tt.fields.SubscriptionOutputMap,
 			}
