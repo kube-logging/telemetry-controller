@@ -18,6 +18,18 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - endpoints
+  - namespaces
+  - nodes
+  - nodes/proxy
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - persistentvolumeclaims
   - pods
   - serviceaccounts
