@@ -282,12 +282,12 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			collectors := &v1alpha1.CollectorList{}
 			err := r.List(ctx, collectors)
 			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
+				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
 				return
 			}
 
-			for _, tenant := range collectors.Items {
-				requests = addCollectorRequest(requests, tenant.Name)
+			for _, collector := range collectors.Items {
+				requests = addCollectorRequest(requests, collector.Name)
 			}
 
 			return
@@ -298,12 +298,12 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			collectors := &v1alpha1.CollectorList{}
 			err := r.List(ctx, collectors)
 			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
+				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
 				return
 			}
 
-			for _, tenant := range collectors.Items {
-				requests = addCollectorRequest(requests, tenant.Name)
+			for _, collector := range collectors.Items {
+				requests = addCollectorRequest(requests, collector.Name)
 			}
 
 			return
@@ -314,12 +314,12 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			collectors := &v1alpha1.CollectorList{}
 			err := r.List(ctx, collectors)
 			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
+				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
 				return
 			}
 
-			for _, tenant := range collectors.Items {
-				requests = addCollectorRequest(requests, tenant.Name)
+			for _, collector := range collectors.Items {
+				requests = addCollectorRequest(requests, collector.Name)
 			}
 
 			return
@@ -330,12 +330,28 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			collectors := &v1alpha1.CollectorList{}
 			err := r.List(ctx, collectors)
 			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
+				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
 				return
 			}
 
-			for _, tenant := range collectors.Items {
-				requests = addCollectorRequest(requests, tenant.Name)
+			for _, collector := range collectors.Items {
+				requests = addCollectorRequest(requests, collector.Name)
+			}
+
+			return
+		})).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+			logger := log.FromContext(ctx)
+
+			collectors := &v1alpha1.CollectorList{}
+			err := r.List(ctx, collectors)
+			if err != nil {
+				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
+				return
+			}
+
+			for _, collector := range collectors.Items {
+				requests = addCollectorRequest(requests, collector.Name)
 			}
 
 			return
