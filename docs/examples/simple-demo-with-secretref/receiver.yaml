@@ -1,0 +1,44 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: receiver-otelcol
+  namespace: receiver
+spec:
+  image: otel/opentelemetry-collector-contrib:0.104.0
+  volumes:
+    - name: certs-volume
+      secret:
+        secretName: server-certs
+  volumeMounts:
+    - mountPath: "/certs"
+      name: certs-volume
+      readOnly: true
+  config:
+    extensions:
+      basicauth:
+        htpasswd: 
+          inline: |
+            user:pass
+    receivers:
+      otlp:
+        protocols:
+          grpc: 
+            auth:
+              authenticator: basicauth
+            tls:
+              cert_file: /certs/tls.crt
+              key_file: /certs/tls.key
+              ca_file: /certs/ca.crt
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      telemetry:
+        logs:
+          level: "debug"
+      extensions: [basicauth]
+      pipelines:
+        logs: 
+          processors: []
+          receivers: [otlp]
+          exporters: [debug]

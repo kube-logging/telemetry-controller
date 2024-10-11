@@ -65,6 +65,7 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./api/..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role paths="./internal/controller/telemetry/..." output:rbac:artifacts:config=./config/rbac
 	cp config/crd/bases/* charts/telemetry-controller/crds/
 
 .PHONY: generate
