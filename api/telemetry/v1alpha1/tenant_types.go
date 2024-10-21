@@ -29,11 +29,15 @@ type Statement struct {
 
 // Transform represents the Transform processor, which modifies telemetry based on its configuration
 type Transform struct {
+	// Name of the Transform processor
+	Name string `json:"name,omitempty"`
+
 	// +kubebuilder:validation:Enum:=ignore;silent;propagate
 
 	// ErrorMode specifies how errors are handled while processing a statement
 	// vaid options are: ignore, silent, propagate; (default: propagate)
-	ErrorMode        string      `json:"errorMode,omitempty"`
+	ErrorMode string `json:"errorMode,omitempty"`
+
 	TraceStatements  []Statement `json:"traceStatements,omitempty"`
 	MetricStatements []Statement `json:"metricStatements,omitempty"`
 	LogStatements    []Statement `json:"logStatements,omitempty"`
