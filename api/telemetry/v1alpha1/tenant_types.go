@@ -23,7 +23,7 @@ import (
 type Statement struct {
 	// +kubebuilder:validation:Enum:=resource;scope;span;spanevent;metric;datapoint;log
 	Context    string   `json:"context,omitempty"`
-	Conditions []string `json:"conditions,omitempty"` // TODO: wire in conditions
+	Conditions []string `json:"conditions,omitempty"`
 	Statements []string `json:"statements,omitempty"`
 }
 
