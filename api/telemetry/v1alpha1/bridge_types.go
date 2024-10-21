@@ -18,8 +18,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ForwarderSpec defines the desired state of Forwarder
-type ForwarderSpec struct {
+// BridgeSpec defines the desired state of Bridge
+type BridgeSpec struct {
 	SourceTenant string `json:"sourceTenant,omitempty"`
 	TargetTenant string `json:"targetTenant,omitempty"`
 	// The OTTL condition which must be satisfied in order to forward telemetry
@@ -27,8 +27,8 @@ type ForwarderSpec struct {
 	OTTL string `json:"ottl,omitempty"`
 }
 
-// ForwarderStatus defines the observed state of Forwarder
-type ForwarderStatus struct {
+// BridgeStatus defines the observed state of Bridge
+type BridgeStatus struct {
 	State string `json:"state,omitempty"`
 }
 
@@ -37,24 +37,24 @@ type ForwarderStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 
-// Forwarder is the Schema for the forwarders API
-type Forwarder struct {
+// Bridge is the Schema for the Bridges API
+type Bridge struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ForwarderSpec   `json:"spec,omitempty"`
-	Status ForwarderStatus `json:"status,omitempty"`
+	Spec   BridgeSpec   `json:"spec,omitempty"`
+	Status BridgeStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// ForwarderList contains a list of Forwarder
-type ForwarderList struct {
+// BridgeList contains a list of Bridge
+type BridgeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Forwarder `json:"items"`
+	Items           []Bridge `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Forwarder{}, &ForwarderList{})
+	SchemeBuilder.Register(&Bridge{}, &BridgeList{})
 }
