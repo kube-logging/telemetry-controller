@@ -54,7 +54,6 @@ do true; done
 
 echo "E2E (helm) test: PASSED"
 
-
 # Check if cluster should be removed, ctx restored
 if [[ -z "${NO_KIND_CLEANUP}" ]]; then
   kind delete cluster --name "${KIND_CLUSTER_NAME}"

@@ -592,7 +592,7 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 
 		// Add a transform processor if the tenant has one
 		if tenant.Spec.Transform.Name != "" {
-			processors[fmt.Sprintf("transform/%s", tenant.Spec.Transform.Name)] = generateTenantTransformProcessorForTenant(tenant)
+			processors[fmt.Sprintf("transform/%s", tenant.Spec.Transform.Name)] = generateTransformProcessorForTenant(tenant)
 		}
 	}
 
@@ -682,7 +682,7 @@ func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) 
 	return processor
 }
 
-func generateTenantTransformProcessorForTenant(tenant v1alpha1.Tenant) TransformProcessor {
+func generateTransformProcessorForTenant(tenant v1alpha1.Tenant) TransformProcessor {
 	return TransformProcessor{
 		ErrorMode:        ErrorMode(tenant.Spec.Transform.ErrorMode),
 		TraceStatements:  convertAPIStatements(tenant.Spec.Transform.TraceStatements),
