@@ -18,10 +18,32 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Statement represents a single statement in a Transform processor
+// ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
+type Statement struct {
+	// +kubebuilder:validation:Enum:=resource;scope;span;spanevent;metric;datapoint;log
+	Context    string   `json:"context,omitempty"`
+	Conditions []string `json:"conditions,omitempty"` // TODO: wire in conditions
+	Statements []string `json:"statements,omitempty"`
+}
+
+// Transform represents the Transform processor, which modifies telemetry based on its configuration
+type Transform struct {
+	// +kubebuilder:validation:Enum:=ignore;silent;propagate
+
+	// ErrorMode specifies how errors are handled while processing a statement
+	// vaid options are: ignore, silent, propagate; (default: propagate)
+	ErrorMode        string      `json:"errorMode,omitempty"`
+	TraceStatements  []Statement `json:"traceStatements,omitempty"`
+	MetricStatements []Statement `json:"metricStatements,omitempty"`
+	LogStatements    []Statement `json:"logStatements,omitempty"`
+}
+
 // TenantSpec defines the desired state of Tenant
 type TenantSpec struct {
 	SubscriptionNamespaceSelectors []metav1.LabelSelector `json:"subscriptionNamespaceSelectors,omitempty"`
 	LogSourceNamespaceSelectors    []metav1.LabelSelector `json:"logSourceNamespaceSelectors,omitempty"`
+	Transform                      Transform              `json:"transform,omitempty"`
 }
 
 const (

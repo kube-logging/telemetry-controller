@@ -36,7 +36,9 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-// CollectorReconciler reconciles a Collector object
+// RouteReconciler is responsible for reconciling Tenant resources
+// It also watches for changes to Subscriptions, Outputs, and Namespaces
+// to trigger the appropriate reconciliation logic when related resources change.
 type RouteReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
