@@ -218,6 +218,9 @@ spec:
                           type: array
                       type: object
                     type: array
+                  name:
+                    description: Name of the Transform processor
+                    type: string
                   traceStatements:
                     items:
                       description: |-
