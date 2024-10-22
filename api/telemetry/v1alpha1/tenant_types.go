@@ -50,16 +50,18 @@ type TenantSpec struct {
 	Transform                      Transform              `json:"transform,omitempty"`
 }
 
+type TenantState string
+
 const (
-	StateReady  = "ready"
-	StateFailed = "failed"
+	StateReady  TenantState = "ready"
+	StateFailed TenantState = "failed"
 )
 
 // TenantStatus defines the observed state of Tenant
 type TenantStatus struct {
 	Subscriptions       []NamespacedName `json:"subscriptions,omitempty"`
 	LogSourceNamespaces []string         `json:"logSourceNamespaces,omitempty"`
-	State               string           `json:"state,omitempty"`
+	State               TenantState      `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true

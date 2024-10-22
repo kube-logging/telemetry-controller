@@ -57,7 +57,6 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	logger := log.FromContext(ctx)
 
 	tenant := &v1alpha1.Tenant{}
-
 	logger.Info(fmt.Sprintf("getting tenant: %q", req.NamespacedName.Name))
 
 	if err := r.Get(ctx, req.NamespacedName, tenant); client.IgnoreNotFound(err) != nil {
@@ -66,13 +65,11 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	logger.Info(fmt.Sprintf("reconciling tenant: %q", tenant.Name))
-
 	originalTenantStatus := tenant.Status
+	logger.Info(fmt.Sprintf("reconciling tenant: %q", tenant.Name))
 
 	subscriptionsForTenant, updateList, err := r.getSubscriptionsForTenant(ctx, tenant)
 	if err != nil {
-
 		tenant.Status.State = v1alpha1.StateFailed
 		logger.Error(errors.WithStack(err), "failed to get subscriptions for tenant", "tenant", tenant.Name)
 		if updateErr := r.Status().Update(ctx, tenant); updateErr != nil {
@@ -84,17 +81,13 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// add all newly updated subscriptions here
 	subscriptionsForTenant = append(subscriptionsForTenant, r.updateSubscriptionsForTenant(ctx, tenant.Name, updateList)...)
-
 	subscriptionsToDisown := r.getSubscriptionsReferencingTenantButNotSelected(ctx, tenant, subscriptionsForTenant)
-
 	r.disownSubscriptions(ctx, subscriptionsToDisown)
 
 	subscriptionNames := getSubscriptionNamesFromSubscription(subscriptionsForTenant)
-
 	cmp := func(a, b v1alpha1.NamespacedName) int {
 		return strings.Compare(a.String(), b.String())
 	}
-
 	slices.SortFunc(subscriptionNames, cmp)
 	tenant.Status.Subscriptions = subscriptionNames
 
@@ -130,12 +123,10 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 		return ctrl.Result{}, err
 	}
-
 	slices.Sort(logsourceNamespacesForTenant)
 	tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
 	tenant.Status.State = v1alpha1.StateReady
-
 	if !reflect.DeepEqual(originalTenantStatus, tenant.Status) {
 		logger.Info("tenant status changed")
 		if err := r.Status().Update(ctx, tenant); err != nil {
@@ -155,6 +146,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		if subscription.Status.Tenant == "" {
 			return nil
 		}
+
 		return []string{subscription.Status.Tenant}
 	}); err != nil {
 		return err
@@ -165,6 +157,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				Name: tenant,
 			},
 		})
+
 		return requests
 	}
 
@@ -174,8 +167,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			logger := log.FromContext(ctx)
 
 			tenants := &v1alpha1.TenantList{}
-			err := r.List(ctx, tenants)
-			if err != nil {
+			if err := r.List(ctx, tenants); err != nil {
 				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
 				return
 			}
@@ -190,8 +182,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			logger := log.FromContext(ctx)
 
 			tenants := &v1alpha1.TenantList{}
-			err := r.List(ctx, tenants)
-			if err != nil {
+			if err := r.List(ctx, tenants); err != nil {
 				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
 				return
 			}
@@ -206,8 +197,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			logger := log.FromContext(ctx)
 
 			tenants := &v1alpha1.TenantList{}
-			err := r.List(ctx, tenants)
-			if err != nil {
+			if err := r.List(ctx, tenants); err != nil {
 				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
 				return
 			}
@@ -225,19 +215,16 @@ func (r *RouteReconciler) getSubscriptionsForTenant(ctx context.Context, tenant 
 	logger := log.FromContext(ctx)
 
 	namespaces, err := r.getNamespacesForSelectorSlice(ctx, tenant.Spec.SubscriptionNamespaceSelectors)
-
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var selectedSubscriptions []v1alpha1.Subscription
-
 	for _, ns := range namespaces {
 		var subscriptionsForNS v1alpha1.SubscriptionList
 		listOpts := &client.ListOptions{
 			Namespace: ns.Name,
 		}
-
 		if err := r.List(ctx, &subscriptionsForNS, listOpts); client.IgnoreNotFound(err) != nil {
 			return nil, nil, err
 		}
@@ -262,22 +249,18 @@ func (r *RouteReconciler) getSubscriptionsForTenant(ctx context.Context, tenant 
 	return
 }
 func (r *RouteReconciler) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
-
 	var namespaces []apiv1.Namespace
-
 	for _, ls := range labelSelectors {
-		var namespacesForSelector apiv1.NamespaceList
 
 		selector, err := metav1.LabelSelectorAsSelector(&ls)
-
 		if err != nil {
 			return nil, err
 		}
 
+		var namespacesForSelector apiv1.NamespaceList
 		listOpts := &client.ListOptions{
 			LabelSelector: selector,
 		}
-
 		if err := r.List(ctx, &namespacesForSelector, listOpts); client.IgnoreNotFound(err) != nil {
 			return nil, err
 		}
@@ -294,10 +277,11 @@ func (r *RouteReconciler) getNamespacesForSelectorSlice(ctx context.Context, lab
 // this is by design so that we don't fail the whole reconciliation when a single subscription update fails
 func (r *RouteReconciler) disownSubscriptions(ctx context.Context, subscriptionsToDisown []v1alpha1.Subscription) {
 	logger := log.FromContext(ctx)
+
 	for _, subscription := range subscriptionsToDisown {
 		subscription.Status.Tenant = ""
-		err := r.Client.Status().Update(ctx, &subscription)
-		if err != nil {
+
+		if err := r.Client.Status().Update(ctx, &subscription); err != nil {
 			logger.Error(err, fmt.Sprintf("failed to detach subscription %s/%s from collector", subscription.Namespace, subscription.Name))
 		} else {
 			logger.Info("disowning subscription", "subscription", fmt.Sprintf("%s/%s", subscription.Namespace, subscription.Name))
@@ -309,48 +293,44 @@ func (r *RouteReconciler) disownSubscriptions(ctx context.Context, subscriptions
 // this is by design in order to avoid blocking the whole reconciliation in case we cannot update a single subscription
 func (r *RouteReconciler) updateSubscriptionsForTenant(ctx context.Context, tenantName string, subscriptions []v1alpha1.Subscription) (updatedSubscriptions []v1alpha1.Subscription) {
 	logger := log.FromContext(ctx, "tenant", tenantName)
+
 	for _, subscription := range subscriptions {
 		subscription.Status.Tenant = tenantName
-
 		logger.Info("updating subscription status for tenant ownership")
-		err := r.Status().Update(ctx, &subscription)
-		if err != nil {
+
+		if err := r.Status().Update(ctx, &subscription); err != nil {
 			logger.Error(err, fmt.Sprintf("failed to set subscription (%s/%s) -> tenant (%s) reference", subscription.Namespace, subscription.Name, tenantName))
 		} else {
 			updatedSubscriptions = append(updatedSubscriptions, subscription)
 		}
 	}
+
 	return
 }
 
 func (r *RouteReconciler) getSubscriptionsReferencingTenantButNotSelected(ctx context.Context, tenant *v1alpha1.Tenant, selectedSubscriptions []v1alpha1.Subscription) []v1alpha1.Subscription {
 	logger := log.FromContext(ctx)
+
 	var subscriptionsReferencing v1alpha1.SubscriptionList
 	listOpts := &client.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector(tenantReferenceField, tenant.Name),
 	}
-
 	if err := r.Client.List(ctx, &subscriptionsReferencing, listOpts); client.IgnoreNotFound(err) != nil {
 		logger.Error(err, "failed to list subscriptions that need to be detached from tenant")
 		return nil
 	}
 
 	var subscriptionsToDisown []v1alpha1.Subscription
-
 	for _, subscriptionReferencing := range subscriptionsReferencing.Items {
-
 		idx := slices.IndexFunc(selectedSubscriptions, func(selected v1alpha1.Subscription) bool {
 			return reflect.DeepEqual(subscriptionReferencing.NamespacedName(), selected.NamespacedName())
 		})
-
 		if idx == -1 {
 			subscriptionsToDisown = append(subscriptionsToDisown, subscriptionReferencing)
 		}
-
 	}
 
 	return subscriptionsToDisown
-
 }
 
 func (r *RouteReconciler) getLogsourceNamespaceNamesForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]string, error) {
@@ -360,13 +340,11 @@ func (r *RouteReconciler) getLogsourceNamespaceNamesForTenant(ctx context.Contex
 	}
 
 	namespaceNames := make([]string, len(namespaces))
-
 	for i, namespace := range namespaces {
 		namespaceNames[i] = namespace.Name
 	}
 
 	return namespaceNames, nil
-
 }
 
 func normalizeNamespaceSlice(inputList []apiv1.Namespace) []apiv1.Namespace {
@@ -382,8 +360,8 @@ func normalizeNamespaceSlice(inputList []apiv1.Namespace) []apiv1.Namespace {
 	cmp := func(a, b apiv1.Namespace) int {
 		return strings.Compare(a.Name, b.Name)
 	}
-
 	slices.SortFunc(uniqueList, cmp)
+
 	return uniqueList
 }
 
