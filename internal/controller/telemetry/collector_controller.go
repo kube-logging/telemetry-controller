@@ -40,10 +40,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-const (
-	tenantReferenceField       = ".status.tenant"
-	requeueDelayOnFailedTenant = 20 * time.Second
-)
+const requeueDelayOnFailedTenant = 20 * time.Second
 
 // CollectorReconciler reconciles a Collector object
 type CollectorReconciler struct {

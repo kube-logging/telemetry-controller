@@ -36,6 +36,13 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
+const (
+	subscriptionTenantReferenceField = ".status.tenant"
+	bridgeSourceTenantReferenceField = ".spec.sourceTenant"
+	bridgeTargetTenantReferenceField = ".spec.targetTenant"
+	tenantNameField                  = ".metadata.name"
+)
+
 // RouteReconciler is responsible for reconciling Tenant resources
 // It also watches for changes to Subscriptions, Outputs, and Namespaces
 // to trigger the appropriate reconciliation logic when related resources change.
@@ -103,11 +110,46 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 
 		}
+		if len(validOutputs) == 0 {
+			subscription.Status.State = v1alpha1.StateFailed
+			logger.Error(errors.WithStack(errors.New("no valid outputs for subscription")), "no valid outputs for subscription", "subscription", subscription.NamespacedName().String())
+		} else {
+			subscription.Status.State = v1alpha1.StateReady
+		}
+
 		subscription.Status.Outputs = validOutputs
 
 		if !reflect.DeepEqual(originalSubscriptionStatus, subscription.Status) {
 			if updateErr := r.Status().Update(ctx, &subscription); updateErr != nil {
 				logger.Error(errors.WithStack(updateErr), "failed update subscription status", "subscription", subscription.NamespacedName().String())
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
+	bridgesForTenant, err := r.getBridgesForTenant(ctx, tenant.Name)
+	if err != nil {
+		tenant.Status.State = v1alpha1.StateFailed
+		logger.Error(errors.WithStack(err), "failed to get bridges for tenant", "tenant", tenant.Name)
+		if updateErr := r.Status().Update(ctx, tenant); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed update tenant status", "tenant", tenant.Name)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, err
+	}
+	tenant.Status.ConnectedBridges = getBridgeNamesFromBridges(bridgesForTenant)
+
+	for _, bridge := range bridgesForTenant {
+		originalBridgeStatus := bridge.Status.DeepCopy()
+		if err := r.checkBridgeConnections(ctx, &bridge); err != nil {
+			bridge.Status.State = v1alpha1.StateFailed
+			logger.Error(errors.WithStack(err), "failed bridge connection verification", "bridge", bridge.Name)
+		}
+
+		bridge.Status.State = v1alpha1.StateReady
+		if !reflect.DeepEqual(originalBridgeStatus, bridge.Status) {
+			if updateErr := r.Status().Update(ctx, &bridge); updateErr != nil {
+				logger.Error(errors.WithStack(updateErr), "failed update bridge status", "bridge", bridge.Name)
 				return ctrl.Result{}, err
 			}
 		}
@@ -141,7 +183,7 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Subscription{}, tenantReferenceField, func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Subscription{}, subscriptionTenantReferenceField, func(rawObj client.Object) []string {
 		subscription := rawObj.(*v1alpha1.Subscription)
 		if subscription.Status.Tenant == "" {
 			return nil
@@ -151,6 +193,33 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}); err != nil {
 		return err
 	}
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Bridge{}, bridgeSourceTenantReferenceField, func(rawObj client.Object) []string {
+		bridge := rawObj.(*v1alpha1.Bridge)
+		if bridge.Spec.SourceTenant == "" {
+			return nil
+		}
+
+		return []string{bridge.Spec.SourceTenant}
+	}); err != nil {
+		return err
+	}
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Bridge{}, bridgeTargetTenantReferenceField, func(rawObj client.Object) []string {
+		bridge := rawObj.(*v1alpha1.Bridge)
+		if bridge.Spec.TargetTenant == "" {
+			return nil
+		}
+
+		return []string{bridge.Spec.TargetTenant}
+	}); err != nil {
+		return err
+	}
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Tenant{}, tenantNameField, func(rawObj client.Object) []string {
+		tenant := rawObj.(*v1alpha1.Tenant)
+		return []string{tenant.Name}
+	}); err != nil {
+		return err
+	}
+
 	addTenantRequest := func(requests []reconcile.Request, tenant string) []reconcile.Request {
 		requests = append(requests, reconcile.Request{
 			NamespacedName: types.NamespacedName{
@@ -179,6 +248,21 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return
 		})).
 		Watches(&v1alpha1.Output{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+			logger := log.FromContext(ctx)
+
+			tenants := &v1alpha1.TenantList{}
+			if err := r.List(ctx, tenants); err != nil {
+				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
+				return
+			}
+
+			for _, tenant := range tenants.Items {
+				requests = addTenantRequest(requests, tenant.Name)
+			}
+
+			return
+		})).
+		Watches(&v1alpha1.Bridge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			tenants := &v1alpha1.TenantList{}
@@ -248,6 +332,7 @@ func (r *RouteReconciler) getSubscriptionsForTenant(ctx context.Context, tenant 
 
 	return
 }
+
 func (r *RouteReconciler) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
 	var namespaces []apiv1.Namespace
 	for _, ls := range labelSelectors {
@@ -313,7 +398,7 @@ func (r *RouteReconciler) getSubscriptionsReferencingTenantButNotSelected(ctx co
 
 	var subscriptionsReferencing v1alpha1.SubscriptionList
 	listOpts := &client.ListOptions{
-		FieldSelector: fields.OneTermEqualSelector(tenantReferenceField, tenant.Name),
+		FieldSelector: fields.OneTermEqualSelector(subscriptionTenantReferenceField, tenant.Name),
 	}
 	if err := r.Client.List(ctx, &subscriptionsReferencing, listOpts); client.IgnoreNotFound(err) != nil {
 		logger.Error(err, "failed to list subscriptions that need to be detached from tenant")
@@ -347,6 +432,86 @@ func (r *RouteReconciler) getLogsourceNamespaceNamesForTenant(ctx context.Contex
 	return namespaceNames, nil
 }
 
+func (r *RouteReconciler) getBridges(ctx context.Context, listOpts *client.ListOptions) ([]v1alpha1.Bridge, error) {
+	var bridges v1alpha1.BridgeList
+	if err := r.Client.List(ctx, &bridges, listOpts); client.IgnoreNotFound(err) != nil {
+		return nil, err
+	}
+
+	return bridges.Items, nil
+}
+
+func (r *RouteReconciler) getBridgesForTenant(ctx context.Context, tenantName string) (bridgesOwned []v1alpha1.Bridge, err error) {
+	logger := log.FromContext(ctx)
+
+	listOpts := &client.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector(bridgeSourceTenantReferenceField, tenantName),
+	}
+	sourceBridge, err := r.getBridges(ctx, listOpts)
+	if err != nil {
+		logger.Error(err, "failed to list bridges for tenant")
+		return nil, err
+	}
+
+	listOpts = &client.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector(bridgeTargetTenantReferenceField, tenantName),
+	}
+	targetBridge, err := r.getBridges(ctx, listOpts)
+	if err != nil {
+		logger.Error(err, "failed to list bridges for tenant")
+		return nil, err
+	}
+
+	bridges := append(sourceBridge, targetBridge...)
+	for _, bridge := range bridges {
+		if bridge.Spec.SourceTenant == tenantName || bridge.Spec.TargetTenant == tenantName {
+			bridgesOwned = append(bridgesOwned, bridge)
+		}
+	}
+
+	return
+}
+
+func (r *RouteReconciler) getTenants(ctx context.Context, listOpts *client.ListOptions) ([]v1alpha1.Tenant, error) {
+	var tenants v1alpha1.TenantList
+	if err := r.Client.List(ctx, &tenants, listOpts); client.IgnoreNotFound(err) != nil {
+		return nil, err
+	}
+
+	return tenants.Items, nil
+}
+
+func (r *RouteReconciler) checkBridgeConnections(ctx context.Context, bridge *v1alpha1.Bridge) error {
+	listOpts := &client.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector(tenantNameField, bridge.Spec.SourceTenant),
+	}
+	sourceTenant, err := r.getTenants(ctx, listOpts)
+	if err != nil {
+		return errors.Errorf("failed to list tenants for bridge (%s)", bridge.Name)
+	}
+
+	listOpts = &client.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector(tenantNameField, bridge.Spec.TargetTenant),
+	}
+	targetTenant, err := r.getTenants(ctx, listOpts)
+	if err != nil {
+		return errors.Errorf("failed to list tenants for bridge (%s)", bridge.Name)
+	}
+
+	// Granular check to ensure that the tenants are correctly assigned to the bridge
+	tenants := append(sourceTenant, targetTenant...)
+	if len(tenants) != 2 {
+		return errors.Errorf("bridge (%s) has invalid tenants", bridge.Name)
+	}
+
+	if !(tenants[0].Name == bridge.Spec.SourceTenant && tenants[1].Name == bridge.Spec.TargetTenant) ||
+		(tenants[0].Name == bridge.Spec.TargetTenant && tenants[1].Name == bridge.Spec.SourceTenant) {
+		return errors.Errorf("bridge (%s) has invalid tenants", bridge.Name)
+	}
+
+	return nil
+}
+
 func normalizeNamespaceSlice(inputList []apiv1.Namespace) []apiv1.Namespace {
 	allKeys := make(map[string]bool)
 	uniqueList := []apiv1.Namespace{}
@@ -372,4 +537,13 @@ func getSubscriptionNamesFromSubscription(subscriptions []v1alpha1.Subscription)
 	}
 
 	return subscriptionNames
+}
+
+func getBridgeNamesFromBridges(bridges []v1alpha1.Bridge) []string {
+	bridgeNames := make([]string, len(bridges))
+	for i, bridge := range bridges {
+		bridgeNames[i] = bridge.Name
+	}
+
+	return bridgeNames
 }
