@@ -6,6 +6,7 @@ resources:
 - bases/telemetry.kube-logging.dev_subscriptions.yaml
 - bases/telemetry.kube-logging.dev_tenants.yaml
 - bases/telemetry.kube-logging.dev_outputs.yaml
+- bases/telemetry.kube-logging.dev_bridges.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:
