@@ -1,5 +1,3 @@
-
-# Image URL to use all building/pushing image targets
 BIN := ${PWD}/bin
 
 export PATH := $(BIN):$(PATH)
@@ -14,7 +12,8 @@ KIND_CLUSTER ?= kind
 CI_MODE_ENABLED := ""
 NO_KIND_CLEANUP := ""
 
-IMG ?= ghcr.io/kube-logging/telemetry-controller:0.0.11
+# Image URL to use all building/pushing image targets
+IMG ?= ghcr.io/kube-logging/telemetry-controller:dev
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.0
 
@@ -81,7 +80,7 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
+test: manifests generate fmt vet envtest ## Run verifications and tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v ./... -coverprofile cover.out
 
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
@@ -93,11 +92,11 @@ golangci-lint:
 	}
 
 .PHONY: lint
-lint: golangci-lint ## Run golangci-lint linter & yamllint
+lint: golangci-lint ## Run golangci-lint
 	$(GOLANGCI_LINT) run
 
 .PHONY: lint-fix
-lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
+lint-fix: golangci-lint ## Run golangci-lint and perform fixes
 	$(GOLANGCI_LINT) run --fix
 
 ##@ Build
@@ -107,7 +106,7 @@ build: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager cmd/main.go
 
 .PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host.
+run: manifests generate fmt vet ## Run the controller from your host.
 	go run ./cmd/main.go
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.

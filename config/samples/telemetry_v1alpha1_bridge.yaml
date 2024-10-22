@@ -1,0 +1,8 @@
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Bridge
+metadata:
+  name: shared-tenantA
+spec:
+  sourceTenant: shared
+  destinationTenant: tenantA
+  ottl: 'route() where attributes["parsed"]["method"] == "GET"'
