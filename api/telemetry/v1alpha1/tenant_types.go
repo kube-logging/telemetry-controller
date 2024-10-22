@@ -50,18 +50,12 @@ type TenantSpec struct {
 	Transform                      Transform              `json:"transform,omitempty"`
 }
 
-type TenantState string
-
-const (
-	StateReady  TenantState = "ready"
-	StateFailed TenantState = "failed"
-)
-
 // TenantStatus defines the observed state of Tenant
 type TenantStatus struct {
 	Subscriptions       []NamespacedName `json:"subscriptions,omitempty"`
 	LogSourceNamespaces []string         `json:"logSourceNamespaces,omitempty"`
-	State               TenantState      `json:"state,omitempty"`
+	ConnectedBridges    []string         `json:"connectedBridges,omitempty"`
+	State               State            `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -69,6 +63,7 @@ type TenantStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Subscriptions",type=string,JSONPath=`.status.subscriptions`
 //+kubebuilder:printcolumn:name="Logsource namespaces",type=string,JSONPath=`.status.logSourceNamespaces`
+//+kubebuilder:printcolumn:name="Connected bridges",type=string,JSONPath=`.status.connectedBridges`
 //+kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 
 // Tenant is the Schema for the tenants API

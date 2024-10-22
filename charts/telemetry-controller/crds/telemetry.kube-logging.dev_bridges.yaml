@@ -17,6 +17,12 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.sourceTenant
+      name: Source Tenant
+      type: string
+    - jsonPath: .spec.targetTenant
+      name: Target Tenant
+      type: string
     - jsonPath: .status.state
       name: State
       type: string

@@ -23,6 +23,9 @@ spec:
     - jsonPath: .status.logSourceNamespaces
       name: Logsource namespaces
       type: string
+    - jsonPath: .status.connectedBridges
+      name: Connected bridges
+      type: string
     - jsonPath: .status.state
       name: State
       type: string
@@ -252,6 +255,10 @@ spec:
           status:
             description: TenantStatus defines the observed state of Tenant
             properties:
+              connectedBridges:
+                items:
+                  type: string
+                type: array
               logSourceNamespaces:
                 items:
                   type: string
