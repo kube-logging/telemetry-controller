@@ -14,6 +14,13 @@
 
 package v1alpha1
 
+type State string
+
+const (
+	StateReady  State = "ready"
+	StateFailed State = "failed"
+)
+
 type NamespacedName struct {
 	Namespace string `json:"namespace"`
 	Name      string `json:"name"`

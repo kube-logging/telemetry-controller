@@ -29,12 +29,14 @@ type SubscriptionSpec struct {
 type SubscriptionStatus struct {
 	Tenant  string           `json:"tenant,omitempty"`
 	Outputs []NamespacedName `json:"outputs,omitempty"`
+	State   State            `json:"state,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.status.tenant`
 // +kubebuilder:printcolumn:name="Outputs",type=string,JSONPath=`.status.outputs`
+// +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 // +kubebuilder:resource:categories=telemetry-all
 
 // Subscription is the Schema for the subscriptions API

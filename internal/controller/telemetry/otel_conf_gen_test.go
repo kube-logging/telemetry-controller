@@ -21,15 +21,14 @@ import (
 	"testing"
 	"time"
 
-	"sigs.k8s.io/yaml"
-
 	"github.com/google/go-cmp/cmp"
+	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	"github.com/siliconbrain/go-mapseqs/mapseqs"
 	"github.com/siliconbrain/go-seqs/seqs"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
@@ -199,7 +198,7 @@ func TestOtelColConfComplex(t *testing.T) {
 						},
 						Authentication: &v1alpha1.OutputAuth{
 							BearerAuth: &v1alpha1.BearerAuthConfig{
-								SecretRef: &v1.SecretReference{
+								SecretRef: &corev1.SecretReference{
 									Name:      "bearer-test-secret",
 									Namespace: "collector",
 								},
@@ -457,6 +456,218 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 			}
 			got := cfgInput.generateRoutingConnectorForTenantsSubscriptions(tt.args.tenantName, tt.args.subscriptionNames)
 			assert.Equal(t, got, tt.want)
+		})
+	}
+}
+
+func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
+	tests := []struct {
+		name              string
+		cfgInput          OtelColConfigInput
+		expectedPipelines map[string]*otelv1beta1.Pipeline
+	}{
+		{
+			name: "Single tenant with no subscriptions",
+			cfgInput: OtelColConfigInput{
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					"tenant1": {
+						{
+							Namespace: "ns1",
+							Name:      "sub1",
+						},
+					},
+				},
+				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+					{
+						Namespace: "ns1",
+						Name:      "sub1",
+					}: {},
+				},
+				Bridges:               nil,
+				OutputsWithSecretData: nil,
+				Debug:                 false,
+			},
+			expectedPipelines: map[string]*otelv1beta1.Pipeline{
+				"logs/tenant_tenant1": generateRootPipeline("tenant1"),
+				"logs/tenant_tenant1_subscription_ns1_sub1": generatePipeline(
+					[]string{"routing/tenant_tenant1_subscriptions"},
+					[]string{"attributes/subscription_sub1"},
+					[]string{"routing/subscription_ns1_sub1_outputs"},
+				),
+				"metrics/output": generatePipeline(
+					[]string{"count/output_metrics"},
+					[]string{"deltatocumulative", "attributes/metricattributes"},
+					[]string{"prometheus/message_metrics_exporter"},
+				),
+				"metrics/tenant": generatePipeline(
+					[]string{"count/tenant_metrics"},
+					[]string{"deltatocumulative", "attributes/metricattributes"},
+					[]string{"prometheus/message_metrics_exporter"},
+				),
+			},
+		},
+		{
+			name: "Two tenants each with a subscription with a bridge",
+			cfgInput: OtelColConfigInput{
+				Tenants: []v1alpha1.Tenant{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "tenant1",
+						},
+						Spec: v1alpha1.TenantSpec{
+							Transform: v1alpha1.Transform{
+								Name: "transform1",
+								LogStatements: []v1alpha1.Statement{
+									{
+										Statements: []string{`set(resource.attributes["parsed"], ExtractPatterns(body, "(?P<method>(GET|PUT))"))`},
+									},
+								},
+							},
+						},
+						Status: v1alpha1.TenantStatus{
+							LogSourceNamespaces: []string{"ns1"},
+							Subscriptions: []v1alpha1.NamespacedName{
+								{
+									Namespace: "ns1",
+									Name:      "sub1",
+								},
+							},
+							State: v1alpha1.StateReady,
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "tenant2",
+						},
+						Spec: v1alpha1.TenantSpec{},
+						Status: v1alpha1.TenantStatus{
+							LogSourceNamespaces: []string{"ns2"},
+							Subscriptions: []v1alpha1.NamespacedName{
+								{
+									Namespace: "ns2",
+									Name:      "sub2",
+								},
+							},
+							State: v1alpha1.StateReady,
+						},
+					},
+				},
+				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
+					{
+						Namespace: "ns1",
+						Name:      "sub1",
+					}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sub1",
+							Namespace: "ns1",
+						},
+						Spec: v1alpha1.SubscriptionSpec{
+							OTTL:    "route()",
+							Outputs: []v1alpha1.NamespacedName{},
+						},
+					},
+					{
+						Namespace: "ns2",
+						Name:      "sub2",
+					}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sub2",
+							Namespace: "ns2",
+						},
+						Spec: v1alpha1.SubscriptionSpec{
+							OTTL:    "route()",
+							Outputs: []v1alpha1.NamespacedName{},
+						},
+					},
+				},
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					"tenant1": {
+						{
+							Namespace: "ns1",
+							Name:      "sub1",
+						},
+					},
+					"tenant2": {
+						{
+							Namespace: "ns2",
+							Name:      "sub2",
+						},
+					},
+				},
+				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+					{
+						Namespace: "ns1",
+						Name:      "sub1",
+					}: {
+						{
+							Namespace: "ns1",
+							Name:      "output1",
+						},
+					},
+					{
+						Namespace: "ns2",
+						Name:      "sub2",
+					}: {
+						{
+							Namespace: "ns2",
+							Name:      "output2",
+						},
+					},
+				},
+				Bridges: []v1alpha1.Bridge{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bridge1",
+						},
+						Spec: v1alpha1.BridgeSpec{
+							SourceTenant: "tenant1",
+							TargetTenant: "tenant2",
+							OTTL:         "route()",
+						},
+					},
+				},
+				OutputsWithSecretData: nil,
+				Debug:                 false,
+			},
+			expectedPipelines: map[string]*otelv1beta1.Pipeline{
+				"logs/tenant_tenant1": generatePipeline(
+					[]string{"filelog/tenant1"},
+					[]string{"k8sattributes", "attributes/tenant_tenant1", "transform/transform1"},
+					[]string{"routing/tenant_tenant1_subscriptions", "count/tenant_metrics", "routing/bridge_bridge1"},
+				),
+				"logs/tenant_tenant1_subscription_ns1_sub1": generatePipeline(
+					[]string{"routing/tenant_tenant1_subscriptions"},
+					[]string{"attributes/subscription_sub1"},
+					[]string{"routing/subscription_ns1_sub1_outputs"},
+				),
+				"logs/tenant_tenant2": generatePipeline(
+					[]string{"filelog/tenant2", "routing/bridge_bridge1"},
+					[]string{"k8sattributes", "attributes/tenant_tenant2"},
+					[]string{"routing/tenant_tenant2_subscriptions", "count/tenant_metrics"},
+				),
+				"logs/tenant_tenant2_subscription_ns2_sub2": generatePipeline(
+					[]string{"routing/tenant_tenant2_subscriptions"},
+					[]string{"attributes/subscription_sub2"},
+					[]string{"routing/subscription_ns2_sub2_outputs"},
+				),
+				"metrics/output": generatePipeline(
+					[]string{"count/output_metrics"},
+					[]string{"deltatocumulative", "attributes/metricattributes"},
+					[]string{"prometheus/message_metrics_exporter"},
+				),
+				"metrics/tenant": generatePipeline(
+					[]string{"count/tenant_metrics"},
+					[]string{"deltatocumulative", "attributes/metricattributes"},
+					[]string{"prometheus/message_metrics_exporter"},
+				),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		ttp := tt
+		t.Run(ttp.name, func(t *testing.T) {
+			assert.Equal(t, ttp.cfgInput.generateNamedPipelines(), ttp.expectedPipelines)
 		})
 	}
 }

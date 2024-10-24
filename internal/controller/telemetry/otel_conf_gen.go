@@ -44,6 +44,7 @@ type OtelColConfigInput struct {
 	// These must only include resources that are selected by the collector, tenant labelselectors, and listed outputs in the subscriptions
 	Tenants               []v1alpha1.Tenant
 	Subscriptions         map[v1alpha1.NamespacedName]v1alpha1.Subscription
+	Bridges               []v1alpha1.Bridge
 	OutputsWithSecretData []OutputWithSecretData
 	MemoryLimiter         v1alpha1.MemoryLimiter
 
@@ -203,12 +204,24 @@ type ResourceProcessorAction struct {
 	FromContext   string `json:"from_context,omitempty"`
 }
 
+type ErrorMode string
+
+const (
+	ErrorModeIgnore    ErrorMode = "ignore"
+	ErrorModeSilent    ErrorMode = "silent"
+	ErrorModePropagate ErrorMode = "propagate"
+)
+
 type TransformProcessor struct {
-	LogStatements []Statement `json:"log_statements,omitempty"`
+	ErrorMode        ErrorMode   `json:"error_mode,omitempty"`
+	TraceStatements  []Statement `json:"trace_statements,omitempty"`
+	MetricStatements []Statement `json:"metric_statements,omitempty"`
+	LogStatements    []Statement `json:"log_statements,omitempty"`
 }
 
 type Statement struct {
 	Context    string   `json:"context"`
+	Conditions []string `json:"conditions"`
 	Statements []string `json:"statements"`
 }
 
@@ -433,6 +446,20 @@ func (cfgInput *OtelColConfigInput) generateRoutingConnectorForSubscriptionsOutp
 	return rc
 }
 
+func (cfgInput *OtelColConfigInput) generateRoutingConnectorForBridge(bridge v1alpha1.Bridge) RoutingConnector {
+	rcName := fmt.Sprintf("routing/bridge_%s", bridge.Name)
+	rc := newRoutingConnector(rcName)
+
+	tableItem := RoutingConnectorTableItem{
+		Statement: bridge.Spec.OTTL,
+		Pipelines: []string{fmt.Sprintf("logs/tenant_%s", bridge.Spec.TargetTenant)},
+	}
+
+	rc.AddRoutingConnectorTableElem(tableItem)
+
+	return rc
+}
+
 func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	connectors := make(map[string]any)
 
@@ -446,6 +473,11 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 
 	for _, subscription := range cfgInput.Subscriptions {
 		rc := cfgInput.generateRoutingConnectorForSubscriptionsOutputs(subscription.NamespacedName(), cfgInput.SubscriptionOutputMap[subscription.NamespacedName()])
+		connectors[rc.Name] = rc
+	}
+
+	for _, bridge := range cfgInput.Bridges {
+		rc := cfgInput.generateRoutingConnectorForBridge(bridge)
 		connectors[rc.Name] = rc
 	}
 
@@ -557,6 +589,11 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 
 	for _, tenant := range cfgInput.Tenants {
 		processors[fmt.Sprintf("attributes/tenant_%s", tenant.Name)] = generateTenantAttributeProcessor(tenant)
+
+		// Add a transform processor if the tenant has one
+		if tenant.Spec.Transform.Name != "" {
+			processors[fmt.Sprintf("transform/%s", tenant.Spec.Transform.Name)] = generateTransformProcessorForTenant(tenant)
+		}
 	}
 
 	for _, subscription := range cfgInput.Subscriptions {
@@ -645,6 +682,27 @@ func generateSubscriptionAttributeProcessor(subscription v1alpha1.Subscription) 
 	return processor
 }
 
+func generateTransformProcessorForTenant(tenant v1alpha1.Tenant) TransformProcessor {
+	return TransformProcessor{
+		ErrorMode:        ErrorMode(tenant.Spec.Transform.ErrorMode),
+		TraceStatements:  convertAPIStatements(tenant.Spec.Transform.TraceStatements),
+		MetricStatements: convertAPIStatements(tenant.Spec.Transform.MetricStatements),
+		LogStatements:    convertAPIStatements(tenant.Spec.Transform.LogStatements),
+	}
+}
+
+func convertAPIStatements(APIStatements []v1alpha1.Statement) []Statement {
+	statements := make([]Statement, len(APIStatements))
+	for i, statement := range APIStatements {
+		statements[i] = Statement{
+			Context:    statement.Context,
+			Conditions: statement.Conditions,
+			Statements: statement.Statements,
+		}
+	}
+	return statements
+}
+
 func generateRootPipeline(tenantName string) *otelv1beta1.Pipeline {
 	tenantCountConnectorName := "count/tenant_metrics"
 	receiverName := fmt.Sprintf("filelog/%s", tenantName)
@@ -671,6 +729,9 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 		tenantRootPipeline := fmt.Sprintf("logs/tenant_%s", tenant)
 		tenantRoutingName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenant)
 		namedPipelines[tenantRootPipeline] = generateRootPipeline(tenant)
+
+		cfgInput.addBridgeConnectorToTenantPipeline(tenant, namedPipelines[tenantRootPipeline], cfgInput.Bridges)
+		cfgInput.addTransformProcessorToTenantPipeline(tenant, namedPipelines[tenantRootPipeline])
 
 		// Generate pipelines for the subscriptions for the tenant
 		for _, subscription := range cfgInput.TenantSubscriptionMap[tenant] {
@@ -733,6 +794,40 @@ func generateMetricsPipelines() map[string]*otelv1beta1.Pipeline {
 	}
 
 	return metricsPipelines
+}
+
+func (cfgInput *OtelColConfigInput) addTransformProcessorToTenantPipeline(tenantName string, pipeline *otelv1beta1.Pipeline) {
+	for _, tenant := range cfgInput.Tenants {
+		if tenant.Name == tenantName && tenant.Spec.Transform.Name != "" {
+			pipeline.Processors = append(pipeline.Processors, fmt.Sprintf("transform/%s", tenant.Spec.Transform.Name))
+		}
+	}
+}
+
+func checkBridgeConnectorForTenant(tenantName string, bridge v1alpha1.Bridge) (needsReceiver bool, needsExporter bool, bridgeName string) {
+	if bridge.Spec.SourceTenant == tenantName {
+		needsExporter = true
+	}
+	if bridge.Spec.TargetTenant == tenantName {
+		needsReceiver = true
+	}
+	bridgeName = bridge.Name
+
+	return
+}
+
+func (cfgInput *OtelColConfigInput) addBridgeConnectorToTenantPipeline(tenantName string, pipeline *otelv1beta1.Pipeline, bridges []v1alpha1.Bridge) {
+	for _, bridge := range bridges {
+		needsReceiver, needsExporter, bridgeName := checkBridgeConnectorForTenant(tenantName, bridge)
+
+		if needsReceiver {
+			pipeline.Receivers = append(pipeline.Receivers, fmt.Sprintf("routing/bridge_%s", bridgeName))
+		}
+
+		if needsExporter {
+			pipeline.Exporters = append(pipeline.Exporters, fmt.Sprintf("routing/bridge_%s", bridgeName))
+		}
+	}
 }
 
 func (cfgInput *OtelColConfigInput) generateDefaultKubernetesProcessor() map[string]any {

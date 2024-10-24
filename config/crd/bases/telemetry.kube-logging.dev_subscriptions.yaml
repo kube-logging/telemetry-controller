@@ -23,6 +23,9 @@ spec:
     - jsonPath: .status.outputs
       name: Outputs
       type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -80,6 +83,8 @@ spec:
                   - namespace
                   type: object
                 type: array
+              state:
+                type: string
               tenant:
                 type: string
             type: object

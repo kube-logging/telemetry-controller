@@ -1,0 +1,27 @@
+# permissions for end users to view tenants.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: bridge-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: telemetry-controller
+    app.kubernetes.io/part-of: telemetry-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: bridge-viewer-role
+rules:
+  - apiGroups:
+      - telemetry.kube-logging.dev
+    resources:
+      - bridges
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - telemetry.kube-logging.dev
+    resources:
+      - bridges/status
+    verbs:
+      - get

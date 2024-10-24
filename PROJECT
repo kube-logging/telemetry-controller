@@ -11,7 +11,6 @@ repo: github.com/kube-logging/telemetry-controller
 resources:
 - api:
     crdVersion: v1
-    namespaced: true
   controller: true
   domain: kube-logging.dev
   group: telemetry
@@ -28,7 +27,6 @@ resources:
   version: v1alpha1
 - api:
     crdVersion: v1
-    namespaced: true
   domain: kube-logging.dev
   group: telemetry
   kind: Tenant
@@ -40,6 +38,13 @@ resources:
   domain: kube-logging.dev
   group: telemetry
   kind: Output
+  path: github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+  domain: kube-logging.dev
+  group: telemetry
+  kind: Bridge
   path: github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1
   version: v1alpha1
 version: "3"
