@@ -13,7 +13,7 @@ CI_MODE_ENABLED := ""
 NO_KIND_CLEANUP := ""
 
 # Image URL to use all building/pushing image targets
-IMG ?= ghcr.io/kube-logging/telemetry-controller:dev
+IMG ?= controller:local
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.0
 
@@ -79,6 +79,10 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+.PHONY: tidy
+tidy: ## Tidy Go modules
+	find . -iname "go.mod" -not -path "./.devcontainer/*" | xargs -L1 sh -c 'cd $$(dirname $$0); go mod tidy'
+
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run verifications and tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v ./... -coverprofile cover.out
@@ -98,6 +102,34 @@ lint: golangci-lint ## Run golangci-lint
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint and perform fixes
 	$(GOLANGCI_LINT) run --fix
+
+.PHONY: run-delve
+run-delve: generate fmt vet manifests
+	go build -o bin/manager cmd/main.go
+	dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec ./bin/manager
+
+.PHONY: e2e-test
+e2e-test: ## Run e2e tests
+	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) NO_KIND_CLEANUP=$(NO_KIND_CLEANUP) && $(TIMEOUT_CMD) --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
+
+.PHONY: e2e-test-ci
+e2e-test-ci: CI_MODE_ENABLED=1
+e2e-test-ci: NO_KIND_CLEANUP=1
+e2e-test-ci: IMG="controller:latest" ## Run e2e tests, telemetry collector runs inside k8s
+e2e-test-ci: docker-build e2e-test
+
+.PHONY: check-diff
+check-diff: generate
+	git diff --exit-code
+
+.PHONY: license-check
+license-check: ${LICENSEI} .licensei.cache ## Run license check
+	${LICENSEI} check
+	${LICENSEI} header
+
+.PHONY: license-cache
+license-cache: ${LICENSEI} ## Generate license cache
+	${LICENSEI} cache
 
 ##@ Build
 
@@ -206,38 +238,6 @@ crddir/github.com/open-telemetry/opentelemetry-operator:
 envtest: $(ENVTEST) crddir/github.com/open-telemetry/opentelemetry-operator ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-
-.PHONY: run-delve
-run-delve: generate fmt vet manifests
-	go build -o bin/manager cmd/main.go
-	dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec ./bin/manager
-
-.PHONY: tidy
-tidy: ## Tidy Go modules
-	find . -iname "go.mod" -not -path "./.devcontainer/*" | xargs -L1 sh -c 'cd $$(dirname $$0); go mod tidy'
-
-.PHONY: e2e-test
-e2e-test: ## Run e2e tests
-	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) NO_KIND_CLEANUP=$(NO_KIND_CLEANUP) && $(TIMEOUT_CMD) --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
-
-.PHONY: e2e-test-ci
-e2e-test-ci: CI_MODE_ENABLED=1
-e2e-test-ci: NO_KIND_CLEANUP=1
-e2e-test-ci: IMG="controller:latest" ## Run e2e tests, telemetry collector runs inside k8s
-e2e-test-ci: docker-build e2e-test
-
-.PHONY: check-diff
-check-diff: generate
-	git diff --exit-code
-
-.PHONY: license-check
-license-check: ${LICENSEI} .licensei.cache ## Run license check
-	${LICENSEI} check
-	${LICENSEI} header
-
-.PHONY: license-cache
-license-cache: ${LICENSEI} ## Generate license cache
-	${LICENSEI} cache
 
 stern: | ${BIN}
 	GOBIN=${BIN} go install github.com/stern/stern@latest

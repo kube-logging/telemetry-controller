@@ -336,7 +336,6 @@ func (r *RouteReconciler) getSubscriptionsForTenant(ctx context.Context, tenant 
 func (r *RouteReconciler) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
 	var namespaces []apiv1.Namespace
 	for _, ls := range labelSelectors {
-
 		selector, err := metav1.LabelSelectorAsSelector(&ls)
 		if err != nil {
 			return nil, err
@@ -442,14 +441,11 @@ func (r *RouteReconciler) getBridges(ctx context.Context, listOpts *client.ListO
 }
 
 func (r *RouteReconciler) getBridgesForTenant(ctx context.Context, tenantName string) (bridgesOwned []v1alpha1.Bridge, err error) {
-	logger := log.FromContext(ctx)
-
 	listOpts := &client.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector(bridgeSourceTenantReferenceField, tenantName),
 	}
 	sourceBridge, err := r.getBridges(ctx, listOpts)
 	if err != nil {
-		logger.Error(err, "failed to list bridges for tenant")
 		return nil, err
 	}
 
@@ -458,7 +454,6 @@ func (r *RouteReconciler) getBridgesForTenant(ctx context.Context, tenantName st
 	}
 	targetBridge, err := r.getBridges(ctx, listOpts)
 	if err != nil {
-		logger.Error(err, "failed to list bridges for tenant")
 		return nil, err
 	}
 
@@ -487,7 +482,10 @@ func (r *RouteReconciler) checkBridgeConnections(ctx context.Context, bridge *v1
 	}
 	sourceTenant, err := r.getTenants(ctx, listOpts)
 	if err != nil {
-		return errors.Errorf("failed to list tenants for bridge (%s)", bridge.Name)
+		return err
+	}
+	if len(sourceTenant) != 1 && sourceTenant[0].Name != bridge.Spec.SourceTenant {
+		return errors.Errorf("bridge (%s) has invalid source tenant", bridge.Name)
 	}
 
 	listOpts = &client.ListOptions{
@@ -495,18 +493,10 @@ func (r *RouteReconciler) checkBridgeConnections(ctx context.Context, bridge *v1
 	}
 	targetTenant, err := r.getTenants(ctx, listOpts)
 	if err != nil {
-		return errors.Errorf("failed to list tenants for bridge (%s)", bridge.Name)
+		return err
 	}
-
-	// Granular check to ensure that the tenants are correctly assigned to the bridge
-	tenants := append(sourceTenant, targetTenant...)
-	if len(tenants) != 2 {
-		return errors.Errorf("bridge (%s) has invalid tenants", bridge.Name)
-	}
-
-	if !(tenants[0].Name == bridge.Spec.SourceTenant && tenants[1].Name == bridge.Spec.TargetTenant) ||
-		(tenants[0].Name == bridge.Spec.TargetTenant && tenants[1].Name == bridge.Spec.SourceTenant) {
-		return errors.Errorf("bridge (%s) has invalid tenants", bridge.Name)
+	if len(targetTenant) != 1 && targetTenant[0].Name != bridge.Spec.TargetTenant {
+		return errors.Errorf("bridge (%s) has invalid target tenant", bridge.Name)
 	}
 
 	return nil

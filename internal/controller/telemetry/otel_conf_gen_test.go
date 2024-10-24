@@ -27,7 +27,6 @@ import (
 	"github.com/siliconbrain/go-seqs/seqs"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 
@@ -199,7 +198,7 @@ func TestOtelColConfComplex(t *testing.T) {
 						},
 						Authentication: &v1alpha1.OutputAuth{
 							BearerAuth: &v1alpha1.BearerAuthConfig{
-								SecretRef: &v1.SecretReference{
+								SecretRef: &corev1.SecretReference{
 									Name:      "bearer-test-secret",
 									Namespace: "collector",
 								},
@@ -461,7 +460,7 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 	}
 }
 
-func TestGenerateNamedPipelines(t *testing.T) {
+func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 	tests := []struct {
 		name              string
 		cfgInput          OtelColConfigInput
