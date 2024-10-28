@@ -15,6 +15,6 @@ spec:
         verbosity: detailed
     service:
         pipelines:
-          logs: 
+          logs:
             receivers: [otlp]
             exporters: [debug]

@@ -23,6 +23,9 @@ spec:
     - jsonPath: .status.logSourceNamespaces
       name: Logsource namespaces
       type: string
+    - jsonPath: .status.connectedBridges
+      name: Connected bridges
+      type: string
     - jsonPath: .status.state
       name: State
       type: string
@@ -153,10 +156,109 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              transform:
+                description: Transform represents the Transform processor, which modifies
+                  telemetry based on its configuration
+                properties:
+                  errorMode:
+                    description: |-
+                      ErrorMode specifies how errors are handled while processing a statement
+                      vaid options are: ignore, silent, propagate; (default: propagate)
+                    enum:
+                    - ignore
+                    - silent
+                    - propagate
+                    type: string
+                  logStatements:
+                    items:
+                      description: |-
+                        Statement represents a single statement in a Transform processor
+                        ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
+                      properties:
+                        conditions:
+                          items:
+                            type: string
+                          type: array
+                        context:
+                          enum:
+                          - resource
+                          - scope
+                          - span
+                          - spanevent
+                          - metric
+                          - datapoint
+                          - log
+                          type: string
+                        statements:
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    type: array
+                  metricStatements:
+                    items:
+                      description: |-
+                        Statement represents a single statement in a Transform processor
+                        ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
+                      properties:
+                        conditions:
+                          items:
+                            type: string
+                          type: array
+                        context:
+                          enum:
+                          - resource
+                          - scope
+                          - span
+                          - spanevent
+                          - metric
+                          - datapoint
+                          - log
+                          type: string
+                        statements:
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    type: array
+                  name:
+                    description: Name of the Transform processor
+                    type: string
+                  traceStatements:
+                    items:
+                      description: |-
+                        Statement represents a single statement in a Transform processor
+                        ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
+                      properties:
+                        conditions:
+                          items:
+                            type: string
+                          type: array
+                        context:
+                          enum:
+                          - resource
+                          - scope
+                          - span
+                          - spanevent
+                          - metric
+                          - datapoint
+                          - log
+                          type: string
+                        statements:
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    type: array
+                type: object
             type: object
           status:
             description: TenantStatus defines the observed state of Tenant
             properties:
+              connectedBridges:
+                items:
+                  type: string
+                type: array
               logSourceNamespaces:
                 items:
                   type: string

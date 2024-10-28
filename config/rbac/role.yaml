@@ -86,6 +86,7 @@ rules:
 - apiGroups:
   - telemetry.kube-logging.dev
   resources:
+  - bridges
   - collectors
   - outputs
   - subscriptions
@@ -101,12 +102,7 @@ rules:
 - apiGroups:
   - telemetry.kube-logging.dev
   resources:
-  - collectors/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - telemetry.kube-logging.dev
-  resources:
+  - bridges/status
   - collectors/status
   - outputs/status
   - subscriptions/status
@@ -114,4 +110,10 @@ rules:
   verbs:
   - get
   - patch
+  - update
+- apiGroups:
+  - telemetry.kube-logging.dev
+  resources:
+  - collectors/finalizers
+  verbs:
   - update

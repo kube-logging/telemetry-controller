@@ -40,10 +40,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-const (
-	tenantReferenceField       = ".status.tenant"
-	requeueDelayOnFailedTenant = 20 * time.Second
-)
+const requeueDelayOnFailedTenant = 20 * time.Second
 
 // CollectorReconciler reconciles a Collector object
 type CollectorReconciler struct {
@@ -118,9 +115,16 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		}
 	}
 
+	bridges, err := r.getBridges(ctx, client.ListOptions{})
+	if err != nil {
+		logger.Error(errors.WithStack(err), "failed listing bridges")
+		return OtelColConfigInput{}, err
+	}
+
 	otelConfigInput := OtelColConfigInput{
 		Tenants:               tenants,
 		Subscriptions:         subscriptions,
+		Bridges:               bridges,
 		OutputsWithSecretData: outputs,
 		TenantSubscriptionMap: tenantSubscriptionMap,
 		SubscriptionOutputMap: subscriptionOutputMap,
@@ -156,8 +160,8 @@ func (r *CollectorReconciler) populateSecretForOutput(ctx context.Context, queri
 	return nil
 }
 
-// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;outputs;,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status;tenants/status;subscriptions/status;outputs/status;,verbs=get;update;patch
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;outputs;bridges;,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status;tenants/status;subscriptions/status;outputs/status;bridges/status;,verbs=get;update;patch
 // +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets;nodes;namespaces;endpoints;nodes/proxy,verbs=get;list;watch
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles;clusterrolebindings;roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
@@ -305,6 +309,22 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return
 		})).
 		Watches(&v1alpha1.Subscription{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+			logger := log.FromContext(ctx)
+
+			collectors := &v1alpha1.CollectorList{}
+			err := r.List(ctx, collectors)
+			if err != nil {
+				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
+				return
+			}
+
+			for _, collector := range collectors.Items {
+				requests = addCollectorRequest(requests, collector.Name)
+			}
+
+			return
+		})).
+		Watches(&v1alpha1.Bridge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			collectors := &v1alpha1.CollectorList{}
@@ -489,6 +509,15 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 	}
 
 	return tenantsForSelector.Items, nil
+}
+
+func (r *CollectorReconciler) getBridges(ctx context.Context, listOpts client.ListOptions) ([]v1alpha1.Bridge, error) {
+	var bridges v1alpha1.BridgeList
+	if err := r.Client.List(ctx, &bridges, &listOpts); client.IgnoreNotFound(err) != nil {
+		return nil, err
+	}
+
+	return bridges.Items, nil
 }
 
 func normalizeStringSlice(inputList []string) []string {

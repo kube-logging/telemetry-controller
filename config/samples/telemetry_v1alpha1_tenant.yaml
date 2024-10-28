@@ -13,3 +13,6 @@ spec:
   subscriptionNamespaceSelector:
     matchLabels:
       nsTenant: tenantA
+  logSourceNamespaceSelector:
+    matchLabels:
+      nsTenant: tenantA

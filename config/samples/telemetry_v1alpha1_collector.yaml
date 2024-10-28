@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/created-by: telemetry-controller
   name: collector-sample
 spec:
+  controlNamespace: collector
   tenantSelector:
     matchLabels:
       tenant: tenantA

@@ -118,6 +118,7 @@ rules:
       - outputs
       - subscriptions
       - tenants
+      - bridges
     verbs:
       - create
       - delete
@@ -139,6 +140,7 @@ rules:
       - outputs/status
       - subscriptions/status
       - tenants/status
+      - bridges/status
     verbs:
       - get
       - patch

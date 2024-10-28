@@ -1,0 +1,155 @@
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Collector
+metadata:
+  name: cluster
+spec:
+  controlNamespace: collector
+  tenantSelector:
+    matchLabels:
+      collector: cluster
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  labels:
+    collector: cluster
+  name: shared
+spec:
+  transform:
+    name: parse-nginx
+    logStatements:
+      - context: log
+        statements:
+          - set(resource.attributes["parsed"], ExtractPatterns(body, "(?P<method>(GET|PUT))"))
+  logSourceNamespaceSelectors:
+    - matchLabels:
+        tenant: shared
+  subscriptionNamespaceSelectors:
+    - matchLabels:
+        tenant: shared
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: shared
+  namespace: shared
+spec:
+  ottl: route()
+  outputs:
+    - name: openobserve-shared
+      namespace: shared
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: openobserve-shared
+  namespace: shared
+spec:
+  otlp:
+    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
+    headers:
+      Authorization: "Basic <TOKEN>"
+      organization: default
+      stream-name: shared
+    tls:
+      insecure: true
+---
+# A tenant that consumes logs from the shared tenant using a bridge
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  labels:
+    collector: cluster
+  name: database
+spec:
+  logSourceNamespaceSelectors:
+    - matchLabels:
+        tenant: database
+  subscriptionNamespaceSelectors:
+    - matchLabels:
+        tenant: database
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Bridge
+metadata:
+  name: shared-database
+spec:
+  sourceTenant: shared
+  targetTenant: database
+  ottl: 'route() where attributes["parsed"]["method"] == "GET"'
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: database
+  namespace: database
+spec:
+  ottl: route()
+  outputs:
+    - name: openobserve-database
+      namespace: database
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: openobserve-database
+  namespace: database
+spec:
+  otlp:
+    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
+    headers:
+      Authorization: "Basic <TOKEN>"
+      organization: default
+      stream-name: db
+    tls:
+      insecure: true
+---
+# Another tenant that consumes logs from the shared tenant using a bridge
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  labels:
+    collector: cluster
+  name: web
+spec:
+  logSourceNamespaceSelectors:
+    - matchLabels:
+        tenant: web
+  subscriptionNamespaceSelectors:
+    - matchLabels:
+        tenant: web
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Bridge
+metadata:
+  name: shared-web
+spec:
+  sourceTenant: shared
+  targetTenant: web
+  ottl: 'route() where attributes["parsed"]["method"] == "PUT"'
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: web
+  namespace: web
+spec:
+  ottl: route()
+  outputs:
+    - name: openobserve-web
+      namespace: web
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: openobserve-web
+  namespace: web
+spec:
+  otlp:
+    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
+    headers:
+      Authorization: "Basic <TOKEN>"
+      organization: default
+      stream-name: web
+    tls:
+      insecure: true

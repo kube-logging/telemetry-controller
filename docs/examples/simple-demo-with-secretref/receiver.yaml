@@ -16,13 +16,13 @@ spec:
   config:
     extensions:
       basicauth:
-        htpasswd: 
+        htpasswd:
           inline: |
             user:pass
     receivers:
       otlp:
         protocols:
-          grpc: 
+          grpc:
             auth:
               authenticator: basicauth
             tls:
@@ -38,7 +38,7 @@ spec:
           level: "debug"
       extensions: [basicauth]
       pipelines:
-        logs: 
+        logs:
           processors: []
           receivers: [otlp]
           exporters: [debug]

@@ -12,6 +12,7 @@ Telemetry-controller can be configured using Custom Resources to set up an opini
 To get started with the Telemetry Controller, complete the following steps. Alternatively, see our [Telemetry Controller overview and quickstart blog post](https://axoflow.com/reinvent-kubernetes-logging-with-telemetry-controller/).
 
 ### Prerequisites
+
 - go version v1.22+
 - docker version 24+
 - kubectl version v1.26+
@@ -32,6 +33,7 @@ minikube start --container-runtime=containerd
 ### Deployment steps for users
 
 Deploy latest telemetry-controller:
+
 ```sh
 # Install telemetry-controller, and opentelemetry-operator as a sub-chart
 helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller
@@ -82,25 +84,30 @@ Open the UI at `localhost:5080`, navigate to the `Ingestion/OTEL Collector` tab,
 ![Openobserve auth](docs/assets/openobserve-auth.png)
 
 Paste this token to the example manifests:
+
 ```sh
 sed -i '' -e "s/\<TOKEN\>/INSERT YOUR COPIED TOKEN HERE/" docs/examples/simple-demo/one_tenant_two_subscriptions.yaml
 ```
+
 ```sh
 # Deploy the pipeline definition
 kubectl apply -f docs/examples/simple-demo/one_tenant_two_subscriptions.yaml
 ```
 
-**Create a workload, which will generate logs for the pipeline:**
+Create a workload, which will generate logs for the pipeline:
+
 ```sh
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
 ```
 
-**Open the Openobserve UI and inspect the generated log messages**
+Open the Openobserve UI and inspect the generated log messages:
 
 Set up portforwarding for Openobserve UI
+
 ```sh
 kubectl -n openobserve port-forward svc/openobserve 5080:5080
 ```
+
 ![Openobserve logs](docs/assets/openobserve-logs.png)
 
 ### Sending logs to logging-operator (example)
@@ -147,14 +154,13 @@ Apply the provided example resource for telemetry-controller: [telemetry-control
 kubectl apply -f telemetry-controller.yaml
 ```
 
-
 ## Contributing
 
 If you find this project useful, help us:
 
 - Support the development of this project and star this repo! :star:
 - Help new users with issues they may encounter :muscle:
-- Send a pull request with your new features and bug fixes :rocket: 
+- Send a pull request with your new features and bug fixes :rocket:
 
 Please read the [Organisation's Code of Conduct](https://github.com/kube-logging/.github/blob/main/CODE_OF_CONDUCT.md)!
 
@@ -162,16 +168,4 @@ Please read the [Organisation's Code of Conduct](https://github.com/kube-logging
 
 ## License
 
-Copyright © 2024 Kube logging authors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+The project is licensed under the [Apache 2.0 License](LICENSE).

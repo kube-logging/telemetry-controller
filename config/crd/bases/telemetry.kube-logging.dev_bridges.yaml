@@ -4,24 +4,24 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: subscriptions.telemetry.kube-logging.dev
+  name: bridges.telemetry.kube-logging.dev
 spec:
   group: telemetry.kube-logging.dev
   names:
     categories:
     - telemetry-all
-    kind: Subscription
-    listKind: SubscriptionList
-    plural: subscriptions
-    singular: subscription
-  scope: Namespaced
+    kind: Bridge
+    listKind: BridgeList
+    plural: bridges
+    singular: bridge
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.tenant
-      name: Tenant
+    - jsonPath: .spec.sourceTenant
+      name: Source Tenant
       type: string
-    - jsonPath: .status.outputs
-      name: Outputs
+    - jsonPath: .spec.targetTenant
+      name: Target Tenant
       type: string
     - jsonPath: .status.state
       name: State
@@ -29,7 +29,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Subscription is the Schema for the subscriptions API
+        description: Bridge is the Schema for the Bridges API
         properties:
           apiVersion:
             description: |-
@@ -49,43 +49,22 @@ spec:
           metadata:
             type: object
           spec:
-            description: SubscriptionSpec defines the desired state of Subscription
+            description: BridgeSpec defines the desired state of Bridge
             properties:
-              debug:
-                type: boolean
               ottl:
+                description: |-
+                  The OTTL condition which must be satisfied in order to forward telemetry
+                  from the source tenant to the target tenant
                 type: string
-              outputs:
-                items:
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                  required:
-                  - name
-                  - namespace
-                  type: object
-                type: array
+              sourceTenant:
+                type: string
+              targetTenant:
+                type: string
             type: object
           status:
-            description: SubscriptionStatus defines the observed state of Subscription
+            description: BridgeStatus defines the observed state of Bridge
             properties:
-              outputs:
-                items:
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                  required:
-                  - name
-                  - namespace
-                  type: object
-                type: array
               state:
-                type: string
-              tenant:
                 type: string
             type: object
         type: object
