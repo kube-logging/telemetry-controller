@@ -40,7 +40,10 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-const requeueDelayOnFailedTenant = 20 * time.Second
+const (
+	requeueDelayOnFailedTenant   = 20 * time.Second
+	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.112.0"
+)
 
 // CollectorReconciler reconciles a Collector object
 type CollectorReconciler struct {
@@ -208,7 +211,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Config:          otelConfig,
 			Mode:            otelv1beta1.ModeDaemonSet,
 			OpenTelemetryCommonFields: otelv1beta1.OpenTelemetryCommonFields{
-				Image:          "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.104.0-2",
+				Image:          axoflowOtelCollectorImageRef,
 				ServiceAccount: saName.Name,
 				VolumeMounts: []corev1.VolumeMount{
 					{
