@@ -11,17 +11,6 @@ rules:
   - namespaces
   - nodes
   - nodes/proxy
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - endpoints
-  - namespaces
-  - nodes
-  - nodes/proxy
   - secrets
   verbs:
   - get
