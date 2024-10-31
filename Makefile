@@ -5,17 +5,15 @@ export PATH := $(BIN):$(PATH)
 GOVERSION := $(shell go env GOVERSION)
 
 KIND := ${BIN}/kind
-KIND_VERSION ?= v0.20.0
-KIND_IMAGE ?= kindest/node:v1.29.0@sha256:eaa1450915475849a73a9227b8f201df25e55e268e5d619312131292e324d570
-KIND_CLUSTER ?= kind
-
-CI_MODE_ENABLED := ""
-NO_KIND_CLEANUP := ""
+KIND_VERSION ?= v0.24.0
+KIND_IMAGE ?= kindest/node:v1.31.0@sha256:53df588e04085fd41ae12de0c3fe4c72f7013bba32a20e7325357a1ac94ba865
+KIND_CLUSTER := kind
 
 # Image URL to use all building/pushing image targets
 IMG ?= controller:local
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.28.0
+ENVTEST_K8S_VERSION = 1.31.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -23,9 +21,6 @@ GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
 endif
-
-TIMEOUT_CMD=timeout
-
 
 # CONTAINER_TOOL defines the container tool to be used for building images.
 # Be aware that the target commands are only tested with Docker which is
@@ -39,7 +34,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 LICENSEI := ${BIN}/licensei
-LICENSEI_VERSION = v0.8.0
+LICENSEI_VERSION = v0.9.0
 
 ##@ General
 
@@ -88,7 +83,7 @@ test: manifests generate fmt vet envtest ## Run verifications and tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v ./... -coverprofile cover.out
 
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.55.2
+GOLANGCI_LINT_VERSION ?= v1.61.0
 golangci-lint:
 	@[ -f $(GOLANGCI_LINT) ] || { \
 	set -e ;\
@@ -108,15 +103,9 @@ run-delve: generate fmt vet manifests
 	go build -o bin/manager cmd/main.go
 	dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec ./bin/manager
 
-.PHONY: e2e-test
-e2e-test: ## Run e2e tests
-	cd e2e && export CI_MODE=$(CI_MODE_ENABLED) NO_KIND_CLEANUP=$(NO_KIND_CLEANUP) && $(TIMEOUT_CMD) --foreground 15m ./e2e_test.sh || (echo "E2E test failed"; exit 1)
-
-.PHONY: e2e-test-ci
-e2e-test-ci: CI_MODE_ENABLED=1
-e2e-test-ci: NO_KIND_CLEANUP=1
-e2e-test-ci: IMG="controller:latest" ## Run e2e tests, telemetry collector runs inside k8s
-e2e-test-ci: docker-build e2e-test
+.PHONY: test-e2e
+test-e2e: docker-build kind-cluster ## Run e2e tests
+	e2e/e2e_test.sh || (echo "E2E test failed"; exit 1)
 
 .PHONY: check-diff
 check-diff: generate
@@ -211,7 +200,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.2.1
-CONTROLLER_TOOLS_VERSION ?= v0.14.0
+CONTROLLER_TOOLS_VERSION ?= v0.16.3
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
@@ -227,7 +216,6 @@ controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessar
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
-
 
 ENVTEST_OTEL_OPERATOR_VERSION=v0.103.0
 # Download CRDs for envtest
