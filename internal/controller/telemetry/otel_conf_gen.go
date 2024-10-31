@@ -259,7 +259,7 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 	maps.Copy(exporters, cfgInput.generateOTLPGRPCExporters(ctx))
 	maps.Copy(exporters, cfgInput.generateOTLPHTTPExporters(ctx))
 	maps.Copy(exporters, cfgInput.generateFluentforwardExporters(ctx))
-	exporters["logging/debug"] = map[string]any{
+	exporters["debug"] = map[string]any{
 		"verbosity": "detailed",
 	}
 	return exporters
@@ -765,7 +765,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 						exporters = []string{GetExporterNameForOutput(output.Output), outputCountConnectorName}
 					}
 					if cfgInput.Debug {
-						exporters = append(exporters, "logging/debug")
+						exporters = append(exporters, "debug")
 					}
 
 					namedPipelines[outputPipelineName] = generatePipeline(receivers, processors, exporters)

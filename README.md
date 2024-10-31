@@ -119,7 +119,7 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 ```
 
 ```sh
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.104.0/opentelemetry-operator.yaml
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.112.0/opentelemetry-operator.yaml
 # Wait for the opentelemtry-operator to be running
 kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
 ```

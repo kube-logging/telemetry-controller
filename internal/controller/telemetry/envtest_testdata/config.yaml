@@ -56,7 +56,7 @@ receivers:
               type: move
         start_at: end
 exporters:
-    logging/debug:
+    debug:
         verbosity: detailed
     otlp/collector_otlp-test-output:
         endpoint: receiver-collector.example-tenant-ns.svc.cluster.local:4317
