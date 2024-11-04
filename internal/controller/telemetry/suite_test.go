@@ -65,8 +65,8 @@ var _ = BeforeSuite(func() {
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
-			filepath.Join("..", "..", "..", "config", "crd", "bases"),
-			filepath.Join("..", "..", "..", "crddir", "github.com", "open-telemetry", "opentelemetry-operator", "config", "crd", "bases"),
+			filepath.Clean("../../../config/crd/bases"),
+			filepath.Clean("../../../crddir/github.com/open-telemetry/opentelemetry-operator/config/crd/bases"),
 		},
 		ErrorIfCRDPathMissing: true,
 

@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 )
 
 const (
@@ -92,10 +93,7 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	r.disownSubscriptions(ctx, subscriptionsToDisown)
 
 	subscriptionNames := getSubscriptionNamesFromSubscription(subscriptionsForTenant)
-	cmp := func(a, b v1alpha1.NamespacedName) int {
-		return strings.Compare(a.String(), b.String())
-	}
-	slices.SortFunc(subscriptionNames, cmp)
+	utils.SortNamespacedNames(subscriptionNames)
 	tenant.Status.Subscriptions = subscriptionNames
 
 	for _, subscription := range subscriptionsForTenant {

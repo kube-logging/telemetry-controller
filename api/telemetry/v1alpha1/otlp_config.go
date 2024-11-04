@@ -46,7 +46,7 @@ type BackOffConfig struct {
 	// Enabled indicates whether to not retry sending batches in case of export failure.
 	Enabled bool `json:"enabled,omitempty" yaml:"enabled,omitempty"`
 	// InitialInterval the time to wait after the first failure before retrying.
-	InitialInterval time.Duration `json:"initial_interval,omitempty" yaml:"initial_interval,omitempty" `
+	InitialInterval time.Duration `json:"initial_interval,omitempty" yaml:"initial_interval,omitempty"`
 	// RandomizationFactor is a random factor used to calculate next backoffs
 	// Randomized interval = RetryInterval * (1 ± RandomizationFactor)
 	RandomizationFactor string `json:"randomization_factor,omitempty" yaml:"randomization_factor,omitempty"`

@@ -38,6 +38,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	otelcolconfgen "github.com/kube-logging/telemetry-controller/internal/controller/telemetry/otel_conf_gen"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
 )
 
 const (
@@ -62,25 +64,25 @@ type BasicAuthClientAuthConfig struct {
 
 func (e *TenantFailedError) Error() string { return e.msg }
 
-func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, collector *v1alpha1.Collector) (OtelColConfigInput, error) {
+func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, collector *v1alpha1.Collector) (otelcolconfgen.OtelColConfigInput, error) {
 	logger := log.FromContext(ctx)
 	tenantSubscriptionMap := make(map[string][]v1alpha1.NamespacedName)
 	subscriptionOutputMap := make(map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName)
 
 	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelector)
 	subscriptions := make(map[v1alpha1.NamespacedName]v1alpha1.Subscription)
-	outputs := []OutputWithSecretData{}
+	outputs := []components.OutputWithSecretData{}
 
 	if err != nil {
 		logger.Error(errors.WithStack(err), "failed listing tenants")
-		return OtelColConfigInput{}, err
+		return otelcolconfgen.OtelColConfigInput{}, err
 	}
 
 	for _, tenant := range tenants {
 
 		if tenant.Status.State == v1alpha1.StateFailed {
 			logger.Info("tenant %q is in failed state, retrying later", tenant.Name)
-			return OtelColConfigInput{}, &TenantFailedError{msg: "tenant failed"}
+			return otelcolconfgen.OtelColConfigInput{}, &TenantFailedError{msg: "tenant failed"}
 		}
 
 		subscriptionNames := tenant.Status.Subscriptions
@@ -90,7 +92,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 			queriedSubs := &v1alpha1.Subscription{}
 			if err = r.Client.Get(ctx, types.NamespacedName(subsName), queriedSubs); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting subscriptions for tenant", "tenant", tenant.Name)
-				return OtelColConfigInput{}, err
+				return otelcolconfgen.OtelColConfigInput{}, err
 			}
 			subscriptions[subsName] = *queriedSubs
 		}
@@ -101,17 +103,17 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		subscriptionOutputMap[subscription.NamespacedName()] = outputNames
 
 		for _, outputName := range outputNames {
-			outputWithSecretData := OutputWithSecretData{}
+			outputWithSecretData := components.OutputWithSecretData{}
 
 			queriedOutput := &v1alpha1.Output{}
 			if err = r.Client.Get(ctx, types.NamespacedName(outputName), queriedOutput); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting outputs for subscription", "subscription", subscription.NamespacedName().String())
-				return OtelColConfigInput{}, err
+				return otelcolconfgen.OtelColConfigInput{}, err
 			}
 			outputWithSecretData.Output = *queriedOutput
 
 			if err := r.populateSecretForOutput(ctx, queriedOutput, &outputWithSecretData); err != nil {
-				return OtelColConfigInput{}, err
+				return otelcolconfgen.OtelColConfigInput{}, err
 			}
 
 			outputs = append(outputs, outputWithSecretData)
@@ -121,10 +123,10 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 	bridges, err := r.getBridges(ctx, client.ListOptions{})
 	if err != nil {
 		logger.Error(errors.WithStack(err), "failed listing bridges")
-		return OtelColConfigInput{}, err
+		return otelcolconfgen.OtelColConfigInput{}, err
 	}
 
-	otelConfigInput := OtelColConfigInput{
+	otelConfigInput := otelcolconfgen.OtelColConfigInput{
 		Tenants:               tenants,
 		Subscriptions:         subscriptions,
 		Bridges:               bridges,
@@ -138,7 +140,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 	return otelConfigInput, nil
 }
 
-func (r *CollectorReconciler) populateSecretForOutput(ctx context.Context, queriedOutput *v1alpha1.Output, outputWithSecret *OutputWithSecretData) error {
+func (r *CollectorReconciler) populateSecretForOutput(ctx context.Context, queriedOutput *v1alpha1.Output, outputWithSecret *components.OutputWithSecretData) error {
 	logger := log.FromContext(ctx)
 
 	if queriedOutput.Spec.Authentication != nil {
@@ -260,18 +262,15 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
-
 	_, err = resourceReconciler.ReconcileResource(&otelCollector, reconciler.StatePresent)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	tenantNames := []string{}
-
 	for _, tenant := range otelConfigInput.Tenants {
 		tenantNames = append(tenantNames, tenant.Name)
 	}
-
 	collector.Status.Tenants = normalizeStringSlice(tenantNames)
 
 	if !reflect.DeepEqual(originalCollectorStatus, collector.Status) {
