@@ -12,23 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package telemetry
+package utils
 
 import (
-	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-func GetExporterNameForOutput(output v1alpha1.Output) string {
-	var exporterName string
-	if output.Spec.OTLPGRPC != nil {
-		exporterName = fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
-	} else if output.Spec.OTLPHTTP != nil {
-		exporterName = fmt.Sprintf("otlphttp/%s_%s", output.Namespace, output.Name)
-	} else if output.Spec.Fluentforward != nil {
-		exporterName = fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
-	}
-
-	return exporterName
+func SortNamespacedNames(names []v1alpha1.NamespacedName) {
+	slices.SortFunc(names, func(a, b v1alpha1.NamespacedName) int {
+		return strings.Compare(a.String(), b.String())
+	})
 }

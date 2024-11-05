@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package telemetry
+package otel_conf_gen
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"reflect"
@@ -31,6 +32,9 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/connector"
 )
 
 //go:embed otel_col_conf_test_fixtures/complex.yaml
@@ -170,7 +174,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				},
 			},
 		},
-		OutputsWithSecretData: []OutputWithSecretData{
+		OutputsWithSecretData: []components.OutputWithSecretData{
 			{
 				Secret: corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -298,7 +302,7 @@ func TestOtelColConfComplex(t *testing.T) {
 	// Config
 
 	// The receiver and exporter entries are not serialized because of tags on the underlying data structure. The tests won't contain them, this is a known issue.
-	generatedConfig := inputCfg.AssembleConfig(ctx)
+	generatedConfig := inputCfg.AssembleConfig(context.TODO())
 	actualJSONBytes, err1 := json.Marshal(generatedConfig)
 	if err1 != nil {
 		t.Fatalf("error %v", err1)
@@ -342,7 +346,7 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 	type fields struct {
 		Tenants               []v1alpha1.Tenant
 		Subscriptions         map[v1alpha1.NamespacedName]v1alpha1.Subscription
-		OutputsWithSecretData []OutputWithSecretData
+		OutputsWithSecretData []components.OutputWithSecretData
 		TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
 		SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
 	}
@@ -354,21 +358,11 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 		name   string
 		fields fields
 		args   args
-		want   RoutingConnector
+		want   connector.RoutingConnector
 	}{
 		{
 			name: "two_subscriptions",
 			fields: fields{
-				Tenants: []v1alpha1.Tenant{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "tenantA",
-						},
-						Spec: v1alpha1.TenantSpec{},
-						Status: v1alpha1.TenantStatus{
-							LogSourceNamespaces: []string{"a", "b"},
-						},
-					}},
 				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
 					{
 						Name:      "subsA",
@@ -401,20 +395,6 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 						}, OTTL: `set(attributes["subscription"], "subscriptionB")`},
 					},
 				},
-				OutputsWithSecretData: []OutputWithSecretData{},
-				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
-					"tenantA": {
-						{
-							Namespace: "nsA",
-							Name:      "subsA",
-						},
-						{
-							Namespace: "nsA",
-							Name:      "subsB",
-						},
-					},
-				},
-				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{},
 			},
 			args: args{
 				tenantName: "tenantA",
@@ -429,9 +409,9 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 					},
 				},
 			},
-			want: RoutingConnector{
+			want: connector.RoutingConnector{
 				Name: "routing/tenant_tenantA_subscriptions",
-				Table: []RoutingConnectorTableItem{
+				Table: []connector.RoutingConnectorTableItem{
 					{
 						Statement: `set(attributes["subscription"], "subscriptionA")`,
 						Pipelines: []string{"logs/tenant_tenantA_subscription_nsA_subsA"},
@@ -448,13 +428,9 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfgInput := &OtelColConfigInput{
-				Tenants:               tt.fields.Tenants,
-				Subscriptions:         tt.fields.Subscriptions,
-				OutputsWithSecretData: tt.fields.OutputsWithSecretData,
-				TenantSubscriptionMap: tt.fields.TenantSubscriptionMap,
-				SubscriptionOutputMap: tt.fields.SubscriptionOutputMap,
+				Subscriptions: tt.fields.Subscriptions,
 			}
-			got := cfgInput.generateRoutingConnectorForTenantsSubscriptions(tt.args.tenantName, tt.args.subscriptionNames)
+			got := connector.GenerateRoutingConnectorForTenantsSubscriptions(tt.args.tenantName, tt.args.subscriptionNames, cfgInput.Subscriptions)
 			assert.Equal(t, got, tt.want)
 		})
 	}
@@ -488,18 +464,18 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				Debug:                 false,
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
-				"logs/tenant_tenant1": generateRootPipeline("tenant1"),
-				"logs/tenant_tenant1_subscription_ns1_sub1": generatePipeline(
+				"logs/tenant_tenant1": pipeline.GenerateRootPipeline("tenant1"),
+				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
 					[]string{"routing/tenant_tenant1_subscriptions"},
 					[]string{"attributes/subscription_sub1"},
 					[]string{"routing/subscription_ns1_sub1_outputs"},
 				),
-				"metrics/output": generatePipeline(
+				"metrics/output": pipeline.GeneratePipeline(
 					[]string{"count/output_metrics"},
 					[]string{"deltatocumulative", "attributes/metricattributes"},
 					[]string{"prometheus/message_metrics_exporter"},
 				),
-				"metrics/tenant": generatePipeline(
+				"metrics/tenant": pipeline.GeneratePipeline(
 					[]string{"count/tenant_metrics"},
 					[]string{"deltatocumulative", "attributes/metricattributes"},
 					[]string{"prometheus/message_metrics_exporter"},
@@ -630,32 +606,32 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				Debug:                 false,
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
-				"logs/tenant_tenant1": generatePipeline(
+				"logs/tenant_tenant1": pipeline.GeneratePipeline(
 					[]string{"filelog/tenant1"},
 					[]string{"k8sattributes", "attributes/tenant_tenant1", "transform/transform1"},
 					[]string{"routing/tenant_tenant1_subscriptions", "count/tenant_metrics", "routing/bridge_bridge1"},
 				),
-				"logs/tenant_tenant1_subscription_ns1_sub1": generatePipeline(
+				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
 					[]string{"routing/tenant_tenant1_subscriptions"},
 					[]string{"attributes/subscription_sub1"},
 					[]string{"routing/subscription_ns1_sub1_outputs"},
 				),
-				"logs/tenant_tenant2": generatePipeline(
+				"logs/tenant_tenant2": pipeline.GeneratePipeline(
 					[]string{"filelog/tenant2", "routing/bridge_bridge1"},
 					[]string{"k8sattributes", "attributes/tenant_tenant2"},
 					[]string{"routing/tenant_tenant2_subscriptions", "count/tenant_metrics"},
 				),
-				"logs/tenant_tenant2_subscription_ns2_sub2": generatePipeline(
+				"logs/tenant_tenant2_subscription_ns2_sub2": pipeline.GeneratePipeline(
 					[]string{"routing/tenant_tenant2_subscriptions"},
 					[]string{"attributes/subscription_sub2"},
 					[]string{"routing/subscription_ns2_sub2_outputs"},
 				),
-				"metrics/output": generatePipeline(
+				"metrics/output": pipeline.GeneratePipeline(
 					[]string{"count/output_metrics"},
 					[]string{"deltatocumulative", "attributes/metricattributes"},
 					[]string{"prometheus/message_metrics_exporter"},
 				),
-				"metrics/tenant": generatePipeline(
+				"metrics/tenant": pipeline.GeneratePipeline(
 					[]string{"count/tenant_metrics"},
 					[]string{"deltatocumulative", "attributes/metricattributes"},
 					[]string{"prometheus/message_metrics_exporter"},

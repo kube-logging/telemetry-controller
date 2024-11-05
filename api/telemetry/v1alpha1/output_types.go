@@ -114,7 +114,7 @@ type Output struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   OutputSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
-	Status OutputStatus `json:"status,omitempty" `
+	Status OutputStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

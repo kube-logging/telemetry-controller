@@ -90,6 +90,10 @@ golangci-lint:
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell dirname $(GOLANGCI_LINT)) $(GOLANGCI_LINT_VERSION) ;\
 	}
 
+.PHONY: test-e2e
+test-e2e: docker-build kind-cluster ## Run e2e tests
+	e2e/e2e_test.sh || (echo "E2E test failed"; exit 1)
+
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint
 	$(GOLANGCI_LINT) run
@@ -103,22 +107,18 @@ run-delve: generate fmt vet manifests
 	go build -o bin/manager cmd/main.go
 	dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec ./bin/manager
 
-.PHONY: test-e2e
-test-e2e: docker-build kind-cluster ## Run e2e tests
-	e2e/e2e_test.sh || (echo "E2E test failed"; exit 1)
-
 .PHONY: check-diff
 check-diff: generate
 	git diff --exit-code
+
+.PHONY: license-cache
+license-cache: ${LICENSEI} ## Generate license cache
+	${LICENSEI} cache
 
 .PHONY: license-check
 license-check: ${LICENSEI} .licensei.cache ## Run license check
 	${LICENSEI} check
 	${LICENSEI} header
-
-.PHONY: license-cache
-license-cache: ${LICENSEI} ## Generate license cache
-	${LICENSEI} cache
 
 ##@ Build
 
@@ -137,10 +137,6 @@ run: manifests generate fmt vet ## Run the controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build -t ${IMG} .
 
-.PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	$(CONTAINER_TOOL) push ${IMG}
-
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
 # - be able to use docker buildx. More info: https://docs.docker.com/build/buildx/
@@ -157,6 +153,10 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm project-v3-builder
 	rm Dockerfile.cross
+
+.PHONY: docker-push
+docker-push: ## Push docker image with the manager.
+	$(CONTAINER_TOOL) push ${IMG}
 
 ##@ Deployment
 
