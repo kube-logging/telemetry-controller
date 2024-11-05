@@ -51,8 +51,6 @@ spec:
           spec:
             description: SubscriptionSpec defines the desired state of Subscription
             properties:
-              debug:
-                type: boolean
               ottl:
                 type: string
               outputs:

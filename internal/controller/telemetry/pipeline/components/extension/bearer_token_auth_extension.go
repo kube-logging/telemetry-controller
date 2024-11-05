@@ -25,7 +25,7 @@ type BearerTokenAuthExtensionConfig struct {
 func GenerateBearerAuthExtensionsForOutput(output components.OutputWithSecretData) BearerTokenAuthExtensionConfig {
 	var effectiveTokenField string
 	if output.Output.Spec.Authentication.BearerAuth.TokenField != "" {
-		effectiveTokenField = output.Output.Spec.Authentication.BasicAuth.UsernameField
+		effectiveTokenField = output.Output.Spec.Authentication.BearerAuth.TokenField
 	} else {
 		effectiveTokenField = defaultBearerAuthTokenField
 	}

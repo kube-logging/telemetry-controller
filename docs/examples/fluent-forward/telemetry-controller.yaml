@@ -29,7 +29,6 @@ metadata:
   name: all-logs
   namespace: default
 spec:
-  debug: true
   ottl: 'route()'
   outputs:
     - name: fluent

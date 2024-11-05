@@ -22,7 +22,6 @@ import (
 type SubscriptionSpec struct {
 	Outputs []NamespacedName `json:"outputs,omitempty"`
 	OTTL    string           `json:"ottl,omitempty"`
-	Debug   bool             `json:"debug,omitempty"`
 }
 
 // SubscriptionStatus defines the observed state of Subscription
