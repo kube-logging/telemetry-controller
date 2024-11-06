@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/created-by: telemetry-controller
   name: subscription-sample
 spec:
+  condition: "true"
   outputs:
     - name: output-sample
       namespace: collector

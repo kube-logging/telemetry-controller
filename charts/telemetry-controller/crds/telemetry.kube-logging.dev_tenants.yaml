@@ -105,6 +105,27 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              routeConfig:
+                description: |-
+                  RouteConfig defines the routing configuration for a tenant
+                  it will be used to generate routing connectors
+                properties:
+                  defaultPipelines:
+                    items:
+                      type: string
+                    type: array
+                  errorMode:
+                    description: |-
+                      ErrorMode specifies how errors are handled while processing a statement
+                      vaid options are: ignore, silent, propagate; (default: propagate)
+                    enum:
+                    - ignore
+                    - silent
+                    - propagate
+                    type: string
+                  matchOnce:
+                    type: boolean
+                type: object
               subscriptionNamespaceSelectors:
                 items:
                   description: |-
@@ -172,7 +193,7 @@ spec:
                   logStatements:
                     items:
                       description: |-
-                        Statement represents a single statement in a Transform processor
+                        TransformStatement represents a single statement in a Transform processor
                         ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
                       properties:
                         conditions:
@@ -198,7 +219,7 @@ spec:
                   metricStatements:
                     items:
                       description: |-
-                        Statement represents a single statement in a Transform processor
+                        TransformStatement represents a single statement in a Transform processor
                         ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
                       properties:
                         conditions:
@@ -227,7 +248,7 @@ spec:
                   traceStatements:
                     items:
                       description: |-
-                        Statement represents a single statement in a Transform processor
+                        TransformStatement represents a single statement in a Transform processor
                         ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
                       properties:
                         conditions:

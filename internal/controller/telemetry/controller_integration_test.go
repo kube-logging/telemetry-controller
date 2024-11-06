@@ -76,7 +76,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 						Namespace: "tenant-1-ctrl",
 					},
 					Spec: v1alpha1.SubscriptionSpec{
-						OTTL: "route()",
+						Condition: "true",
 						Outputs: []v1alpha1.NamespacedName{
 							{
 								Name:      "otlp-test-output-1",
@@ -91,7 +91,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 						Namespace: "tenant-2-all",
 					},
 					Spec: v1alpha1.SubscriptionSpec{
-						OTTL: "route()",
+						Condition: "true",
 						Outputs: []v1alpha1.NamespacedName{
 							{
 								Name:      "otlp-test-output-2",

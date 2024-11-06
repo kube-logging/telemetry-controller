@@ -40,7 +40,7 @@ metadata:
   name: subscription-sample-1
   namespace: example-tenant-ns
 spec:
-  ottl: "route()"
+  condition: "true"
   outputs:
     - name: otlp-test-output-1
       namespace: collector
@@ -51,7 +51,7 @@ metadata:
   name: subscription-sample-2
   namespace: example-tenant-ns
 spec:
-  ottl: "route()"
+  condition: "true"
   outputs:
     - name: otlp-test-output-2
       namespace: collector

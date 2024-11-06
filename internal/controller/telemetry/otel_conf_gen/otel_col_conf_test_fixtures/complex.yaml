@@ -29,34 +29,32 @@ connectors:
         - key: k8s.pod.labels.app
   routing/subscription_example-tenant-a-ns_subscription-example-1_outputs:
     table:
-    - pipelines:
+    - condition: "true"
+      pipelines:
       - logs/output_example-tenant-a-ns_subscription-example-1_collector_loki-test-output
       - logs/output_example-tenant-a-ns_subscription-example-1_collector_otlp-test-output
-      statement: route()
   routing/subscription_example-tenant-a-ns_subscription-example-2_outputs:
     table:
-    - pipelines:
+    - condition: "true"
+      pipelines:
       - logs/output_example-tenant-a-ns_subscription-example-2_collector_otlp-test-output-2
-      statement: route()
   routing/subscription_example-tenant-b-ns_subscription-example-3_outputs:
     table:
-    - pipelines:
+    - condition: "true"
+      pipelines:
       - logs/output_example-tenant-b-ns_subscription-example-3_collector_fluentforward-test-output
       - logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2
-      statement: route()
   routing/tenant_example-tenant-a_subscriptions:
     table:
-    - pipelines:
+    - condition: "true"
+      pipelines:
       - logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1
-      statement: route()
-    - pipelines:
       - logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-2
-      statement: 'route() '
   routing/tenant_example-tenant-b_subscriptions:
     table:
-    - pipelines:
+    - condition: "true"
+      pipelines:
       - logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3
-      statement: route()
 exporters: {}
 extensions:
   bearertokenauth/collector_otlp-test-output:

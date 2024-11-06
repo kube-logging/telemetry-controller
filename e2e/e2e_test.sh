@@ -5,23 +5,22 @@ set -o xtrace
 
 function main()
 {
+    setup
+
+    test_one_tenant_two_subscriptions
+    test_tenants_with_bridges
+
+    echo "E2E (helm) test: PASSED"
+}
+
+function setup()
+{
     kubectl get namespace telemetry-controller-system || kubectl create namespace telemetry-controller-system
     kubectl config set-context --current --namespace=telemetry-controller-system
 
     load_images
 
-    helm_deploy_telemetry_controller
-
-    helm_deploy_log_generator
-
-    deploy_test_assets
-
-    # Check for received messages - subscription-sample-1
-    # NOTE: We should not use grep -q, because it causes a SIGPIPE for kubectl and we have -o pipefail
-    check_subscription_logs "subscription-sample-1"
-    check_subscription_logs "subscription-sample-2"
-
-    echo "E2E (helm) test: PASSED"
+    helm_install_telemetry_controller
 }
 
 function load_images()
@@ -32,50 +31,98 @@ function load_images()
     done
 }
 
-function helm_deploy_telemetry_controller()
+function helm_install_telemetry_controller()
 {
     helm upgrade --install \
         --debug \
         --wait \
         --create-namespace \
-        -f e2e/values.yaml \
+        -f "e2e/values.yaml" \
         telemetry-controller \
         "charts/telemetry-controller/"
 }
 
-function helm_deploy_log_generator()
+function test_one_tenant_two_subscriptions()
 {
+    helm_install_log_generator_to_ns "example-tenant-ns"
+
+    deploy_test_assets "e2e/testdata/one_tenant_two_subscriptions/"
+
+    # Check for received messages - subscription-sample-1
+    # NOTE: We should not use grep -q, because it causes a SIGPIPE for kubectl and we have -o pipefail
+    check_logs_in_workload_with_regex "example-tenant-ns" "receiver-collector" "subscription-sample-1"
+    check_logs_in_workload_with_regex "example-tenant-ns" "receiver-collector" "subscription-sample-2"
+
+    helm_uninstall_log_generator_from_ns "example-tenant-ns"
+    undeploy_test_assets "e2e/testdata/one_tenant_two_subscriptions/"
+}
+
+function test_tenants_with_bridges()
+{
+    helm_install_log_generator_to_ns "shared"
+
+    deploy_test_assets "e2e/testdata/tenants_with_bridges/"
+
+    # NOTE: Since both database and web tenant is parsing logs from the shared tenant
+    # if we see logs having Attribute "subscription" with value "Str(database)" or "Str(web)"
+    # then it means the logs are being parsed by the respective tenants and the bridges are working as expected.
+    check_logs_in_workload_with_regex "telemetry-controller-system" "receiver-collector" "subscription: Str\(database\)"
+    check_logs_in_workload_with_regex "telemetry-controller-system" "receiver-collector" "subscription: Str\(web\)"
+
+    helm_uninstall_log_generator_from_ns "shared"
+    undeploy_test_assets "e2e/testdata/tenants_with_bridges/"
+}
+
+function helm_install_log_generator_to_ns()
+{
+    local namespace="$1"
+
     helm install \
         --wait \
         --create-namespace \
-        --namespace example-tenant-ns \
-        --generate-name \
+        --namespace "$namespace" \
+        log-generator \
         oci://ghcr.io/kube-logging/helm-charts/log-generator
+}
+
+function helm_uninstall_log_generator_from_ns()
+{
+    local namespace="$1"
+
+    helm uninstall --namespace "$namespace" log-generator
 }
 
 function deploy_test_assets()
 {
-    kubectl apply -f e2e/testdata/one_tenant_two_subscriptions/
+    local manifests="$1"
+
+    kubectl apply -f "${manifests}"
 
     sleep 5
-
-    # Wait for the deployment to be ready
-    kubectl wait --for=condition=available --timeout=300s deployment/receiver-collector --namespace example-tenant-ns
 }
 
-function check_subscription_logs()
+function undeploy_test_assets()
 {
-    local subscription="$1"
-    local namespace="${2:-example-tenant-ns}"
-    local deployment="${3:-receiver-collector}"
+    local manifests="$1"
+
+    kubectl delete -f "${manifests}"
+
+    sleep 5
+}
+
+function check_logs_in_workload_with_regex()
+{
+    local namespace="$1"
+    local deployment="$2"
+    local regex="$3"
     local max_duration=300
     local start_time=$(date +%s)
 
-    echo "Checking for $subscription in $namespace/$deployment logs"
+    echo "Checking for logs in $namespace/$deployment with regex: $regex"
 
     while true; do
-        if kubectl logs --namespace "$namespace" "deployments/$deployment" | grep -E "$subscription"; then
-            echo "Found $subscription in logs"
+        if kubectl logs --namespace "$namespace" "deployments/$deployment" | grep -E "$regex"; then
+            echo "Logs with regex: $regex found in $namespace/$deployment."
             return 0
         fi
 
@@ -85,7 +132,7 @@ function check_subscription_logs()
         local elapsed_time=$((current_time - start_time))
 
         if [ "$elapsed_time" -ge "$max_duration" ]; then
-            echo "ERROR: Subscription $subscription not found in logs after $max_duration seconds"
+            echo "ERROR: Logs with regex: $regex not found in $namespace/$deployment after $max_duration seconds."
             return 1
         fi
     done

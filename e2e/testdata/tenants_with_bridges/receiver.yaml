@@ -2,7 +2,7 @@ apiVersion: opentelemetry.io/v1alpha1
 kind: OpenTelemetryCollector
 metadata:
   name: receiver
-  namespace: example-tenant-ns
+  namespace: telemetry-controller-system
 spec:
   managementState: managed
   config: |

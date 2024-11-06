@@ -121,7 +121,7 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	maps.Copy(connectors, connector.GenerateCountConnectors())
 
 	for _, tenant := range cfgInput.Tenants {
-		rc := connector.GenerateRoutingConnectorForTenantsSubscriptions(tenant.Name, cfgInput.TenantSubscriptionMap[tenant.Name], cfgInput.Subscriptions)
+		rc := connector.GenerateRoutingConnectorForTenantsSubscriptions(tenant.Name, tenant.Spec.RouteConfig, cfgInput.TenantSubscriptionMap[tenant.Name], cfgInput.Subscriptions)
 		connectors[rc.Name] = rc
 	}
 

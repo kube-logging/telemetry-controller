@@ -49,7 +49,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				Namespace: "example-tenant-a-ns",
 			},
 			Spec: v1alpha1.SubscriptionSpec{
-				OTTL: "route()",
+				Condition: "true",
 				Outputs: []v1alpha1.NamespacedName{
 					{
 						Name:      "otlp-test-output",
@@ -68,7 +68,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				Namespace: "example-tenant-a-ns",
 			},
 			Spec: v1alpha1.SubscriptionSpec{
-				OTTL: "route()",
+				Condition: "true",
 				Outputs: []v1alpha1.NamespacedName{
 					{
 						Name:      "otlp-test-output-2",
@@ -83,7 +83,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				Namespace: "example-tenant-b-ns",
 			},
 			Spec: v1alpha1.SubscriptionSpec{
-				OTTL: "route()",
+				Condition: "true",
 				Outputs: []v1alpha1.NamespacedName{
 					{
 						Name:      "otlp-test-output-2",
@@ -372,12 +372,15 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 							Name:      "subsA",
 							Namespace: "nsA",
 						},
-						Spec: v1alpha1.SubscriptionSpec{Outputs: []v1alpha1.NamespacedName{
-							{
-								Namespace: "xy",
-								Name:      "zq",
+						Spec: v1alpha1.SubscriptionSpec{
+							Condition: "true",
+							Outputs: []v1alpha1.NamespacedName{
+								{
+									Namespace: "xy",
+									Name:      "zq",
+								},
 							},
-						}, OTTL: `set(attributes["subscription"], "subscriptionA")`},
+						},
 					},
 					{
 						Name:      "subsB",
@@ -387,12 +390,15 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 							Name:      "subsB",
 							Namespace: "nsA",
 						},
-						Spec: v1alpha1.SubscriptionSpec{Outputs: []v1alpha1.NamespacedName{
-							{
-								Namespace: "xy",
-								Name:      "zq",
+						Spec: v1alpha1.SubscriptionSpec{
+							Condition: "true",
+							Outputs: []v1alpha1.NamespacedName{
+								{
+									Namespace: "xy",
+									Name:      "zq",
+								},
 							},
-						}, OTTL: `set(attributes["subscription"], "subscriptionB")`},
+						},
 					},
 				},
 			},
@@ -413,12 +419,8 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 				Name: "routing/tenant_tenantA_subscriptions",
 				Table: []connector.RoutingConnectorTableItem{
 					{
-						Statement: `set(attributes["subscription"], "subscriptionA")`,
-						Pipelines: []string{"logs/tenant_tenantA_subscription_nsA_subsA"},
-					},
-					{
-						Statement: `set(attributes["subscription"], "subscriptionB") `,
-						Pipelines: []string{"logs/tenant_tenantA_subscription_nsA_subsB"},
+						Condition: "true",
+						Pipelines: []string{"logs/tenant_tenantA_subscription_nsA_subsA", "logs/tenant_tenantA_subscription_nsA_subsB"},
 					},
 				},
 			},
@@ -430,7 +432,7 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 			cfgInput := &OtelColConfigInput{
 				Subscriptions: tt.fields.Subscriptions,
 			}
-			got := connector.GenerateRoutingConnectorForTenantsSubscriptions(tt.args.tenantName, tt.args.subscriptionNames, cfgInput.Subscriptions)
+			got := connector.GenerateRoutingConnectorForTenantsSubscriptions(tt.args.tenantName, v1alpha1.RouteConfig{}, tt.args.subscriptionNames, cfgInput.Subscriptions)
 			assert.Equal(t, got, tt.want)
 		})
 	}
@@ -493,7 +495,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 						Spec: v1alpha1.TenantSpec{
 							Transform: v1alpha1.Transform{
 								Name: "transform1",
-								LogStatements: []v1alpha1.Statement{
+								LogStatements: []v1alpha1.TransformStatement{
 									{
 										Statements: []string{`set(resource.attributes["parsed"], ExtractPatterns(body, "(?P<method>(GET|PUT))"))`},
 									},
@@ -538,8 +540,8 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 							Namespace: "ns1",
 						},
 						Spec: v1alpha1.SubscriptionSpec{
-							OTTL:    "route()",
-							Outputs: []v1alpha1.NamespacedName{},
+							Condition: "true",
+							Outputs:   []v1alpha1.NamespacedName{},
 						},
 					},
 					{
@@ -551,8 +553,8 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 							Namespace: "ns2",
 						},
 						Spec: v1alpha1.SubscriptionSpec{
-							OTTL:    "route()",
-							Outputs: []v1alpha1.NamespacedName{},
+							Condition: "true",
+							Outputs:   []v1alpha1.NamespacedName{},
 						},
 					},
 				},
@@ -598,7 +600,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 						Spec: v1alpha1.BridgeSpec{
 							SourceTenant: "tenant1",
 							TargetTenant: "tenant2",
-							OTTL:         "route()",
+							Condition:    "true",
 						},
 					},
 				},

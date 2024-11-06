@@ -52,7 +52,7 @@ func GenerateTransformProcessorForTenantPipeline(tenantName string, pipeline *ot
 	}
 }
 
-func convertAPIStatements(APIStatements []v1alpha1.Statement) []TransformProcessorStatement {
+func convertAPIStatements(APIStatements []v1alpha1.TransformStatement) []TransformProcessorStatement {
 	statements := make([]TransformProcessorStatement, len(APIStatements))
 	for i, statement := range APIStatements {
 		statements[i] = TransformProcessorStatement{

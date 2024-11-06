@@ -18,9 +18,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Statement represents a single statement in a Transform processor
+// TransformStatement represents a single statement in a Transform processor
 // ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
-type Statement struct {
+type TransformStatement struct {
 	// +kubebuilder:validation:Enum:=resource;scope;span;spanevent;metric;datapoint;log
 	Context    string   `json:"context,omitempty"`
 	Conditions []string `json:"conditions,omitempty"`
@@ -38,9 +38,22 @@ type Transform struct {
 	// vaid options are: ignore, silent, propagate; (default: propagate)
 	ErrorMode string `json:"errorMode,omitempty"`
 
-	TraceStatements  []Statement `json:"traceStatements,omitempty"`
-	MetricStatements []Statement `json:"metricStatements,omitempty"`
-	LogStatements    []Statement `json:"logStatements,omitempty"`
+	TraceStatements  []TransformStatement `json:"traceStatements,omitempty"`
+	MetricStatements []TransformStatement `json:"metricStatements,omitempty"`
+	LogStatements    []TransformStatement `json:"logStatements,omitempty"`
+}
+
+// RouteConfig defines the routing configuration for a tenant
+// it will be used to generate routing connectors
+type RouteConfig struct {
+	DefaultPipelines []string `json:"defaultPipelines,omitempty"` // TODO: Provide users with a guide to determine generated pipeline names
+
+	// +kubebuilder:validation:Enum:=ignore;silent;propagate
+
+	// ErrorMode specifies how errors are handled while processing a statement
+	// vaid options are: ignore, silent, propagate; (default: propagate)
+	ErrorMode string `json:"errorMode,omitempty"`
+	MatchOnce bool   `json:"matchOnce,omitempty"`
 }
 
 // TenantSpec defines the desired state of Tenant
@@ -48,6 +61,7 @@ type TenantSpec struct {
 	SubscriptionNamespaceSelectors []metav1.LabelSelector `json:"subscriptionNamespaceSelectors,omitempty"`
 	LogSourceNamespaceSelectors    []metav1.LabelSelector `json:"logSourceNamespaceSelectors,omitempty"`
 	Transform                      Transform              `json:"transform,omitempty"`
+	RouteConfig                    RouteConfig            `json:"routeConfig,omitempty"`
 }
 
 // TenantStatus defines the observed state of Tenant
