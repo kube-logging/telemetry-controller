@@ -51,9 +51,7 @@ spec:
           spec:
             description: SubscriptionSpec defines the desired state of Subscription
             properties:
-              debug:
-                type: boolean
-              ottl:
+              condition:
                 type: string
               outputs:
                 items:
@@ -67,6 +65,8 @@ spec:
                   - namespace
                   type: object
                 type: array
+            required:
+            - condition
             type: object
           status:
             description: SubscriptionStatus defines the observed state of Subscription

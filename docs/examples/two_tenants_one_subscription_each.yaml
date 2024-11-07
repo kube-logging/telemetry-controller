@@ -71,7 +71,7 @@ metadata:
   name: subscription-sample-1
   namespace: example-tenant-ns-1
 spec:
-  ottl: 'route()'
+  condition: "true"
   outputs:
     - name: otlp-test-output-1
       namespace: collector
@@ -82,7 +82,7 @@ metadata:
   name: subscription-sample-2
   namespace: example-tenant-ns-2
 spec:
-  ottl: 'route()'
+  condition: "true"
   outputs:
     - name: otlp-test-output-2
       namespace: collector

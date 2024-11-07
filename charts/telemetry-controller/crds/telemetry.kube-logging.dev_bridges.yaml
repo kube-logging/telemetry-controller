@@ -51,7 +51,7 @@ spec:
           spec:
             description: BridgeSpec defines the desired state of Bridge
             properties:
-              ottl:
+              condition:
                 description: |-
                   The OTTL condition which must be satisfied in order to forward telemetry
                   from the source tenant to the target tenant
@@ -60,6 +60,10 @@ spec:
                 type: string
               targetTenant:
                 type: string
+            required:
+            - condition
+            - sourceTenant
+            - targetTenant
             type: object
           status:
             description: BridgeStatus defines the observed state of Bridge

@@ -4,6 +4,7 @@ metadata:
   name: receiver-otelcol
   namespace: receiver
 spec:
+  managementState: managed
   image: otel/opentelemetry-collector-contrib:0.112.0
   volumes:
     - name: certs-volume

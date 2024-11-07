@@ -1,3 +1,29 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: collector
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    tenant: shared
+  name: shared
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    tenant: database
+  name: database
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    tenant: web
+  name: web
+---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Collector
 metadata:
@@ -36,21 +62,17 @@ metadata:
 spec:
   condition: "true"
   outputs:
-    - name: openobserve-shared
-      namespace: shared
+    - name: otlp-test-output-shared
+      namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
-  name: openobserve-shared
-  namespace: shared
+  name: otlp-test-output-shared
+  namespace: collector
 spec:
   otlp:
-    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
-    headers:
-      Authorization: "Basic <TOKEN>"
-      organization: default
-      stream-name: shared
+    endpoint: receiver-collector.telemetry-controller-system.svc.cluster.local:4317
     tls:
       insecure: true
 ---
@@ -86,21 +108,17 @@ metadata:
 spec:
   condition: "true"
   outputs:
-    - name: openobserve-database
-      namespace: database
+    - name: otlp-test-output-database
+      namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
-  name: openobserve-database
-  namespace: database
+  name: otlp-test-output-database
+  namespace: collector
 spec:
   otlp:
-    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
-    headers:
-      Authorization: "Basic <TOKEN>"
-      organization: default
-      stream-name: db
+    endpoint: receiver-collector.telemetry-controller-system.svc.cluster.local:4317
     tls:
       insecure: true
 ---
@@ -136,20 +154,16 @@ metadata:
 spec:
   condition: "true"
   outputs:
-    - name: openobserve-web
-      namespace: web
+    - name: otlp-test-output-web
+      namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
-  name: openobserve-web
-  namespace: web
+  name: otlp-test-output-web
+  namespace: collector
 spec:
   otlp:
-    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
-    headers:
-      Authorization: "Basic <TOKEN>"
-      organization: default
-      stream-name: web
+    endpoint: receiver-collector.telemetry-controller-system.svc.cluster.local:4317
     tls:
       insecure: true

@@ -59,7 +59,7 @@ metadata:
   name: all-logs
   namespace: tenant-demo-1
 spec:
-  ottl: 'route()'
+  condition: "true"
   outputs:
     - name: loki
       namespace: collector
@@ -86,7 +86,7 @@ metadata:
   name: all-logs
   namespace: tenant-demo-2
 spec:
-  ottl: 'route()'
+  condition: "true"
   outputs:
     - name: loki
       namespace: collector

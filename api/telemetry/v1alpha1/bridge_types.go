@@ -20,11 +20,11 @@ import (
 
 // BridgeSpec defines the desired state of Bridge
 type BridgeSpec struct {
-	SourceTenant string `json:"sourceTenant,omitempty"`
-	TargetTenant string `json:"targetTenant,omitempty"`
+	SourceTenant string `json:"sourceTenant"`
+	TargetTenant string `json:"targetTenant"`
 	// The OTTL condition which must be satisfied in order to forward telemetry
 	// from the source tenant to the target tenant
-	OTTL string `json:"ottl,omitempty"`
+	Condition string `json:"condition"`
 }
 
 // BridgeStatus defines the observed state of Bridge

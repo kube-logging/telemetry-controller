@@ -16,7 +16,6 @@ package connector
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
@@ -25,8 +24,8 @@ import (
 )
 
 type RoutingConnectorTableItem struct {
-	Statement string   `json:"statement"`
-	Pipelines []string `json:"pipelines"`
+	Condition string   `json:"condition,omitempty"`
+	Pipelines []string `json:"pipelines,omitempty"`
 }
 
 type RoutingConnector struct {
@@ -37,41 +36,47 @@ type RoutingConnector struct {
 	Table            []RoutingConnectorTableItem `json:"table"`
 }
 
-func (rc *RoutingConnector) AddRoutingConnectorTableElem(newTableItem RoutingConnectorTableItem) {
-	rc.Table = append(rc.Table, newTableItem)
-}
-
-func newRoutingConnector(name string) RoutingConnector {
-	result := RoutingConnector{}
-	result.Name = name
-
-	return result
-}
-
-func buildRoutingTableItemForSubscription(tenantName string, subscription v1alpha1.Subscription, index int) RoutingConnectorTableItem {
-	pipelineName := fmt.Sprintf("logs/tenant_%s_subscription_%s_%s", tenantName, subscription.Namespace, subscription.Name)
-	newItem := RoutingConnectorTableItem{
-		Statement: fmt.Sprintf("%s%s", subscription.Spec.OTTL, strings.Repeat(" ", index)),
-		Pipelines: []string{pipelineName},
+func (rc *RoutingConnector) populateRoutingConnectorTable(seenConditionsPipelineMap map[string][]string) {
+	for condition, pipelines := range seenConditionsPipelineMap {
+		tableItem := RoutingConnectorTableItem{
+			Condition: condition,
+			Pipelines: pipelines,
+		}
+		rc.Table = append(rc.Table, tableItem)
 	}
-
-	return newItem
 }
 
-func GenerateRoutingConnectorForTenantsSubscriptions(tenantName string, subscriptionNames []v1alpha1.NamespacedName, subscriptions map[v1alpha1.NamespacedName]v1alpha1.Subscription) RoutingConnector {
-	rc := newRoutingConnector(fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName))
+func newRoutingConnector(name string, tenantRouteConfig v1alpha1.RouteConfig) RoutingConnector {
+	return RoutingConnector{
+		Name:             name,
+		DefaultPipelines: tenantRouteConfig.DefaultPipelines,
+		ErrorMode:        components.ErrorMode(tenantRouteConfig.ErrorMode),
+		MatchOnce:        tenantRouteConfig.MatchOnce,
+	}
+}
+
+func GenerateRoutingConnectorForTenantsSubscriptions(tenantName string, tenantRouteConfig v1alpha1.RouteConfig, subscriptionNames []v1alpha1.NamespacedName, subscriptions map[v1alpha1.NamespacedName]v1alpha1.Subscription) RoutingConnector {
+	rc := newRoutingConnector(fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName), tenantRouteConfig)
 	utils.SortNamespacedNames(subscriptionNames)
-	for index, subscriptionRef := range subscriptionNames {
-		subscription := subscriptions[subscriptionRef]
-		tableItem := buildRoutingTableItemForSubscription(tenantName, subscription, index)
-		rc.AddRoutingConnectorTableElem(tableItem)
+	seenConditionsPipelineMap := make(map[string][]string)
+	for _, subscriptionRef := range subscriptionNames {
+		subscription, ok := subscriptions[subscriptionRef]
+		if ok {
+			pipelineName := fmt.Sprintf("logs/tenant_%s_subscription_%s_%s", tenantName, subscription.Namespace, subscription.Name)
+			if _, ok := seenConditionsPipelineMap[subscription.Spec.Condition]; !ok {
+				seenConditionsPipelineMap[subscription.Spec.Condition] = []string{pipelineName}
+			} else {
+				seenConditionsPipelineMap[subscription.Spec.Condition] = append(seenConditionsPipelineMap[subscription.Spec.Condition], pipelineName)
+			}
+		}
 	}
+	rc.populateRoutingConnectorTable(seenConditionsPipelineMap)
 
 	return rc
 }
 
 func GenerateRoutingConnectorForSubscriptionsOutputs(subscriptionRef v1alpha1.NamespacedName, outputNames []v1alpha1.NamespacedName) RoutingConnector {
-	rc := newRoutingConnector(fmt.Sprintf("routing/subscription_%s_%s_outputs", subscriptionRef.Namespace, subscriptionRef.Name))
+	rc := newRoutingConnector(fmt.Sprintf("routing/subscription_%s_%s_outputs", subscriptionRef.Namespace, subscriptionRef.Name), v1alpha1.RouteConfig{})
 	utils.SortNamespacedNames(outputNames)
 	pipelines := []string{}
 	for _, outputRef := range outputNames {
@@ -79,22 +84,21 @@ func GenerateRoutingConnectorForSubscriptionsOutputs(subscriptionRef v1alpha1.Na
 	}
 
 	tableItem := RoutingConnectorTableItem{
-		Statement: "route()",
+		Condition: "true",
 		Pipelines: pipelines,
 	}
-	rc.AddRoutingConnectorTableElem(tableItem)
+	rc.Table = append(rc.Table, tableItem)
 
 	return rc
 }
 
 func GenerateRoutingConnectorForBridge(bridge v1alpha1.Bridge) RoutingConnector {
-	rc := newRoutingConnector(fmt.Sprintf("routing/bridge_%s", bridge.Name))
-
+	rc := newRoutingConnector(fmt.Sprintf("routing/bridge_%s", bridge.Name), v1alpha1.RouteConfig{})
 	tableItem := RoutingConnectorTableItem{
-		Statement: bridge.Spec.OTTL,
+		Condition: bridge.Spec.Condition,
 		Pipelines: []string{fmt.Sprintf("logs/tenant_%s", bridge.Spec.TargetTenant)},
 	}
-	rc.AddRoutingConnectorTableElem(tableItem)
+	rc.Table = append(rc.Table, tableItem)
 
 	return rc
 }
@@ -114,11 +118,9 @@ func checkBridgeConnectorForTenant(tenantName string, bridge v1alpha1.Bridge) (n
 func GenerateRoutingConnectorForBridgesTenantPipeline(tenantName string, pipeline *otelv1beta1.Pipeline, bridges []v1alpha1.Bridge) {
 	for _, bridge := range bridges {
 		needsReceiver, needsExporter, bridgeName := checkBridgeConnectorForTenant(tenantName, bridge)
-
 		if needsReceiver {
 			pipeline.Receivers = append(pipeline.Receivers, fmt.Sprintf("routing/bridge_%s", bridgeName))
 		}
-
 		if needsExporter {
 			pipeline.Exporters = append(pipeline.Exporters, fmt.Sprintf("routing/bridge_%s", bridgeName))
 		}
