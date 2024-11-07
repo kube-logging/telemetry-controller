@@ -17,22 +17,35 @@ package pipeline
 import (
 	"fmt"
 
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 )
 
 func GeneratePipeline(receivers, processors, exporters []string) *otelv1beta1.Pipeline {
-	result := otelv1beta1.Pipeline{}
-	result.Receivers = receivers
-	result.Processors = processors
-	result.Exporters = exporters
-
-	return &result
+	return &otelv1beta1.Pipeline{
+		Receivers:  filterEmptyPipelines(receivers),
+		Processors: filterEmptyPipelines(processors),
+		Exporters:  filterEmptyPipelines(exporters),
+	}
 }
 
-func GenerateRootPipeline(tenantName string) *otelv1beta1.Pipeline {
+func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string) *otelv1beta1.Pipeline {
 	tenantCountConnectorName := "count/tenant_metrics"
-	receiverName := fmt.Sprintf("filelog/%s", tenantName)
-	exporterName := fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
+	var receiverName string
+	var exporterName string
+	for _, tenant := range tenants {
+		if tenant.Name == tenantName {
+			// Add filelog receiver to tenant's pipeline if it has any logsource namespace selectors
+			if tenant.Spec.LogSourceNamespaceSelectors != nil {
+				receiverName = fmt.Sprintf("filelog/%s", tenantName)
+			}
+			// Add routing connector to tenant's pipeline if it has any subscription namespace selectors
+			if tenant.Spec.SubscriptionNamespaceSelectors != nil {
+				exporterName = fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
+			}
+		}
+	}
+
 	return GeneratePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName)}, []string{exporterName, tenantCountConnectorName})
 }
 
@@ -50,4 +63,14 @@ func GenerateMetricsPipelines() map[string]*otelv1beta1.Pipeline {
 	}
 
 	return metricsPipelines
+}
+
+func filterEmptyPipelines(items []string) []string {
+	var result []string
+	for _, item := range items {
+		if item != "" {
+			result = append(result, item)
+		}
+	}
+	return result
 }

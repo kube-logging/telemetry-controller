@@ -466,7 +466,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				Debug:                 false,
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
-				"logs/tenant_tenant1": pipeline.GenerateRootPipeline("tenant1"),
+				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1"),
 				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
 					[]string{"routing/tenant_tenant1_subscriptions"},
 					[]string{"attributes/subscription_sub1"},
@@ -485,7 +485,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 			},
 		},
 		{
-			name: "Two tenants each with a subscription with a bridge",
+			name: "Three tenants two bridges",
 			cfgInput: OtelColConfigInput{
 				Tenants: []v1alpha1.Tenant{
 					{
@@ -493,58 +493,65 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 							Name: "tenant1",
 						},
 						Spec: v1alpha1.TenantSpec{
-							Transform: v1alpha1.Transform{
-								Name: "transform1",
-								LogStatements: []v1alpha1.TransformStatement{
-									{
-										Statements: []string{`set(resource.attributes["parsed"], ExtractPatterns(body, "(?P<method>(GET|PUT))"))`},
+							LogSourceNamespaceSelectors: []metav1.LabelSelector{
+								{
+									MatchLabels: map[string]string{
+										"nsSelector": "ns1",
 									},
 								},
 							},
 						},
 						Status: v1alpha1.TenantStatus{
 							LogSourceNamespaces: []string{"ns1"},
-							Subscriptions: []v1alpha1.NamespacedName{
-								{
-									Namespace: "ns1",
-									Name:      "sub1",
-								},
-							},
-							State: v1alpha1.StateReady,
 						},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "tenant2",
 						},
-						Spec: v1alpha1.TenantSpec{},
+						Spec: v1alpha1.TenantSpec{
+							SubscriptionNamespaceSelectors: []metav1.LabelSelector{
+								{
+									MatchLabels: map[string]string{
+										"nsSelector": "ns2",
+									},
+								},
+							},
+						},
 						Status: v1alpha1.TenantStatus{
-							LogSourceNamespaces: []string{"ns2"},
 							Subscriptions: []v1alpha1.NamespacedName{
 								{
 									Namespace: "ns2",
 									Name:      "sub2",
 								},
 							},
-							State: v1alpha1.StateReady,
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "tenant3",
+						},
+						Spec: v1alpha1.TenantSpec{
+							SubscriptionNamespaceSelectors: []metav1.LabelSelector{
+								{
+									MatchLabels: map[string]string{
+										"nsSelector": "ns3",
+									},
+								},
+							},
+						},
+						Status: v1alpha1.TenantStatus{
+							Subscriptions: []v1alpha1.NamespacedName{
+								{
+									Namespace: "ns3",
+									Name:      "sub3",
+								},
+							},
 						},
 					},
 				},
 				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
 					{
-						Namespace: "ns1",
-						Name:      "sub1",
-					}: {
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "sub1",
-							Namespace: "ns1",
-						},
-						Spec: v1alpha1.SubscriptionSpec{
-							Condition: "true",
-							Outputs:   []v1alpha1.NamespacedName{},
-						},
-					},
-					{
 						Namespace: "ns2",
 						Name:      "sub2",
 					}: {
@@ -554,41 +561,38 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 						},
 						Spec: v1alpha1.SubscriptionSpec{
 							Condition: "true",
-							Outputs:   []v1alpha1.NamespacedName{},
+							Outputs: []v1alpha1.NamespacedName{
+								{
+									Namespace: "xy",
+									Name:      "zq",
+								},
+							},
 						},
-					},
-				},
-				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
-					"tenant1": {
-						{
-							Namespace: "ns1",
-							Name:      "sub1",
-						},
-					},
-					"tenant2": {
-						{
-							Namespace: "ns2",
-							Name:      "sub2",
-						},
-					},
-				},
-				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
-					{
-						Namespace: "ns1",
-						Name:      "sub1",
-					}: {
-						{
-							Namespace: "ns1",
-							Name:      "output1",
+						Status: v1alpha1.SubscriptionStatus{
+							Tenant:  "tenant2",
+							Outputs: []v1alpha1.NamespacedName{{Namespace: "xy", Name: "zq"}},
 						},
 					},
 					{
-						Namespace: "ns2",
-						Name:      "sub2",
+						Namespace: "ns3",
+						Name:      "sub3",
 					}: {
-						{
-							Namespace: "ns2",
-							Name:      "output2",
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sub3",
+							Namespace: "ns3",
+						},
+						Spec: v1alpha1.SubscriptionSpec{
+							Condition: "true",
+							Outputs: []v1alpha1.NamespacedName{
+								{
+									Namespace: "xy",
+									Name:      "zq",
+								},
+							},
+						},
+						Status: v1alpha1.SubscriptionStatus{
+							Tenant:  "tenant3",
+							Outputs: []v1alpha1.NamespacedName{{Namespace: "xy", Name: "zq"}},
 						},
 					},
 				},
@@ -600,7 +604,52 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 						Spec: v1alpha1.BridgeSpec{
 							SourceTenant: "tenant1",
 							TargetTenant: "tenant2",
-							Condition:    "true",
+							Condition:    `attributes["parsed"]["method"] == "GET"`,
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bridge2",
+						},
+						Spec: v1alpha1.BridgeSpec{
+							SourceTenant: "tenant1",
+							TargetTenant: "tenant3",
+							Condition:    `attributes["parsed"]["method"] == "PUT"`,
+						},
+					},
+				},
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					"tenant1": {},
+					"tenant2": {
+						{
+							Namespace: "ns2",
+							Name:      "sub2",
+						},
+					},
+					"tenant3": {
+						{
+							Namespace: "ns3",
+							Name:      "sub3",
+						},
+					},
+				},
+				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+					{
+						Namespace: "ns2",
+						Name:      "sub2",
+					}: {
+						{
+							Namespace: "xy",
+							Name:      "zq",
+						},
+					},
+					{
+						Namespace: "ns3",
+						Name:      "sub3",
+					}: {
+						{
+							Namespace: "xy",
+							Name:      "zq",
 						},
 					},
 				},
@@ -608,36 +657,41 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				Debug:                 false,
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
-				"logs/tenant_tenant1": pipeline.GeneratePipeline(
-					[]string{"filelog/tenant1"},
-					[]string{"k8sattributes", "attributes/tenant_tenant1", "transform/transform1"},
-					[]string{"routing/tenant_tenant1_subscriptions", "count/tenant_metrics", "routing/bridge_bridge1"},
-				),
-				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
-					[]string{"routing/tenant_tenant1_subscriptions"},
-					[]string{"attributes/subscription_sub1"},
-					[]string{"routing/subscription_ns1_sub1_outputs"},
-				),
-				"logs/tenant_tenant2": pipeline.GeneratePipeline(
-					[]string{"filelog/tenant2", "routing/bridge_bridge1"},
-					[]string{"k8sattributes", "attributes/tenant_tenant2"},
-					[]string{"routing/tenant_tenant2_subscriptions", "count/tenant_metrics"},
-				),
-				"logs/tenant_tenant2_subscription_ns2_sub2": pipeline.GeneratePipeline(
-					[]string{"routing/tenant_tenant2_subscriptions"},
-					[]string{"attributes/subscription_sub2"},
-					[]string{"routing/subscription_ns2_sub2_outputs"},
-				),
-				"metrics/output": pipeline.GeneratePipeline(
-					[]string{"count/output_metrics"},
-					[]string{"deltatocumulative", "attributes/metricattributes"},
-					[]string{"prometheus/message_metrics_exporter"},
-				),
-				"metrics/tenant": pipeline.GeneratePipeline(
-					[]string{"count/tenant_metrics"},
-					[]string{"deltatocumulative", "attributes/metricattributes"},
-					[]string{"prometheus/message_metrics_exporter"},
-				),
+				"logs/tenant_tenant1": {
+					Receivers:  []string{"filelog/tenant1"},
+					Processors: []string{"k8sattributes", "attributes/tenant_tenant1"},
+					Exporters:  []string{"count/tenant_metrics", "routing/bridge_bridge1", "routing/bridge_bridge2"},
+				},
+				"logs/tenant_tenant2": {
+					Receivers:  []string{"routing/bridge_bridge1"},
+					Processors: []string{"k8sattributes", "attributes/tenant_tenant2"},
+					Exporters:  []string{"routing/tenant_tenant2_subscriptions", "count/tenant_metrics"},
+				},
+				"logs/tenant_tenant2_subscription_ns2_sub2": {
+					Receivers:  []string{"routing/tenant_tenant2_subscriptions"},
+					Processors: []string{"attributes/subscription_sub2"},
+					Exporters:  []string{"routing/subscription_ns2_sub2_outputs"},
+				},
+				"logs/tenant_tenant3": {
+					Receivers:  []string{"routing/bridge_bridge2"},
+					Processors: []string{"k8sattributes", "attributes/tenant_tenant3"},
+					Exporters:  []string{"routing/tenant_tenant3_subscriptions", "count/tenant_metrics"},
+				},
+				"logs/tenant_tenant3_subscription_ns3_sub3": {
+					Receivers:  []string{"routing/tenant_tenant3_subscriptions"},
+					Processors: []string{"attributes/subscription_sub3"},
+					Exporters:  []string{"routing/subscription_ns3_sub3_outputs"},
+				},
+				"metrics/output": {
+					Receivers:  []string{"count/output_metrics"},
+					Processors: []string{"deltatocumulative", "attributes/metricattributes"},
+					Exporters:  []string{"prometheus/message_metrics_exporter"},
+				},
+				"metrics/tenant": {
+					Receivers:  []string{"count/tenant_metrics"},
+					Processors: []string{"deltatocumulative", "attributes/metricattributes"},
+					Exporters:  []string{"prometheus/message_metrics_exporter"},
+				},
 			},
 		},
 	}
@@ -645,7 +699,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
-			assert.Equal(t, ttp.cfgInput.generateNamedPipelines(), ttp.expectedPipelines)
+			assert.Equal(t, ttp.expectedPipelines, ttp.cfgInput.generateNamedPipelines())
 		})
 	}
 }

@@ -50,31 +50,6 @@ spec:
   logSourceNamespaceSelectors:
     - matchLabels:
         tenant: shared
-  subscriptionNamespaceSelectors:
-    - matchLabels:
-        tenant: shared
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Subscription
-metadata:
-  name: shared
-  namespace: shared
-spec:
-  condition: "true"
-  outputs:
-    - name: otlp-test-output-shared
-      namespace: collector
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Output
-metadata:
-  name: otlp-test-output-shared
-  namespace: collector
-spec:
-  otlp:
-    endpoint: receiver-collector.telemetry-controller-system.svc.cluster.local:4317
-    tls:
-      insecure: true
 ---
 # A tenant that consumes logs from the shared tenant using a bridge
 apiVersion: telemetry.kube-logging.dev/v1alpha1
@@ -84,9 +59,6 @@ metadata:
     collector: cluster
   name: database
 spec:
-  logSourceNamespaceSelectors:
-    - matchLabels:
-        tenant: database
   subscriptionNamespaceSelectors:
     - matchLabels:
         tenant: database
@@ -130,9 +102,6 @@ metadata:
     collector: cluster
   name: web
 spec:
-  logSourceNamespaceSelectors:
-    - matchLabels:
-        tenant: web
   subscriptionNamespaceSelectors:
     - matchLabels:
         tenant: web

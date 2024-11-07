@@ -17,11 +17,11 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.state
-      name: State
-      type: string
     - jsonPath: .status.tenants
       name: Tenants
+      type: string
+    - jsonPath: .status.state
+      name: State
       type: string
     name: v1alpha1
     schema:

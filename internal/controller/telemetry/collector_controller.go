@@ -203,6 +203,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// deploying the collector that would immediately error due to configuration errors.
 	// Might also be a good place to add a validation webhook to validate the collector spec
 	if err := otelConfigInput.ValidateConfig(); err != nil {
+		collector.Status.State = v1alpha1.StateFailed
 		logger.Error(errors.WithStack(err), "failed validating otel config input")
 		return ctrl.Result{}, err
 	}
