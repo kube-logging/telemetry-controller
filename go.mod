@@ -25,9 +25,11 @@ require (
 	k8s.io/client-go v0.30.2
 	sigs.k8s.io/controller-runtime v0.18.4
 	sigs.k8s.io/yaml v1.4.0
+	github.com/hashicorp/go-multierror v1.1.1
 )
 
 require (
+	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/briandowns/spinner v1.23.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

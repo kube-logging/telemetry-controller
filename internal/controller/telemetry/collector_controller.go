@@ -199,6 +199,14 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	// NOTE: This might be revised or removed in the future, but good enough for now to avoid
+	// deploying the collector that would immediately error due to configuration errors.
+	// Might also be a good place to add a validation webhook to validate the collector spec
+	if err := otelConfigInput.ValidateConfig(); err != nil {
+		logger.Error(errors.WithStack(err), "failed validating otel config input")
+		return ctrl.Result{}, err
+	}
+
 	otelConfig := otelConfigInput.AssembleConfig(ctx)
 
 	saName, err := r.reconcileRBAC(ctx, collector)
