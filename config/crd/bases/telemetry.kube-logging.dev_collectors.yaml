@@ -17,6 +17,9 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .status.state
+      name: State
+      type: string
     - jsonPath: .status.tenants
       name: Tenants
       type: string
@@ -8071,6 +8074,8 @@ spec:
           status:
             description: CollectorStatus defines the observed state of Collector
             properties:
+              state:
+                type: string
               tenants:
                 items:
                   type: string

@@ -27,6 +27,7 @@ import (
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -178,14 +179,17 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	logger := log.FromContext(ctx, "collector", req.Name)
 
 	collector := &v1alpha1.Collector{}
-	logger.Info("Reconciling collector")
+	logger.Info(fmt.Sprintf("getting collector: %q", req.Name))
 
 	if err := r.Get(ctx, req.NamespacedName, collector); client.IgnoreNotFound(err) != nil {
+		logger.Error(errors.New("failed getting collector, possible API server error"), "failed getting collector, possible API server error",
+			"collector", req.Name)
 		return ctrl.Result{}, err
 	}
 
 	collector.Spec.SetDefaults()
-	originalCollectorStatus := collector.Status.DeepCopy()
+	originalCollectorStatus := collector.Status
+	logger.Info(fmt.Sprintf("reconciling collector: %q", collector.Name))
 
 	otelConfigInput, err := r.buildConfigInputForCollector(ctx, collector)
 	if err != nil {
@@ -264,7 +268,11 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 	_, err = resourceReconciler.ReconcileResource(&otelCollector, reconciler.StatePresent)
 	if err != nil {
-		return ctrl.Result{}, err
+		collector.Status.State = v1alpha1.StateFailed
+		if apierrors.IsConflict(err) {
+			logger.Info("conflict while creating otel collector, retrying")
+			return ctrl.Result{Requeue: true}, nil
+		}
 	}
 
 	tenantNames := []string{}
@@ -273,9 +281,12 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	collector.Status.Tenants = normalizeStringSlice(tenantNames)
 
+	collector.Status.State = v1alpha1.StateReady
 	if !reflect.DeepEqual(originalCollectorStatus, collector.Status) {
+		logger.Info("collector status changed")
 		if err = r.Client.Status().Update(ctx, collector); err != nil {
 			logger.Error(errors.WithStack(err), "failed updating collector status")
+			return ctrl.Result{}, err
 		}
 	}
 
