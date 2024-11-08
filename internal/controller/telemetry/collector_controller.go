@@ -40,6 +40,7 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	otelcolconfgen "github.com/kube-logging/telemetry-controller/internal/controller/telemetry/otel_conf_gen"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/otel_conf_gen/validator"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
 )
 
@@ -199,16 +200,18 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	// NOTE: This might be revised or removed in the future, but good enough for now to avoid
-	// deploying the collector that would immediately error due to configuration errors.
-	// Might also be a good place to add a validation webhook to validate the collector spec
-	if err := otelConfigInput.ValidateConfig(); err != nil {
+	if err := otelConfigInput.ValidateConfig(); ignoreNoResourcesError(err) != nil {
 		collector.Status.State = v1alpha1.StateFailed
-		logger.Error(errors.WithStack(err), "failed validating otel config input")
+		logger.Error(errors.WithStack(err), "invalid otel config input")
 		return ctrl.Result{}, err
 	}
 
 	otelConfig := otelConfigInput.AssembleConfig(ctx)
+	if err := validator.ValidateAssembledConfig(otelConfig); err != nil {
+		collector.Status.State = v1alpha1.StateFailed
+		logger.Error(errors.WithStack(err), "invalid otel config")
+		return ctrl.Result{}, err
+	}
 
 	saName, err := r.reconcileRBAC(ctx, collector)
 	if err != nil {
@@ -554,4 +557,12 @@ func normalizeStringSlice(inputList []string) []string {
 	slices.Sort(uniqueList)
 
 	return uniqueList
+}
+
+func ignoreNoResourcesError(err error) error {
+	if err == otelcolconfgen.ErrNoResources {
+		return nil
+	}
+
+	return err
 }
