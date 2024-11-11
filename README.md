@@ -154,6 +154,22 @@ Apply the provided example resource for telemetry-controller: [telemetry-control
 kubectl apply -f telemetry-controller.yaml
 ```
 
+## Support
+
+If you encounter problems while using the Telemetry Controller, [open an issue](https://github.com/kube-logging/telemetry-controller/issues) or talk to us on the [#logging-operator Discord channel](https://discord.gg/eAcqmAVU2u).
+
+## Further info
+
+For further information, use cases, and tutorials, read our [blog posts about Telemetry Controller](https://axoflow.com/tag/telemetry-controller/), for example:
+
+- [Introduction and getting started with Telemetry Controller](https://axoflow.com/reinvent-kubernetes-logging-with-telemetry-controller/)
+- [How to send Kubernetes logs to Loki](https://axoflow.com/send-kubernetes-logs-to-loki-with-telemetry-controller/)
+- [Sending data to the Logging Operator](https://axoflow.com/kubernetes-logging-telemetry-controller-logging-operator/)
+
+We also give talks about Telemetry Controller at various open source conferences, for example, at Open Source Summit Europe 2024:
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/vz2chMIzrgs?si=k4ZHbp4AWzkj3Niv" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## Contributing
 
 If you find this project useful, help us:
