@@ -20,6 +20,9 @@ spec:
     - jsonPath: .status.tenants
       name: Tenants
       type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -8071,6 +8074,8 @@ spec:
           status:
             description: CollectorStatus defines the observed state of Collector
             properties:
+              state:
+                type: string
               tenants:
                 items:
                   type: string

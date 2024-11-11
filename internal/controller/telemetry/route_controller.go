@@ -475,26 +475,20 @@ func (r *RouteReconciler) getTenants(ctx context.Context, listOpts *client.ListO
 }
 
 func (r *RouteReconciler) checkBridgeConnections(ctx context.Context, bridge *v1alpha1.Bridge) error {
-	listOpts := &client.ListOptions{
-		FieldSelector: fields.OneTermEqualSelector(tenantNameField, bridge.Spec.SourceTenant),
-	}
-	sourceTenant, err := r.getTenants(ctx, listOpts)
-	if err != nil {
-		return err
-	}
-	if len(sourceTenant) != 1 && sourceTenant[0].Name != bridge.Spec.SourceTenant {
-		return errors.Errorf("bridge (%s) has invalid source tenant", bridge.Name)
-	}
-
-	listOpts = &client.ListOptions{
-		FieldSelector: fields.OneTermEqualSelector(tenantNameField, bridge.Spec.TargetTenant),
-	}
-	targetTenant, err := r.getTenants(ctx, listOpts)
-	if err != nil {
-		return err
-	}
-	if len(targetTenant) != 1 && targetTenant[0].Name != bridge.Spec.TargetTenant {
-		return errors.Errorf("bridge (%s) has invalid target tenant", bridge.Name)
+	for _, tenant := range []string{bridge.Spec.SourceTenant, bridge.Spec.TargetTenant} {
+		listOpts := &client.ListOptions{
+			FieldSelector: fields.OneTermEqualSelector(tenantNameField, tenant),
+		}
+		tenants, err := r.getTenants(ctx, listOpts)
+		if err != nil {
+			return err
+		}
+		if len(tenants) == 0 {
+			return errors.Errorf("tenant: %s not found for bridge: %s", tenant, bridge.Name)
+		}
+		if len(tenants) != 1 || tenants[0].Name != tenant {
+			return errors.Errorf("bridge: %s has invalid tenant reference: %s", bridge.Name, tenant)
+		}
 	}
 
 	return nil

@@ -81,12 +81,14 @@ func (c CollectorSpec) GetMemoryLimit() *resource.Quantity {
 // CollectorStatus defines the observed state of Collector
 type CollectorStatus struct {
 	Tenants []string `json:"tenants,omitempty"`
+	State   State    `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:scope=Cluster,categories=telemetry-all
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Tenants",type=string,JSONPath=`.status.tenants`
+//+kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 
 // Collector is the Schema for the collectors API
 type Collector struct {

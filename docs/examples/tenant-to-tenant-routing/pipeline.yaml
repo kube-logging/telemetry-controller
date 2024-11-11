@@ -24,35 +24,6 @@ spec:
   logSourceNamespaceSelectors:
     - matchLabels:
         tenant: shared
-  subscriptionNamespaceSelectors:
-    - matchLabels:
-        tenant: shared
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Subscription
-metadata:
-  name: shared
-  namespace: shared
-spec:
-  condition: "true"
-  outputs:
-    - name: openobserve-shared
-      namespace: shared
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Output
-metadata:
-  name: openobserve-shared
-  namespace: shared
-spec:
-  otlp:
-    endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
-    headers:
-      Authorization: "Basic <TOKEN>"
-      organization: default
-      stream-name: shared
-    tls:
-      insecure: true
 ---
 # A tenant that consumes logs from the shared tenant using a bridge
 apiVersion: telemetry.kube-logging.dev/v1alpha1
@@ -62,9 +33,6 @@ metadata:
     collector: cluster
   name: database
 spec:
-  logSourceNamespaceSelectors:
-    - matchLabels:
-        tenant: database
   subscriptionNamespaceSelectors:
     - matchLabels:
         tenant: database
@@ -112,9 +80,6 @@ metadata:
     collector: cluster
   name: web
 spec:
-  logSourceNamespaceSelectors:
-    - matchLabels:
-        tenant: web
   subscriptionNamespaceSelectors:
     - matchLabels:
         tenant: web
