@@ -154,6 +154,14 @@ Apply the provided example resource for telemetry-controller: [telemetry-control
 kubectl apply -f telemetry-controller.yaml
 ```
 
+## Under the hood
+
+Telemetry Controller uses a [custom OpenTelemetry Collector distribution](https://github.com/axoflow/axoflow-otel-collector-releases) as its agent. This distribution is and will be compatible with the upstream OpenTelemetry Collector distribution regarding core features, but:
+
+- We reduce the footprint of the final image by removing unnecessary components. This reduces not just the size, but also the vulnerability surface of the collector.
+- We include additional components with features not available in the upstream OpenTelemetry Collector, for example, to provide a richer set of metrics.
+- We use the OpenTelemetry Operator as the primary controller to implicitly manage the collector.
+
 ## Support
 
 If you encounter problems while using the Telemetry Controller, [open an issue](https://github.com/kube-logging/telemetry-controller/issues) or talk to us on the [#logging-operator Discord channel](https://discord.gg/eAcqmAVU2u).
