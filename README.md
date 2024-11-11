@@ -70,18 +70,18 @@ make deploy IMG=telemetry-controller:latest
 ### Example setup
 
 You can deploy the example configuration provided as part of the docs. This will deploy a demo pipeline with one tenant, two subscriptions, and an OpenObserve instance.
-Deploying Openobserve is an optional, but recommended step, logs can be forwarded to any OTLP endpoint. Openobserve provides a UI to visualize the ingested logstream.
+Deploying OpenObserve is an optional, but recommended step, logs can be forwarded to any OTLP endpoint. OpenObserve provides a UI to visualize the ingested logstream.
 
 ```sh
-# Deploy Openobserve
+# Deploy OpenObserve
 kubectl apply -f docs/examples/simple-demo/openobserve.yaml
 
-# Set up portforwarding for Openobserve UI
+# Set up portforwarding for OpenObserve UI
 kubectl -n openobserve port-forward svc/openobserve 5080:5080 &
 ```
 
 Open the UI at `localhost:5080`, navigate to the `Ingestion/OTEL Collector` tab, and copy the authorization token as seen on the screenshot.
-![Openobserve auth](docs/assets/openobserve-auth.png)
+![OpenObserve auth](docs/assets/openobserve-auth.png)
 
 Paste this token to the example manifests:
 
@@ -100,15 +100,15 @@ Create a workload, which will generate logs for the pipeline:
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
 ```
 
-Open the Openobserve UI and inspect the generated log messages:
+Open the OpenObserve UI and inspect the generated log messages:
 
-Set up portforwarding for Openobserve UI
+Set up portforwarding for OpenObserve UI
 
 ```sh
 kubectl -n openobserve port-forward svc/openobserve 5080:5080
 ```
 
-![Openobserve logs](docs/assets/openobserve-logs.png)
+![OpenObserve logs](docs/assets/openobserve-logs.png)
 
 ### Sending logs to logging-operator (example)
 
