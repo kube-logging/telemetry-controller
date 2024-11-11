@@ -9,9 +9,9 @@ The Telemetry Controller provides isolation and access control for telemetry dat
 
 Telemetry Controller can be configured using Custom Resources to set up an [opinionated Opentelemetry Collector](#under-the-hood) configuration to route log messages based on rules defined as a Tenant -> Subscription relation map. That way:
 
-- Administrators can define **tenants** to provide isolation and access control for telemetry data.
+- Administrators can define a **collector** and **tenants** to provide isolation and access control for telemetry data. These are cluster scoped resources.
 - Users can create **subscriptions** to select telemetry data streams accessible by their tenant only.
-- Users can create or refer the available **outputs** in their **subscriptions** to route and transport data.
+- Users can create or refer the available **outputs** in their **subscriptions** to route and transport data. That way users can configure what they want to collect, and where they want to send it - within their tenant’s scope.
 
 ![Telemetry Controller flow diagram](https://axoflow.com/wp-content/uploads/2024/02/telemetry-controller-flow.png)
 
@@ -20,6 +20,24 @@ Telemetry Controller can collect data from various sources, for example:
 - Container logs that come from stdout/stderr and are written to the host filesystem by the container runtime.
 - Logs, metrics, and traces that are sent to an OTLP endpoint.
 - Metrics collected from exporter endpoints.
+
+### Collector
+
+Collectors specify global settings for the OTEL Collector DaemonSet, and a `tenantSelector` that lists the Tenants that the collector should pick up. The collector also attaches metadata to the telemetry data sources: for Kubernetes logs, it fetches additional metadata like pod labels and adds those as attributes to log records.
+
+### Tenants
+
+Typically, a tenant is a set of Kubernetes namespaces, which is a best practice for managing multi-tenant workloads inside a single cluster. Tenant resources specify `subscriptionNamespaceSelectors` for namespaces that select subscriptions created by the tenant users, and `logSourceNamespaceSelectors` that specify the namespaces where the logs are produced (that are also the concern of the tenant users). In trivial use cases these two label selectors are the same.
+
+The Tenant is actually a routing rule that helps to make sure that telemetry data is only accessible to a given Subscription if it matches the policies set by the administrator.
+
+### Subscriptions
+
+Tenant users can define their Subscriptions in the namespace(s) of their Tenants. Subscriptions can select from the telemetry data (that is already filtered as part of the Tenant definition) and set Output endpoints where the data is forwarded. Such an endpoint can be:
+
+- an aggregator, for example, Logging operator,
+- a remote telemetry backend, for example, Loki, Jaeger, or Prometheus, or
+- a managed service provider, for example, Splunk or Sumo Logic.
 
 ## Getting Started
 
@@ -175,6 +193,8 @@ Telemetry Controller uses a [custom OpenTelemetry Collector distribution](https:
 - We reduce the footprint of the final image by removing unnecessary components. This reduces not just the size, but also the vulnerability surface of the collector.
 - We include additional components with features not available in the upstream OpenTelemetry Collector, for example, to provide a richer set of metrics.
 - We use the OpenTelemetry Operator as the primary controller to implicitly manage the collector.
+
+OpenTelemetry Collector runs as a DaemonSet, mounting and reading the container log files present on the node. During the initial parsing of the log entries, we extract the pod name, pod namespace, and some other metadata. This allows us to associate the log entry to the respective source pod through the Kubernetes API, and to fetch metadata which cannot be extracted from the message alone.
 
 ## Support
 
