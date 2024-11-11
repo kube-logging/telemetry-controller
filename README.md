@@ -1,11 +1,25 @@
 # Telemetry Controller
 
-Telemetry Controller collects, routes and forwards telemetry data (logs, metrics and traces) from Kubernetes clusters
+Telemetry Controller collects, routes, and forwards telemetry data (logs, metrics and traces) from Kubernetes clusters
 supporting multi-tenancy out of the box.
+
+The Telemetry Controller provides isolation and access control for telemetry data, similar to what Kubernetes provides for pods, secrets, and other resources. It provides an opinionated, convenient, and robust multi-tenant API on top of OpenTelemetry, and introduces new resources that give granular control over the shared data and hide the complexity of setting up and maintaining a well configured OpenTelemetry Collector manually.
 
 ## Description
 
-Telemetry-controller can be configured using Custom Resources to set up an opinionated Opentelemetry Collector configuration to route log messages based on rules defined as a Tenant -> Subscription relation map.
+Telemetry Controller can be configured using Custom Resources to set up an [opinionated Opentelemetry Collector](#under-the-hood) configuration to route log messages based on rules defined as a Tenant -> Subscription relation map. That way:
+
+- Administrators can define **tenants** to provide isolation and access control for telemetry data.
+- Users can create **subscriptions** to select telemetry data streams accessible by their tenant only.
+- Users can create or refer the available **outputs** in their **subscriptions** to route and transport data.
+
+![Telemetry Controller flow diagram](https://axoflow.com/wp-content/uploads/2024/02/telemetry-controller-flow.png)
+
+Telemetry Controller can collect data from various sources, for example:
+
+- Container logs that come from stdout/stderr and are written to the host filesystem by the container runtime.
+- Logs, metrics, and traces that are sent to an OTLP endpoint.
+- Metrics collected from exporter endpoints.
 
 ## Getting Started
 
