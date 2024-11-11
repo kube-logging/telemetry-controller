@@ -20,9 +20,6 @@ import (
 	"fmt"
 	"slices"
 
-	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
-	"golang.org/x/exp/maps"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline"
@@ -32,7 +29,11 @@ import (
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/processor"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/receiver"
+	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
+	"golang.org/x/exp/maps"
 )
+
+var ErrNoResources = errors.New("there are no resources deployed that the controller can use")
 
 type OtelColConfigInput struct {
 	// These must only include resources that are selected by the collector, tenant labelselectors, and listed outputs in the subscriptions
@@ -319,6 +320,10 @@ func validateSubscriptionsAndBridges(tenants *[]v1alpha1.Tenant, subscriptions *
 }
 
 func (cfgInput *OtelColConfigInput) ValidateConfig() error {
+	if cfgInput == nil {
+		return ErrNoResources
+	}
+
 	var result *multierror.Error
 
 	if err := validateTenants(&cfgInput.Tenants); err != nil {
