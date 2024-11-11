@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 
 	"github.com/hashicorp/go-multierror"
@@ -47,6 +48,21 @@ type OtelColConfigInput struct {
 	TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
 	SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
 	Debug                 bool
+}
+
+func (cfgInput *OtelColConfigInput) IsEmpty() bool {
+	v := reflect.ValueOf(*cfgInput)
+	for i := range v.NumField() {
+		field := v.Field(i)
+		switch field.Kind() {
+		case reflect.Slice, reflect.Map:
+			if field.Len() != 0 {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[string]any {
@@ -248,9 +264,14 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1be
 		}
 	}
 
-	extensionNames := make([]string, 0, len(extensions))
-	for k := range extensions {
-		extensionNames = append(extensionNames, k)
+	var extensionNames []string
+	if len(extensions) > 0 {
+		extensionNames = make([]string, 0, len(extensions))
+		for k := range extensions {
+			extensionNames = append(extensionNames, k)
+		}
+	} else {
+		extensionNames = nil
 	}
 
 	return otelv1beta1.Config{
@@ -320,16 +341,14 @@ func validateSubscriptionsAndBridges(tenants *[]v1alpha1.Tenant, subscriptions *
 }
 
 func (cfgInput *OtelColConfigInput) ValidateConfig() error {
-	if cfgInput == nil {
+	if cfgInput.IsEmpty() {
 		return ErrNoResources
 	}
 
 	var result *multierror.Error
-
 	if err := validateTenants(&cfgInput.Tenants); err != nil {
 		result = multierror.Append(result, err)
 	}
-
 	if err := validateSubscriptionsAndBridges(&cfgInput.Tenants, &cfgInput.Subscriptions, &cfgInput.Bridges); err != nil {
 		result = multierror.Append(result, err)
 	}

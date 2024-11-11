@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"sort"
 	"strings"
 
 	"emperror.dev/errors"
@@ -67,10 +68,8 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	tenant := &v1alpha1.Tenant{}
 	logger.Info(fmt.Sprintf("getting tenant: %q", req.NamespacedName.Name))
 
-	if err := r.Get(ctx, req.NamespacedName, tenant); client.IgnoreNotFound(err) != nil {
-		logger.Error(errors.New("failed getting tenant, possible API server error"), "failed getting tenant, possible API server error",
-			"tenant", req.NamespacedName.String())
-		return ctrl.Result{}, err
+	if err := r.Get(ctx, req.NamespacedName, tenant); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	originalTenantStatus := tenant.Status
@@ -114,11 +113,11 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		} else {
 			subscription.Status.State = v1alpha1.StateReady
 		}
-
 		subscription.Status.Outputs = validOutputs
 
 		if !reflect.DeepEqual(originalSubscriptionStatus, subscription.Status) {
 			if updateErr := r.Status().Update(ctx, &subscription); updateErr != nil {
+				subscription.Status.State = v1alpha1.StateFailed
 				logger.Error(errors.WithStack(updateErr), "failed update subscription status", "subscription", subscription.NamespacedName().String())
 				return ctrl.Result{}, err
 			}
@@ -135,23 +134,9 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 		return ctrl.Result{}, err
 	}
-	tenant.Status.ConnectedBridges = getBridgeNamesFromBridges(bridgesForTenant)
-
-	for _, bridge := range bridgesForTenant {
-		originalBridgeStatus := bridge.Status.DeepCopy()
-		if err := r.checkBridgeConnections(ctx, &bridge); err != nil {
-			bridge.Status.State = v1alpha1.StateFailed
-			logger.Error(errors.WithStack(err), "failed bridge connection verification", "bridge", bridge.Name)
-		}
-
-		bridge.Status.State = v1alpha1.StateReady
-		if !reflect.DeepEqual(originalBridgeStatus, bridge.Status) {
-			if updateErr := r.Status().Update(ctx, &bridge); updateErr != nil {
-				logger.Error(errors.WithStack(updateErr), "failed update bridge status", "bridge", bridge.Name)
-				return ctrl.Result{}, err
-			}
-		}
-	}
+	bridgesForTenantNames := getBridgeNamesFromBridges(bridgesForTenant)
+	sort.Strings(bridgesForTenantNames)
+	tenant.Status.ConnectedBridges = bridgesForTenantNames
 
 	logsourceNamespacesForTenant, err := r.getLogsourceNamespaceNamesForTenant(ctx, tenant)
 	if err != nil {
@@ -170,6 +155,7 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if !reflect.DeepEqual(originalTenantStatus, tenant.Status) {
 		logger.Info("tenant status changed")
 		if err := r.Status().Update(ctx, tenant); err != nil {
+			tenant.Status.State = v1alpha1.StateFailed
 			logger.Error(errors.New("failed update tenant status"), "failed update tenant status", "tenant", tenant.Name)
 			return ctrl.Result{}, err
 		}
@@ -362,8 +348,8 @@ func (r *RouteReconciler) disownSubscriptions(ctx context.Context, subscriptions
 
 	for _, subscription := range subscriptionsToDisown {
 		subscription.Status.Tenant = ""
-
 		if err := r.Client.Status().Update(ctx, &subscription); err != nil {
+			subscription.Status.State = v1alpha1.StateFailed
 			logger.Error(err, fmt.Sprintf("failed to detach subscription %s/%s from collector", subscription.Namespace, subscription.Name))
 		} else {
 			logger.Info("disowning subscription", "subscription", fmt.Sprintf("%s/%s", subscription.Namespace, subscription.Name))
@@ -381,6 +367,7 @@ func (r *RouteReconciler) updateSubscriptionsForTenant(ctx context.Context, tena
 		logger.Info("updating subscription status for tenant ownership")
 
 		if err := r.Status().Update(ctx, &subscription); err != nil {
+			subscription.Status.State = v1alpha1.StateFailed
 			logger.Error(err, fmt.Sprintf("failed to set subscription (%s/%s) -> tenant (%s) reference", subscription.Namespace, subscription.Name, tenantName))
 		} else {
 			updatedSubscriptions = append(updatedSubscriptions, subscription)
@@ -463,35 +450,6 @@ func (r *RouteReconciler) getBridgesForTenant(ctx context.Context, tenantName st
 	}
 
 	return
-}
-
-func (r *RouteReconciler) getTenants(ctx context.Context, listOpts *client.ListOptions) ([]v1alpha1.Tenant, error) {
-	var tenants v1alpha1.TenantList
-	if err := r.Client.List(ctx, &tenants, listOpts); client.IgnoreNotFound(err) != nil {
-		return nil, err
-	}
-
-	return tenants.Items, nil
-}
-
-func (r *RouteReconciler) checkBridgeConnections(ctx context.Context, bridge *v1alpha1.Bridge) error {
-	for _, tenant := range []string{bridge.Spec.SourceTenant, bridge.Spec.TargetTenant} {
-		listOpts := &client.ListOptions{
-			FieldSelector: fields.OneTermEqualSelector(tenantNameField, tenant),
-		}
-		tenants, err := r.getTenants(ctx, listOpts)
-		if err != nil {
-			return err
-		}
-		if len(tenants) == 0 {
-			return errors.Errorf("tenant: %s not found for bridge: %s", tenant, bridge.Name)
-		}
-		if len(tenants) != 1 || tenants[0].Name != tenant {
-			return errors.Errorf("bridge: %s has invalid tenant reference: %s", bridge.Name, tenant)
-		}
-	}
-
-	return nil
 }
 
 func normalizeNamespaceSlice(inputList []apiv1.Namespace) []apiv1.Namespace {

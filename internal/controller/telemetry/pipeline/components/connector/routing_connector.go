@@ -103,6 +103,33 @@ func GenerateRoutingConnectorForBridge(bridge v1alpha1.Bridge) RoutingConnector 
 	return rc
 }
 
+func hasPipelineReceiverOrExporter(pipeline *otelv1beta1.Pipeline, receiverName string) bool {
+	for _, receiver := range pipeline.Receivers {
+		if receiver == receiverName {
+			return true
+		}
+	}
+
+	for _, exporter := range pipeline.Exporters {
+		if exporter == receiverName {
+			return true
+		}
+	}
+
+	return false
+}
+
+func addConnectorToPipeline(pipeline *otelv1beta1.Pipeline, connectorName string, needsReceiver, needsExporter bool) {
+	if !hasPipelineReceiverOrExporter(pipeline, connectorName) {
+		if needsReceiver {
+			pipeline.Receivers = append(pipeline.Receivers, connectorName)
+		}
+		if needsExporter {
+			pipeline.Exporters = append(pipeline.Exporters, connectorName)
+		}
+	}
+}
+
 func checkBridgeConnectorForTenant(tenantName string, bridge v1alpha1.Bridge) (needsReceiver bool, needsExporter bool, bridgeName string) {
 	if bridge.Spec.SourceTenant == tenantName {
 		needsExporter = true
@@ -118,11 +145,7 @@ func checkBridgeConnectorForTenant(tenantName string, bridge v1alpha1.Bridge) (n
 func GenerateRoutingConnectorForBridgesTenantPipeline(tenantName string, pipeline *otelv1beta1.Pipeline, bridges []v1alpha1.Bridge) {
 	for _, bridge := range bridges {
 		needsReceiver, needsExporter, bridgeName := checkBridgeConnectorForTenant(tenantName, bridge)
-		if needsReceiver {
-			pipeline.Receivers = append(pipeline.Receivers, fmt.Sprintf("routing/bridge_%s", bridgeName))
-		}
-		if needsExporter {
-			pipeline.Exporters = append(pipeline.Exporters, fmt.Sprintf("routing/bridge_%s", bridgeName))
-		}
+		connectorName := fmt.Sprintf("routing/bridge_%s", bridgeName)
+		addConnectorToPipeline(pipeline, connectorName, needsReceiver, needsExporter)
 	}
 }
