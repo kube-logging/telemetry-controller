@@ -213,9 +213,9 @@ For further information, use cases, and tutorials, read our [blog posts about Te
 - [How to send Kubernetes logs to Loki](https://axoflow.com/send-kubernetes-logs-to-loki-with-telemetry-controller/)
 - [Sending data to the Logging Operator](https://axoflow.com/kubernetes-logging-telemetry-controller-logging-operator/)
 
-We also give talks about Telemetry Controller at various open source conferences, for example, at Open Source Summit Europe 2024:
+We also give talks about Telemetry Controller at various open source conferences, for example, you can watch the recording of the [Multi-tenant Logging with OpenTelemetry Collector talk at Open Source Summit Europe 2024](https://www.youtube.com/watch?v=vz2chMIzrgs):
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/vz2chMIzrgs?si=k4ZHbp4AWzkj3Niv" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+[![Multi-tenant Logging with OpenTelemetry Collector talk at Open Source Summit Europe 2024 by Sandor Guba, Axoflow](docs/opensourcesummit2024.png)](https://www.youtube.com/watch?v=vz2chMIzrgs)
 
 ## Contributing
 
