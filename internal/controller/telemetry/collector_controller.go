@@ -80,7 +80,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 
 	for _, tenant := range tenants {
 		if tenant.Status.State == v1alpha1.StateFailed {
-			logger.Info("tenant %q is in failed state, retrying later", tenant.Name)
+			logger.Info(fmt.Sprintf("tenant %q is in failed state, retrying later", tenant.Name))
 			return otelcolconfgen.OtelColConfigInput{}, ErrTenantFailed
 		}
 
@@ -196,6 +196,11 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if err := otelConfigInput.ValidateConfig(); err != nil {
+		if errors.Is(err, otelcolconfgen.ErrNoResources) {
+			logger.Info(err.Error())
+			return ctrl.Result{}, nil
+		}
+
 		collector.Status.State = v1alpha1.StateFailed
 		logger.Error(errors.WithStack(err), "invalid otel config input")
 		return ctrl.Result{}, err

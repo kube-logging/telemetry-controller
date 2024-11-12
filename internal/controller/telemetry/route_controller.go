@@ -138,6 +138,18 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	sort.Strings(bridgesForTenantNames)
 	tenant.Status.ConnectedBridges = bridgesForTenantNames
 
+	for _, bridge := range bridgesForTenant {
+		if err := r.checkBridgeConnection(ctx, tenant.Name, &bridge); err != nil {
+			tenant.Status.State = v1alpha1.StateFailed
+			logger.Error(errors.WithStack(err), "failed to check bridge connection", "bridge", bridge.Name)
+			if updateErr := r.Status().Update(ctx, tenant); updateErr != nil {
+				logger.Error(errors.WithStack(updateErr), "failed update tenant status", "tenant", tenant.Name)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+		}
+	}
+
 	logsourceNamespacesForTenant, err := r.getLogsourceNamespaceNamesForTenant(ctx, tenant)
 	if err != nil {
 		tenant.Status.State = v1alpha1.StateFailed
@@ -450,6 +462,34 @@ func (r *RouteReconciler) getBridgesForTenant(ctx context.Context, tenantName st
 	}
 
 	return
+}
+
+func (r *RouteReconciler) getTenants(ctx context.Context, listOpts *client.ListOptions) ([]v1alpha1.Tenant, error) {
+	var tenants v1alpha1.TenantList
+	if err := r.Client.List(ctx, &tenants, listOpts); client.IgnoreNotFound(err) != nil {
+		return nil, err
+	}
+
+	return tenants.Items, nil
+}
+
+func (r *RouteReconciler) checkBridgeConnection(ctx context.Context, tenantName string, bridge *v1alpha1.Bridge) error {
+	for _, tenant := range []string{bridge.Spec.SourceTenant, bridge.Spec.TargetTenant} {
+		if tenant != tenantName {
+			listOpts := &client.ListOptions{
+				FieldSelector: fields.OneTermEqualSelector(tenantNameField, tenant),
+			}
+			tenant, err := r.getTenants(ctx, listOpts)
+			if err != nil {
+				return err
+			}
+			if len(tenant) == 0 {
+				return errors.Errorf("bridge %s has a dangling tenant reference %s", bridge.Name, tenant)
+			}
+		}
+	}
+
+	return nil
 }
 
 func normalizeNamespaceSlice(inputList []apiv1.Namespace) []apiv1.Namespace {
