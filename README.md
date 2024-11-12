@@ -3,15 +3,15 @@
 Telemetry Controller collects, routes, and forwards telemetry data (logs, metrics and traces) from Kubernetes clusters
 supporting multi-tenancy out of the box.
 
-The Telemetry Controller provides isolation and access control for telemetry data, similar to what Kubernetes provides for pods, secrets, and other resources. It provides an opinionated, convenient, and robust multi-tenant API on top of OpenTelemetry, and introduces new resources that give granular control over the shared data and hide the complexity of setting up and maintaining a well configured OpenTelemetry Collector manually.
+The Telemetry Controller provides isolation and access control for telemetry data, similar to what Kubernetes provides for pods, secrets, and other resources. It provides an opinionated, convenient, and robust multi-tenant API on top of OpenTelemetry, and introduces new resources that give granular control over the shared data, while hiding the complexity of setting up and maintaining OpenTelemetry Collector manually.
 
 ## Description
 
 Telemetry Controller can be configured using Custom Resources to set up an [opinionated Opentelemetry Collector](#under-the-hood) configuration to route log messages based on rules defined as a Tenant -> Subscription relation map. That way:
 
 - Administrators can define a **collector** and **tenants** to provide isolation and access control for telemetry data. These are cluster scoped resources.
-- Users can create **subscriptions** to select telemetry data streams accessible by their tenant only.
-- Users can create or refer the available **outputs** in their **subscriptions** to route and transport data. That way users can configure what they want to collect, and where they want to send it - within their tenant’s scope.
+- Users can create **subscriptions** to select telemetry data streams that only their tenant can access.
+- Users can create or refer the available **outputs** in their **subscriptions** to route and transport data. That way users can configure what they want to collect and where they want to send it - within their tenant’s scope.
 
 ![Telemetry Controller flow diagram](https://axoflow.com/wp-content/uploads/2024/02/telemetry-controller-flow.png)
 
@@ -27,7 +27,12 @@ Collectors specify global settings for the OTEL Collector DaemonSet, and a `tena
 
 ### Tenants
 
-Typically, a tenant is a set of Kubernetes namespaces, which is a best practice for managing multi-tenant workloads inside a single cluster. Tenant resources specify `subscriptionNamespaceSelectors` for namespaces that select subscriptions created by the tenant users, and `logSourceNamespaceSelectors` that specify the namespaces where the logs are produced (that are also the concern of the tenant users). In trivial use cases these two label selectors are the same.
+Typically, a tenant is a set of Kubernetes namespaces, which is a best practice for managing multi-tenant workloads inside a single cluster. Tenant resources specify:
+
+- `subscriptionNamespaceSelectors` for namespaces that select subscriptions created by the tenant users, and
+- `logSourceNamespaceSelectors` that specify the namespaces where the logs are produced (that are also the concern of the tenant users).
+
+In trivial use cases these two label selectors are the same.
 
 The Tenant is actually a routing rule that helps to make sure that telemetry data is only accessible to a given Subscription if it matches the policies set by the administrator.
 
@@ -35,7 +40,7 @@ The Tenant is actually a routing rule that helps to make sure that telemetry dat
 
 Tenant users can define their Subscriptions in the namespace(s) of their Tenants. Subscriptions can select from the telemetry data (that is already filtered as part of the Tenant definition) and set Output endpoints where the data is forwarded. Such an endpoint can be:
 
-- an aggregator, for example, Logging operator,
+- an aggregator, for example, [Logging operator](https://kube-logging.dev/),
 - a remote telemetry backend, for example, Loki, Jaeger, or Prometheus, or
 - a managed service provider, for example, Splunk or Sumo Logic.
 
@@ -143,6 +148,8 @@ kubectl -n openobserve port-forward svc/openobserve 5080:5080
 ![OpenObserve logs](docs/assets/openobserve-logs.png)
 
 ### Sending logs to logging-operator (example)
+
+(For a more detailed description see our [Sending data to the Logging Operator](https://axoflow.com/kubernetes-logging-telemetry-controller-logging-operator/) blog post.)
 
 Install dependencies (cert-manager and opentelemetry-operator):
 
