@@ -15,11 +15,7 @@ Telemetry Controller can be configured using Custom Resources to set up an [opin
 
 ![Telemetry Controller flow diagram](docs/overview.svg)
 
-Telemetry Controller can collect data from various sources, for example:
-
-- Container logs that come from stdout/stderr and are written to the host filesystem by the container runtime.
-- Logs, metrics, and traces that are sent to an OTLP endpoint.
-- Metrics collected from exporter endpoints.
+Telemetry Controller can collect container logs that come from stdout/stderr and are written to the host filesystem by the container runtime.
 
 ### Collector
 
