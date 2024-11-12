@@ -13,7 +13,7 @@ Telemetry Controller can be configured using Custom Resources to set up an [opin
 - Users can create **subscriptions** to select telemetry data streams that only their tenant can access.
 - Users can create or refer the available **outputs** in their **subscriptions** to route and transport data. That way users can configure what they want to collect and where they want to send it - within their tenant’s scope.
 
-![Telemetry Controller flow diagram](https://axoflow.com/wp-content/uploads/2024/02/telemetry-controller-flow.png)
+![Telemetry Controller flow diagram](docs/overview.svg)
 
 Telemetry Controller can collect data from various sources, for example:
 
@@ -43,6 +43,8 @@ Tenant users can define their Subscriptions in the namespace(s) of their Tenants
 - an aggregator, for example, [Logging operator](https://kube-logging.dev/),
 - a remote telemetry backend, for example, Loki, Jaeger, or Prometheus, or
 - a managed service provider, for example, Splunk or Sumo Logic.
+
+![Telemetry Controller CR flow](docs/telemetry-controller-flow.png)
 
 ## Getting Started
 
