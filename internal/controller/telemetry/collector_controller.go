@@ -200,16 +200,27 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			logger.Info(err.Error())
 			return ctrl.Result{}, nil
 		}
+		logger.Error(errors.WithStack(err), "invalid otel config input")
 
 		collector.Status.State = v1alpha1.StateFailed
-		logger.Error(errors.WithStack(err), "invalid otel config input")
+		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
+			return ctrl.Result{}, errors.Append(err, updateErr)
+		}
+
 		return ctrl.Result{}, err
 	}
 
 	otelConfig := otelConfigInput.AssembleConfig(ctx)
 	if err := validator.ValidateAssembledConfig(otelConfig); err != nil {
-		collector.Status.State = v1alpha1.StateFailed
 		logger.Error(errors.WithStack(err), "invalid otel config")
+
+		collector.Status.State = v1alpha1.StateFailed
+		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
+			return ctrl.Result{}, errors.Append(err, updateErr)
+		}
+
 		return ctrl.Result{}, err
 	}
 
@@ -280,8 +291,14 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 	_, err = resourceReconciler.ReconcileResource(&otelCollector, reconciler.StatePresent)
 	if err != nil {
+		logger.Error(errors.WithStack(err), "failed reconciling collector")
+
 		collector.Status.State = v1alpha1.StateFailed
-		logger.Error(errors.WithStack(err), "failed reconciling otel collector")
+		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
+			return ctrl.Result{}, errors.Append(err, updateErr)
+		}
+
 		return ctrl.Result{}, err
 	}
 
@@ -294,10 +311,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	collector.Status.State = v1alpha1.StateReady
 	if !reflect.DeepEqual(originalCollectorStatus, collector.Status) {
 		logger.Info("collector status changed")
-		if err = r.Client.Status().Update(ctx, collector); err != nil {
-			collector.Status.State = v1alpha1.StateFailed
-			logger.Error(errors.WithStack(err), "failed updating collector status")
-			return ctrl.Result{}, err
+
+		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
+			return ctrl.Result{}, errors.Append(err, updateErr)
 		}
 	}
 
@@ -533,6 +550,10 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 	}
 
 	return tenantsForSelector.Items, nil
+}
+
+func (r *CollectorReconciler) updateStatus(ctx context.Context, obj client.Object) error {
+	return r.Status().Update(ctx, obj)
 }
 
 func normalizeStringSlice(inputList []string) []string {

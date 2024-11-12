@@ -34,7 +34,7 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-var ErrNoResources = errors.New("there are no resources deployed that the controller can use")
+var ErrNoResources = errors.New("there are no resources deployed that the collector(s) can use")
 
 type OtelColConfigInput struct {
 	// These must only include resources that are selected by the collector, tenant labelselectors, and listed outputs in the subscriptions
