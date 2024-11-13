@@ -299,6 +299,11 @@ func TestOtelColConfComplex(t *testing.T) {
 		},
 	}
 
+	// Set Batch processor defaults
+	for i, tenant := range inputCfg.Tenants {
+		inputCfg.Tenants[i].Spec.SetDefaults(tenant.Name)
+	}
+
 	// Config
 
 	// The receiver and exporter entries are not serialized because of tags on the underlying data structure. The tests won't contain them, this is a known issue.

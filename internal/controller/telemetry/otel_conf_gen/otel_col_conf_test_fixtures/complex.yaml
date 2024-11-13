@@ -122,6 +122,12 @@ processors:
     - action: insert
       key: tenant
       value: example-tenant-b
+  batch/example-tenant-a:
+    send_batch_size: 8192
+    timeout: 200ms
+  batch/example-tenant-b:
+    send_batch_size: 8192
+    timeout: 200ms
   deltatocumulative: {}
   k8sattributes:
     auth_type: serviceAccount
@@ -160,6 +166,7 @@ service:
       processors:
       - memory_limiter
       - attributes/exporter_name_loki-test-output
+      - batch/example-tenant-a
       receivers:
       - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
     logs/output_example-tenant-a-ns_subscription-example-1_collector_otlp-test-output:
@@ -169,6 +176,7 @@ service:
       processors:
       - memory_limiter
       - attributes/exporter_name_otlp-test-output
+      - batch/example-tenant-a
       receivers:
       - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
     logs/output_example-tenant-a-ns_subscription-example-2_collector_otlp-test-output-2:
@@ -178,6 +186,7 @@ service:
       processors:
       - memory_limiter
       - attributes/exporter_name_otlp-test-output-2
+      - batch/example-tenant-a
       receivers:
       - routing/subscription_example-tenant-a-ns_subscription-example-2_outputs
     logs/output_example-tenant-b-ns_subscription-example-3_collector_fluentforward-test-output:
@@ -187,6 +196,7 @@ service:
       processors:
       - memory_limiter
       - attributes/exporter_name_fluentforward-test-output
+      - batch/example-tenant-b
       receivers:
       - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
     logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2:
@@ -196,6 +206,7 @@ service:
       processors:
       - memory_limiter
       - attributes/exporter_name_otlp-test-output-2
+      - batch/example-tenant-b
       receivers:
       - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
     logs/tenant_example-tenant-a:

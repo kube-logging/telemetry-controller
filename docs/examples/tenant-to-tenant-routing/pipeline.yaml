@@ -15,12 +15,13 @@ metadata:
     collector: cluster
   name: shared
 spec:
-  transform:
-    name: parse-nginx
-    logStatements:
-      - context: log
-        statements:
-          - set(resource.attributes["parsed"], ExtractPatterns(body, "(?P<method>(GET|PUT))"))
+  processors:
+    transform:
+      name: parse-nginx
+      logStatements:
+        - context: log
+          statements:
+            - set(resource.attributes["parsed"], ExtractPatterns(body, "(?P<method>(GET|PUT))"))
   logSourceNamespaceSelectors:
     - matchLabels:
         tenant: shared
