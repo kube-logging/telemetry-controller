@@ -26,3 +26,13 @@ func SortNamespacedNames(names []v1alpha1.NamespacedName) {
 		return strings.Compare(a.String(), b.String())
 	})
 }
+
+func GetTenantByName(tenants []v1alpha1.Tenant, name string) *v1alpha1.Tenant {
+	for _, tenant := range tenants {
+		if tenant.Name == name {
+			return &tenant
+		}
+	}
+
+	return nil
+}

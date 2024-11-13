@@ -105,6 +105,153 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              processors:
+                description: Processors defines the tenant level processors
+                properties:
+                  batch:
+                    properties:
+                      metadata_cardinality_limit:
+                        description: |-
+                          MetadataCardinalityLimit indicates the maximum number of
+                          batcher instances that will be created through a distinct
+                          combination of MetadataKeys.
+                        format: int32
+                        type: integer
+                      metadata_keys:
+                        description: |-
+                          MetadataKeys is a list of client.Metadata keys that will be
+                          used to form distinct batchers.  If this setting is empty,
+                          a single batcher instance will be used.  When this setting
+                          is not empty, one batcher will be used per distinct
+                          combination of values for the listed metadata keys.
+
+                          Empty value and unset metadata are treated as distinct cases.
+
+                          Entries are case-insensitive.  Duplicated entries will
+                          trigger a validation error.
+                        items:
+                          type: string
+                        type: array
+                      name:
+                        description: Name of the Batch processor
+                        type: string
+                      send_batch_max_size:
+                        description: |-
+                          SendBatchMaxSize is the maximum size of a batch. It must be larger than SendBatchSize.
+                          Larger batches are split into smaller units.
+                          Default value is 0, that means no maximum size.
+                        format: int32
+                        type: integer
+                      send_batch_size:
+                        description: |-
+                          SendBatchSize is the size of a batch which after hit, will trigger it to be sent.
+                          When this is set to zero, the batch size is ignored and data will be sent immediately
+                          subject to only send_batch_max_size.
+                        format: int32
+                        type: integer
+                      timeout:
+                        description: |-
+                          Timeout sets the time after which a batch will be sent regardless of size.
+                          When this is set to zero, batched data will be sent immediately.
+                        format: int64
+                        type: integer
+                    type: object
+                  transform:
+                    description: Transform represents the Transform processor, which
+                      modifies telemetry based on its configuration
+                    properties:
+                      errorMode:
+                        description: |-
+                          ErrorMode specifies how errors are handled while processing a statement
+                          vaid options are: ignore, silent, propagate; (default: propagate)
+                        enum:
+                        - ignore
+                        - silent
+                        - propagate
+                        type: string
+                      logStatements:
+                        items:
+                          description: |-
+                            TransformStatement represents a single statement in a Transform processor
+                            ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
+                          properties:
+                            conditions:
+                              items:
+                                type: string
+                              type: array
+                            context:
+                              enum:
+                              - resource
+                              - scope
+                              - span
+                              - spanevent
+                              - metric
+                              - datapoint
+                              - log
+                              type: string
+                            statements:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        type: array
+                      metricStatements:
+                        items:
+                          description: |-
+                            TransformStatement represents a single statement in a Transform processor
+                            ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
+                          properties:
+                            conditions:
+                              items:
+                                type: string
+                              type: array
+                            context:
+                              enum:
+                              - resource
+                              - scope
+                              - span
+                              - spanevent
+                              - metric
+                              - datapoint
+                              - log
+                              type: string
+                            statements:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        type: array
+                      name:
+                        description: Name of the Transform processor
+                        type: string
+                      traceStatements:
+                        items:
+                          description: |-
+                            TransformStatement represents a single statement in a Transform processor
+                            ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
+                          properties:
+                            conditions:
+                              items:
+                                type: string
+                              type: array
+                            context:
+                              enum:
+                              - resource
+                              - scope
+                              - span
+                              - spanevent
+                              - metric
+                              - datapoint
+                              - log
+                              type: string
+                            statements:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        type: array
+                    type: object
+                type: object
               routeConfig:
                 description: |-
                   RouteConfig defines the routing configuration for a tenant
@@ -177,101 +324,6 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
-              transform:
-                description: Transform represents the Transform processor, which modifies
-                  telemetry based on its configuration
-                properties:
-                  errorMode:
-                    description: |-
-                      ErrorMode specifies how errors are handled while processing a statement
-                      vaid options are: ignore, silent, propagate; (default: propagate)
-                    enum:
-                    - ignore
-                    - silent
-                    - propagate
-                    type: string
-                  logStatements:
-                    items:
-                      description: |-
-                        TransformStatement represents a single statement in a Transform processor
-                        ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
-                      properties:
-                        conditions:
-                          items:
-                            type: string
-                          type: array
-                        context:
-                          enum:
-                          - resource
-                          - scope
-                          - span
-                          - spanevent
-                          - metric
-                          - datapoint
-                          - log
-                          type: string
-                        statements:
-                          items:
-                            type: string
-                          type: array
-                      type: object
-                    type: array
-                  metricStatements:
-                    items:
-                      description: |-
-                        TransformStatement represents a single statement in a Transform processor
-                        ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
-                      properties:
-                        conditions:
-                          items:
-                            type: string
-                          type: array
-                        context:
-                          enum:
-                          - resource
-                          - scope
-                          - span
-                          - spanevent
-                          - metric
-                          - datapoint
-                          - log
-                          type: string
-                        statements:
-                          items:
-                            type: string
-                          type: array
-                      type: object
-                    type: array
-                  name:
-                    description: Name of the Transform processor
-                    type: string
-                  traceStatements:
-                    items:
-                      description: |-
-                        TransformStatement represents a single statement in a Transform processor
-                        ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
-                      properties:
-                        conditions:
-                          items:
-                            type: string
-                          type: array
-                        context:
-                          enum:
-                          - resource
-                          - scope
-                          - span
-                          - spanevent
-                          - metric
-                          - datapoint
-                          - log
-                          type: string
-                        statements:
-                          items:
-                            type: string
-                          type: array
-                      type: object
-                    type: array
-                type: object
             type: object
           status:
             description: TenantStatus defines the observed state of Tenant

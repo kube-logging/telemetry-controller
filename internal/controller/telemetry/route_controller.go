@@ -113,6 +113,7 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			subscription.Status.State = v1alpha1.StateFailed
 			logger.Error(errors.WithStack(errors.New("no valid outputs for subscription")), "no valid outputs for subscription", "subscription", subscription.NamespacedName().String())
 		} else {
+			tenant.Spec.SetDefaults(tenant.Name)
 			subscription.Status.State = v1alpha1.StateReady
 		}
 		subscription.Status.Outputs = validOutputs

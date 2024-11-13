@@ -37,17 +37,17 @@ type TransformProcessor struct {
 
 func GenerateTransformProcessorForTenant(tenant v1alpha1.Tenant) TransformProcessor {
 	return TransformProcessor{
-		ErrorMode:        components.ErrorMode(tenant.Spec.Transform.ErrorMode),
-		TraceStatements:  convertAPIStatements(tenant.Spec.Transform.TraceStatements),
-		MetricStatements: convertAPIStatements(tenant.Spec.Transform.MetricStatements),
-		LogStatements:    convertAPIStatements(tenant.Spec.Transform.LogStatements),
+		ErrorMode:        components.ErrorMode(tenant.Spec.Processors.Transform.ErrorMode),
+		TraceStatements:  convertAPIStatements(tenant.Spec.Processors.Transform.TraceStatements),
+		MetricStatements: convertAPIStatements(tenant.Spec.Processors.Transform.MetricStatements),
+		LogStatements:    convertAPIStatements(tenant.Spec.Processors.Transform.LogStatements),
 	}
 }
 
 func GenerateTransformProcessorForTenantPipeline(tenantName string, pipeline *otelv1beta1.Pipeline, tenants []v1alpha1.Tenant) {
 	for _, tenant := range tenants {
-		if tenant.Name == tenantName && tenant.Spec.Transform.Name != "" {
-			pipeline.Processors = append(pipeline.Processors, fmt.Sprintf("transform/%s", tenant.Spec.Transform.Name))
+		if tenant.Name == tenantName && tenant.Spec.Processors.Transform.Name != "" {
+			pipeline.Processors = append(pipeline.Processors, fmt.Sprintf("transform/%s", tenant.Spec.Processors.Transform.Name))
 		}
 	}
 }

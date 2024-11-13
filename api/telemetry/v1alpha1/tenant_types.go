@@ -15,8 +15,48 @@
 package v1alpha1
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+type Batch struct {
+	// Name of the Batch processor
+	Name string `json:"name,omitempty"`
+
+	// From 	go.opentelemetry.io/collector/processor/batchprocessor
+
+	// Timeout sets the time after which a batch will be sent regardless of size.
+	// When this is set to zero, batched data will be sent immediately.
+	Timeout time.Duration `json:"timeout,omitempty"`
+
+	// SendBatchSize is the size of a batch which after hit, will trigger it to be sent.
+	// When this is set to zero, the batch size is ignored and data will be sent immediately
+	// subject to only send_batch_max_size.
+	SendBatchSize uint32 `json:"send_batch_size,omitempty"`
+
+	// SendBatchMaxSize is the maximum size of a batch. It must be larger than SendBatchSize.
+	// Larger batches are split into smaller units.
+	// Default value is 0, that means no maximum size.
+	SendBatchMaxSize uint32 `json:"send_batch_max_size,omitempty"`
+
+	// MetadataKeys is a list of client.Metadata keys that will be
+	// used to form distinct batchers.  If this setting is empty,
+	// a single batcher instance will be used.  When this setting
+	// is not empty, one batcher will be used per distinct
+	// combination of values for the listed metadata keys.
+	//
+	// Empty value and unset metadata are treated as distinct cases.
+	//
+	// Entries are case-insensitive.  Duplicated entries will
+	// trigger a validation error.
+	MetadataKeys []string `json:"metadata_keys,omitempty"`
+
+	// MetadataCardinalityLimit indicates the maximum number of
+	// batcher instances that will be created through a distinct
+	// combination of MetadataKeys.
+	MetadataCardinalityLimit uint32 `json:"metadata_cardinality_limit,omitempty"`
+}
 
 // TransformStatement represents a single statement in a Transform processor
 // ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
@@ -43,6 +83,12 @@ type Transform struct {
 	LogStatements    []TransformStatement `json:"logStatements,omitempty"`
 }
 
+// Processors defines the tenant level processors
+type Processors struct {
+	Transform Transform `json:"transform,omitempty"`
+	Batch     *Batch    `json:"batch,omitempty"`
+}
+
 // RouteConfig defines the routing configuration for a tenant
 // it will be used to generate routing connectors
 type RouteConfig struct {
@@ -60,8 +106,22 @@ type RouteConfig struct {
 type TenantSpec struct {
 	SubscriptionNamespaceSelectors []metav1.LabelSelector `json:"subscriptionNamespaceSelectors,omitempty"`
 	LogSourceNamespaceSelectors    []metav1.LabelSelector `json:"logSourceNamespaceSelectors,omitempty"`
-	Transform                      Transform              `json:"transform,omitempty"`
+	Processors                     Processors             `json:"processors,omitempty"`
 	RouteConfig                    RouteConfig            `json:"routeConfig,omitempty"`
+}
+
+func (t *TenantSpec) SetDefaults(tenantName string) {
+	if t.Processors.Batch == nil {
+		t.Processors.Batch = &Batch{
+			Name:          tenantName,
+			Timeout:       200 * time.Millisecond,
+			SendBatchSize: 8192,
+		}
+	}
+
+	if len(t.Processors.Batch.MetadataKeys) > 0 && t.Processors.Batch.MetadataCardinalityLimit == 0 {
+		t.Processors.Batch.MetadataCardinalityLimit = 1000
+	}
 }
 
 // TenantStatus defines the observed state of Tenant

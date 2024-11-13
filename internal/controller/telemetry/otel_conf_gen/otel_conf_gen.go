@@ -30,6 +30,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/processor"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/receiver"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	"golang.org/x/exp/maps"
 )
@@ -86,8 +87,13 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 		processors[fmt.Sprintf("attributes/tenant_%s", tenant.Name)] = processor.GenerateTenantAttributeProcessor(tenant.Name)
 
 		// Add a transform processor if the tenant has one
-		if tenant.Spec.Transform.Name != "" {
-			processors[fmt.Sprintf("transform/%s", tenant.Spec.Transform.Name)] = processor.GenerateTransformProcessorForTenant(tenant)
+		if tenant.Spec.Processors.Transform.Name != "" {
+			processors[fmt.Sprintf("transform/%s", tenant.Spec.Processors.Transform.Name)] = processor.GenerateTransformProcessorForTenant(tenant)
+		}
+
+		// Add a batch processor if the tenant has one
+		if tenant.Spec.Processors.Batch != nil && tenant.Spec.Processors.Batch.Name != "" {
+			processors[fmt.Sprintf("batch/%s", tenant.Spec.Processors.Batch.Name)] = processor.GenerateBatchProcessor(*tenant.Spec.Processors.Batch)
 		}
 	}
 
@@ -200,7 +206,13 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 					output := cfgInput.OutputsWithSecretData[idx]
 
 					receivers := []string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}
+
 					processors := []string{fmt.Sprintf("attributes/exporter_name_%s", output.Output.Name)}
+					queriedTenant := utils.GetTenantByName(cfgInput.Tenants, tenant)
+					if queriedTenant != nil && queriedTenant.Spec.Processors.Batch != nil {
+						processors = append(processors, fmt.Sprintf("batch/%s", queriedTenant.Spec.Processors.Batch.Name))
+					}
+
 					var exporters []string
 
 					if output.Output.Spec.OTLPGRPC != nil {
