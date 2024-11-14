@@ -97,6 +97,11 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 
 	for _, output := range cfgInput.OutputsWithSecretData {
 		processors[fmt.Sprintf("attributes/exporter_name_%s", output.Output.Name)] = processor.GenerateOutputExporterNameProcessor(components.GetExporterNameForOutput(output.Output))
+
+		// Add a batch processor if the output has one
+		if output.Output.Spec.Batch != nil {
+			processors[fmt.Sprintf("batch/%s", output.Output.Name)] = processor.GenerateBatchProcessorForOutput(*output.Output.Spec.Batch)
+		}
 	}
 
 	return processors
@@ -201,6 +206,15 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 
 					receivers := []string{fmt.Sprintf("routing/subscription_%s_%s_outputs", subscription.Namespace, subscription.Name)}
 					processors := []string{fmt.Sprintf("attributes/exporter_name_%s", output.Output.Name)}
+
+					// NOTE: The order of the processors is important.
+					// The batch processor should be defined in the pipeline after the memory_limiter as well as any sampling processors.
+					// This is because batching should happen after any data drops such as sampling.
+					// ref: https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor#recommended-processors
+					if output.Output.Spec.Batch != nil {
+						processors = append(processors, fmt.Sprintf("batch/%s", output.Output.Name))
+					}
+
 					var exporters []string
 
 					if output.Output.Spec.OTLPGRPC != nil {

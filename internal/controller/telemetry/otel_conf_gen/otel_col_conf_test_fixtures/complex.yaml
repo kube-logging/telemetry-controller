@@ -122,6 +122,14 @@ processors:
     - action: insert
       key: tenant
       value: example-tenant-b
+  batch/otlp-test-output:
+    metadata_cardinality_limit: 100
+    metadata_keys:
+    - key1
+    - key2
+    send_batch_max_size: 4096
+    send_batch_size: 512
+    timeout: 5s
   deltatocumulative: {}
   k8sattributes:
     auth_type: serviceAccount
@@ -169,6 +177,7 @@ service:
       processors:
       - memory_limiter
       - attributes/exporter_name_otlp-test-output
+      - batch/otlp-test-output
       receivers:
       - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
     logs/output_example-tenant-a-ns_subscription-example-2_collector_otlp-test-output-2:
