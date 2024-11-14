@@ -272,3 +272,9 @@ service:
   telemetry:
     metrics:
       level: detailed
+      readers:
+      - pull:
+          exporter:
+            prometheus:
+              host: ""
+              port: 8888

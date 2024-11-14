@@ -89,6 +89,9 @@ metadata:
   name: otlp-test-output-database
   namespace: collector
 spec:
+  batch:
+    send_batch_size: 8192
+    timeout: 200ms
   otlp:
     endpoint: receiver-collector.telemetry-controller-system.svc.cluster.local:4317
     tls:
@@ -132,6 +135,9 @@ metadata:
   name: otlp-test-output-web
   namespace: collector
 spec:
+  batch:
+    send_batch_size: 8192
+    timeout: 200ms
   otlp:
     endpoint: receiver-collector.telemetry-controller-system.svc.cluster.local:4317
     tls:

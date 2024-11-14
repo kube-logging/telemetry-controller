@@ -242,6 +242,34 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 	return namedPipelines
 }
 
+func (cfgInput *OtelColConfigInput) generateTelemetry() map[string]any {
+	telemetry := map[string]interface{}{
+		"metrics": map[string]interface{}{
+			"level": "detailed",
+			"readers": []map[string]interface{}{
+				{
+					"pull": map[string]interface{}{
+						"exporter": map[string]interface{}{
+							"prometheus": map[string]interface{}{
+								"host": "",
+								"port": 8888,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if cfgInput.Debug {
+		telemetry["logs"] = map[string]string{
+			"level": "debug",
+		}
+	}
+
+	return telemetry
+}
+
 func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1beta1.Config {
 	exporters := cfgInput.generateExporters(ctx)
 
@@ -255,17 +283,7 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1be
 
 	pipelines := cfgInput.generateNamedPipelines()
 
-	telemetry := make(map[string]any)
-
-	telemetry["metrics"] = map[string]string{
-		"level": "detailed",
-	}
-
-	if cfgInput.Debug {
-		telemetry["logs"] = map[string]string{
-			"level": "debug",
-		}
-	}
+	telemetry := cfgInput.generateTelemetry()
 
 	if _, ok := processors["memory_limiter"]; ok {
 		for name, pipeline := range pipelines {
