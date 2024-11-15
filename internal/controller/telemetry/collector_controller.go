@@ -27,7 +27,6 @@ import (
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,6 +43,10 @@ import (
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
 )
 
+var (
+	ErrTenantFailed = errors.New("tenant failed")
+)
+
 const (
 	requeueDelayOnFailedTenant   = 20 * time.Second
 	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.112.0"
@@ -55,20 +58,15 @@ type CollectorReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-type TenantFailedError struct {
-	msg string
-}
-
 type BasicAuthClientAuthConfig struct {
 	Username string
 	Password string
 }
 
-func (e *TenantFailedError) Error() string { return e.msg }
-
 func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, collector *v1alpha1.Collector) (otelcolconfgen.OtelColConfigInput, error) {
 	logger := log.FromContext(ctx)
 	tenantSubscriptionMap := make(map[string][]v1alpha1.NamespacedName)
+	var bridgesReferencedByTenant []v1alpha1.Bridge
 	subscriptionOutputMap := make(map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName)
 
 	tenants, err := r.getTenantsMatchingSelectors(ctx, collector.Spec.TenantSelector)
@@ -81,15 +79,13 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 	}
 
 	for _, tenant := range tenants {
-
 		if tenant.Status.State == v1alpha1.StateFailed {
-			logger.Info("tenant %q is in failed state, retrying later", tenant.Name)
-			return otelcolconfgen.OtelColConfigInput{}, &TenantFailedError{msg: "tenant failed"}
+			logger.Info(fmt.Sprintf("tenant %q is in failed state, retrying later", tenant.Name))
+			return otelcolconfgen.OtelColConfigInput{}, ErrTenantFailed
 		}
 
 		subscriptionNames := tenant.Status.Subscriptions
 		tenantSubscriptionMap[tenant.Name] = subscriptionNames
-
 		for _, subsName := range subscriptionNames {
 			queriedSubs := &v1alpha1.Subscription{}
 			if err = r.Client.Get(ctx, types.NamespacedName(subsName), queriedSubs); err != nil {
@@ -98,12 +94,22 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 			}
 			subscriptions[subsName] = *queriedSubs
 		}
+
+		bridgeNames := tenant.Status.ConnectedBridges
+		for _, bridgeName := range bridgeNames {
+			queriedBridge := &v1alpha1.Bridge{}
+			if err = r.Client.Get(ctx, types.NamespacedName{Name: bridgeName}, queriedBridge); err != nil {
+				logger.Error(errors.WithStack(err), "failed getting bridges for tenant", "tenant", tenant.Name)
+				return otelcolconfgen.OtelColConfigInput{}, err
+			}
+
+			bridgesReferencedByTenant = append(bridgesReferencedByTenant, *queriedBridge)
+		}
 	}
 
 	for _, subscription := range subscriptions {
 		outputNames := subscription.Status.Outputs
 		subscriptionOutputMap[subscription.NamespacedName()] = outputNames
-
 		for _, outputName := range outputNames {
 			outputWithSecretData := components.OutputWithSecretData{}
 
@@ -117,29 +123,20 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 			if err := r.populateSecretForOutput(ctx, queriedOutput, &outputWithSecretData); err != nil {
 				return otelcolconfgen.OtelColConfigInput{}, err
 			}
-
 			outputs = append(outputs, outputWithSecretData)
 		}
 	}
 
-	bridges, err := r.getBridges(ctx, client.ListOptions{})
-	if err != nil {
-		logger.Error(errors.WithStack(err), "failed listing bridges")
-		return otelcolconfgen.OtelColConfigInput{}, err
-	}
-
-	otelConfigInput := otelcolconfgen.OtelColConfigInput{
+	return otelcolconfgen.OtelColConfigInput{
 		Tenants:               tenants,
 		Subscriptions:         subscriptions,
-		Bridges:               bridges,
+		Bridges:               bridgesReferencedByTenant,
 		OutputsWithSecretData: outputs,
 		TenantSubscriptionMap: tenantSubscriptionMap,
 		SubscriptionOutputMap: subscriptionOutputMap,
 		Debug:                 collector.Spec.Debug,
 		MemoryLimiter:         *collector.Spec.MemoryLimiter,
-	}
-
-	return otelConfigInput, nil
+	}, nil
 }
 
 func (r *CollectorReconciler) populateSecretForOutput(ctx context.Context, queriedOutput *v1alpha1.Output, outputWithSecret *components.OutputWithSecretData) error {
@@ -182,10 +179,8 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	collector := &v1alpha1.Collector{}
 	logger.Info(fmt.Sprintf("getting collector: %q", req.Name))
 
-	if err := r.Get(ctx, req.NamespacedName, collector); client.IgnoreNotFound(err) != nil {
-		logger.Error(errors.New("failed getting collector, possible API server error"), "failed getting collector, possible API server error",
-			"collector", req.Name)
-		return ctrl.Result{}, err
+	if err := r.Get(ctx, req.NamespacedName, collector); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	collector.Spec.SetDefaults()
@@ -194,22 +189,38 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	otelConfigInput, err := r.buildConfigInputForCollector(ctx, collector)
 	if err != nil {
-		if errors.Is(err, &TenantFailedError{}) {
+		if errors.Is(err, ErrTenantFailed) {
 			return ctrl.Result{RequeueAfter: requeueDelayOnFailedTenant}, err
 		}
 		return ctrl.Result{}, err
 	}
 
-	if err := otelConfigInput.ValidateConfig(); ignoreNoResourcesError(err) != nil {
-		collector.Status.State = v1alpha1.StateFailed
+	if err := otelConfigInput.ValidateConfig(); err != nil {
+		if errors.Is(err, otelcolconfgen.ErrNoResources) {
+			logger.Info(err.Error())
+			return ctrl.Result{}, nil
+		}
 		logger.Error(errors.WithStack(err), "invalid otel config input")
+
+		collector.Status.State = v1alpha1.StateFailed
+		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
+			return ctrl.Result{}, errors.Append(err, updateErr)
+		}
+
 		return ctrl.Result{}, err
 	}
 
 	otelConfig := otelConfigInput.AssembleConfig(ctx)
 	if err := validator.ValidateAssembledConfig(otelConfig); err != nil {
-		collector.Status.State = v1alpha1.StateFailed
 		logger.Error(errors.WithStack(err), "invalid otel config")
+
+		collector.Status.State = v1alpha1.StateFailed
+		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
+			return ctrl.Result{}, errors.Append(err, updateErr)
+		}
+
 		return ctrl.Result{}, err
 	}
 
@@ -280,11 +291,15 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
 	_, err = resourceReconciler.ReconcileResource(&otelCollector, reconciler.StatePresent)
 	if err != nil {
+		logger.Error(errors.WithStack(err), "failed reconciling collector")
+
 		collector.Status.State = v1alpha1.StateFailed
-		if apierrors.IsConflict(err) {
-			logger.Info("conflict while creating otel collector, retrying")
-			return ctrl.Result{Requeue: true}, nil
+		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
+			return ctrl.Result{}, errors.Append(err, updateErr)
 		}
+
+		return ctrl.Result{}, err
 	}
 
 	tenantNames := []string{}
@@ -296,9 +311,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	collector.Status.State = v1alpha1.StateReady
 	if !reflect.DeepEqual(originalCollectorStatus, collector.Status) {
 		logger.Info("collector status changed")
-		if err = r.Client.Status().Update(ctx, collector); err != nil {
-			logger.Error(errors.WithStack(err), "failed updating collector status")
-			return ctrl.Result{}, err
+
+		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
+			return ctrl.Result{}, errors.Append(err, updateErr)
 		}
 	}
 
@@ -536,13 +552,8 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 	return tenantsForSelector.Items, nil
 }
 
-func (r *CollectorReconciler) getBridges(ctx context.Context, listOpts client.ListOptions) ([]v1alpha1.Bridge, error) {
-	var bridges v1alpha1.BridgeList
-	if err := r.Client.List(ctx, &bridges, &listOpts); client.IgnoreNotFound(err) != nil {
-		return nil, err
-	}
-
-	return bridges.Items, nil
+func (r *CollectorReconciler) updateStatus(ctx context.Context, obj client.Object) error {
+	return r.Status().Update(ctx, obj)
 }
 
 func normalizeStringSlice(inputList []string) []string {
@@ -557,12 +568,4 @@ func normalizeStringSlice(inputList []string) []string {
 	slices.Sort(uniqueList)
 
 	return uniqueList
-}
-
-func ignoreNoResourcesError(err error) error {
-	if err == otelcolconfgen.ErrNoResources {
-		return nil
-	}
-
-	return err
 }

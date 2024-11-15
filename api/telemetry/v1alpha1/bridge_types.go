@@ -29,7 +29,6 @@ type BridgeSpec struct {
 
 // BridgeStatus defines the observed state of Bridge
 type BridgeStatus struct {
-	State State `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -37,7 +36,6 @@ type BridgeStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Source Tenant",type=string,JSONPath=`.spec.sourceTenant`
 //+kubebuilder:printcolumn:name="Target Tenant",type=string,JSONPath=`.spec.targetTenant`
-//+kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 
 // Bridge is the Schema for the Bridges API
 type Bridge struct {
