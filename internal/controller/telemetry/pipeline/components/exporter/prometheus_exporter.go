@@ -107,7 +107,7 @@ type PrometheusExporterConfig struct {
 	MetricExpiration time.Duration `json:"metric_expiration,omitempty"`
 
 	// ResourceToTelemetrySettings defines configuration for converting resource attributes to metric labels.
-	ResourceToTelemetrySettings ResourceToTelemetrySettings `json:"resource_to_telemetry_conversion,omitempty"`
+	ResourceToTelemetrySettings *ResourceToTelemetrySettings `json:"resource_to_telemetry_conversion,omitempty"`
 
 	// EnableOpenMetrics enables the use of the OpenMetrics encoding option for the prometheus exporter.
 	EnableOpenMetrics bool `json:"enable_open_metrics,omitempty"`

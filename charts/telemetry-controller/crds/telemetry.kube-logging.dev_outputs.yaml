@@ -138,8 +138,8 @@ spec:
                     type: boolean
                   connection_timeout:
                     description: Connection Timeout parameter configures `net.Dialer`.
-                    format: int64
-                    type: integer
+                    format: duration
+                    type: string
                   default_labels_enabled:
                     additionalProperties:
                       type: boolean

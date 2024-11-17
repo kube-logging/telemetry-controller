@@ -16,11 +16,11 @@ package exporter
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
-	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -30,18 +30,16 @@ func GenerateFluentforwardExporters(ctx context.Context, outputsWithSecretData [
 	result := make(map[string]any)
 	for _, output := range outputsWithSecretData {
 		if output.Output.Spec.Fluentforward != nil {
-			// TODO: add proper error handling
-			name := fmt.Sprintf("fluentforwardexporter/%s_%s", output.Output.Namespace, output.Output.Name)
-			fluentForwardMarshaled, err := yaml.Marshal(output.Output.Spec.Fluentforward)
+			fluentForwardMarshaled, err := json.Marshal(output.Output.Spec.Fluentforward)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
-			var fluetForwardValues map[string]any
-			if err := yaml.Unmarshal(fluentForwardMarshaled, &fluetForwardValues); err != nil {
+			var fluentForwardValues map[string]any
+			if err := json.Unmarshal(fluentForwardMarshaled, &fluentForwardValues); err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 
-			result[name] = fluetForwardValues
+			result[fmt.Sprintf("fluentforwardexporter/%s_%s", output.Output.Namespace, output.Output.Name)] = fluentForwardValues
 		}
 	}
 
