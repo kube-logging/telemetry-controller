@@ -208,6 +208,13 @@ func TestOtelColConfComplex(t *testing.T) {
 								},
 							},
 						},
+						Batch: &v1alpha1.Batch{
+							Timeout:                  "5s",
+							SendBatchSize:            512,
+							SendBatchMaxSize:         4096,
+							MetadataKeys:             []string{"key1", "key2"},
+							MetadataCardinalityLimit: 100,
+						},
 					},
 				},
 			},

@@ -49,7 +49,7 @@ var (
 
 const (
 	requeueDelayOnFailedTenant   = 20 * time.Second
-	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.112.0"
+	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.112.0-dev1"
 )
 
 // CollectorReconciler reconciles a Collector object

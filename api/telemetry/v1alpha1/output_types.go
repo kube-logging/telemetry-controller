@@ -22,12 +22,50 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type Batch struct {
+	// From 	go.opentelemetry.io/collector/processor/batchprocessor
+
+	// +kubebuilder:validation:Format=duration
+
+	// Timeout sets the time after which a batch will be sent regardless of size.
+	// When this is set to zero, batched data will be sent immediately.
+	Timeout string `json:"timeout,omitempty"`
+
+	// SendBatchSize is the size of a batch which after hit, will trigger it to be sent.
+	// When this is set to zero, the batch size is ignored and data will be sent immediately
+	// subject to only send_batch_max_size.
+	SendBatchSize uint32 `json:"send_batch_size,omitempty"`
+
+	// SendBatchMaxSize is the maximum size of a batch. It must be larger than SendBatchSize.
+	// Larger batches are split into smaller units.
+	// Default value is 0, that means no maximum size.
+	SendBatchMaxSize uint32 `json:"send_batch_max_size,omitempty"`
+
+	// MetadataKeys is a list of client.Metadata keys that will be
+	// used to form distinct batchers.  If this setting is empty,
+	// a single batcher instance will be used.  When this setting
+	// is not empty, one batcher will be used per distinct
+	// combination of values for the listed metadata keys.
+	//
+	// Empty value and unset metadata are treated as distinct cases.
+	//
+	// Entries are case-insensitive.  Duplicated entries will
+	// trigger a validation error.
+	MetadataKeys []string `json:"metadata_keys,omitempty"`
+
+	// MetadataCardinalityLimit indicates the maximum number of
+	// batcher instances that will be created through a distinct
+	// combination of MetadataKeys.
+	MetadataCardinalityLimit uint32 `json:"metadata_cardinality_limit,omitempty"`
+}
+
 // OutputSpec defines the desired state of Output
 type OutputSpec struct {
 	OTLPGRPC       *OTLPGRPC      `json:"otlp,omitempty"`
 	Fluentforward  *Fluentforward `json:"fluentforward,omitempty"`
 	OTLPHTTP       *OTLPHTTP      `json:"otlphttp,omitempty"`
 	Authentication *OutputAuth    `json:"authentication,omitempty"`
+	Batch          *Batch         `json:"batch,omitempty"`
 }
 
 type OutputAuth struct {

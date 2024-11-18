@@ -36,8 +36,9 @@ func createDecoderConfig(result interface{}, hooks ...mapstructure.DecodeHookFun
 
 // decodeID converts string to component.ID or pipeline.ID
 func decodeID(from reflect.Type, to reflect.Type, data interface{}) (interface{}, error) {
-	// contrib components sometimes does not follow the type/name format
-	contribComponents := map[string]bool{
+	// occasionally components don't follow the type/name format
+	// in such cases, we need to handle them separately
+	exceptionComponents := map[string]bool{
 		"debug":             true,
 		"deltatocumulative": true,
 		"memory_limiter":    true,
@@ -49,7 +50,7 @@ func decodeID(from reflect.Type, to reflect.Type, data interface{}) (interface{}
 		switch to {
 		case reflect.TypeOf(component.ID{}):
 			if len(parts) != 2 {
-				if contribComponents[parts[0]] {
+				if exceptionComponents[parts[0]] {
 					return component.MustNewID(parts[0]), nil
 				}
 
