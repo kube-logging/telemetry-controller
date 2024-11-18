@@ -26,3 +26,11 @@ func SortNamespacedNames(names []v1alpha1.NamespacedName) {
 		return strings.Compare(a.String(), b.String())
 	})
 }
+
+func ToPtr[T any](v T) *T {
+	return &v
+}
+
+func ToValue[T any](v *T) T {
+	return *v
+}

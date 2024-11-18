@@ -15,10 +15,7 @@
 package v1alpha1
 
 import (
-	"time"
-
 	corev1 "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -86,56 +83,58 @@ type BearerAuthConfig struct {
 
 // OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
 type OTLPGRPC struct {
-	QueueConfig      QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
-	RetryConfig      BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
-	TimeoutSettings  `json:",inline" yaml:",inline"`
-	GRPCClientConfig `json:",inline" yaml:",inline"`
+	QueueConfig      *QueueSettings `json:"sending_queue,omitempty"`
+	RetryConfig      *BackOffConfig `json:"retry_on_failure,omitempty"`
+	TimeoutSettings  `json:",inline"`
+	GRPCClientConfig `json:",inline"`
 }
 
 type OTLPHTTP struct {
-	QueueConfig      QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
-	RetryConfig      BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
-	HTTPClientConfig `json:",inline" yaml:",inline"`
+	QueueConfig      *QueueSettings `json:"sending_queue,omitempty"`
+	RetryConfig      *BackOffConfig `json:"retry_on_failure,omitempty"`
+	HTTPClientConfig `json:",inline"`
 }
 
 type Fluentforward struct {
-	TCPClientSettings `json:",inline" yaml:",inline"` // squash ensures fields are correctly decoded in embedded struct.
+	TCPClientSettings `json:",inline"`
 
 	// RequireAck enables the acknowledgement feature.
-	RequireAck bool `json:"require_ack,omitempty" yaml:"require_ack,omitempty"`
+	RequireAck *bool `json:"require_ack,omitempty"`
 
 	// The Fluent tag parameter used for routing
-	Tag string `json:"tag,omitempty" yaml:"tag,omitempty"`
+	Tag *string `json:"tag,omitempty"`
 
 	// CompressGzip enables gzip compression for the payload.
-	CompressGzip bool `json:"compress_gzip,omitempty" yaml:"compress_gzip,omitempty"`
+	CompressGzip *bool `json:"compress_gzip,omitempty"`
 
 	// DefaultLabelsEnabled is a map of default attributes to be added to each log record.
-	DefaultLabelsEnabled map[string]bool `json:"default_labels_enabled,omitempty" yaml:"default_labels_enabled,omitempty"`
+	DefaultLabelsEnabled *map[string]bool `json:"default_labels_enabled,omitempty"`
 
-	QueueConfig QueueSettings `json:"sending_queue,omitempty" yaml:"sending_queue,omitempty"`
-	RetryConfig BackOffConfig `json:"retry_on_failure,omitempty" yaml:"retry_on_failure,omitempty"`
+	QueueConfig *QueueSettings `json:"sending_queue,omitempty"`
+	RetryConfig *BackOffConfig `json:"retry_on_failure,omitempty"`
 
-	Kubernetes *KubernetesMetadata `json:"kubernetes_metadata,omitempty" yaml:"kubernetes_metadata,omitempty"`
+	Kubernetes *KubernetesMetadata `json:"kubernetes_metadata,omitempty"`
 }
 
 type KubernetesMetadata struct {
-	Key              string `json:"key" yaml:"key,omitempty"`
-	IncludePodLabels bool   `json:"include_pod_labels" yaml:"include_pod_labels,omitempty"`
+	Key              string `json:"key"`
+	IncludePodLabels bool   `json:"include_pod_labels"`
 }
 
 type TCPClientSettings struct {
 	// The target endpoint URI to send data to (e.g.: some.url:24224).
-	Endpoint string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	Endpoint *string `json:"endpoint,omitempty"`
+
+	// +kubebuilder:validation:Format=duration
 
 	// Connection Timeout parameter configures `net.Dialer`.
-	ConnectionTimeout time.Duration `json:"connection_timeout,omitempty" yaml:"connection_timeout,omitempty"`
+	ConnectionTimeout *string `json:"connection_timeout,omitempty"`
 
 	// TLSSetting struct exposes TLS client configuration.
-	TLSSetting TLSClientSetting `json:"tls,omitempty" yaml:"tls,omitempty"`
+	TLSSetting *TLSClientSetting `json:"tls,omitempty"`
 
 	// SharedKey is used for authorization with the server that knows it.
-	SharedKey string `json:"shared_key,omitempty" yaml:"shared_key,omitempty"`
+	SharedKey *string `json:"shared_key,omitempty"`
 }
 
 // OutputStatus defines the observed state of Output
@@ -151,7 +150,7 @@ type Output struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   OutputSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Spec   OutputSpec   `json:"spec,omitempty"`
 	Status OutputStatus `json:"status,omitempty"`
 }
 
@@ -159,7 +158,7 @@ type Output struct {
 
 // OutputList contains a list of Output
 type OutputList struct {
-	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Output `json:"items"`
 }

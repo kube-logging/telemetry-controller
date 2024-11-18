@@ -35,6 +35,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/connector"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 )
 
 //go:embed otel_col_conf_test_fixtures/complex.yaml
@@ -194,8 +195,8 @@ func TestOtelColConfComplex(t *testing.T) {
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
-								Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
-								TLSSetting: v1alpha1.TLSClientSetting{
+								Endpoint: utils.ToPtr("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
+								TLSSetting: &v1alpha1.TLSClientSetting{
 									Insecure: true,
 								},
 							},
@@ -227,8 +228,8 @@ func TestOtelColConfComplex(t *testing.T) {
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
-								Endpoint: "receiver-collector.example-tenant-a-ns.svc.cluster.local:4317",
-								TLSSetting: v1alpha1.TLSClientSetting{
+								Endpoint: utils.ToPtr("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
+								TLSSetting: &v1alpha1.TLSClientSetting{
 									Insecure: true,
 								},
 							},
@@ -245,8 +246,8 @@ func TestOtelColConfComplex(t *testing.T) {
 					Spec: v1alpha1.OutputSpec{
 						OTLPHTTP: &v1alpha1.OTLPHTTP{
 							HTTPClientConfig: v1alpha1.HTTPClientConfig{
-								Endpoint: "loki.example-tenant-a-ns.svc.cluster.local:4317",
-								TLSSetting: v1alpha1.TLSClientSetting{
+								Endpoint: utils.ToPtr[string]("loki.example-tenant-a-ns.svc.cluster.local:4317"),
+								TLSSetting: &v1alpha1.TLSClientSetting{
 									Insecure: true,
 								},
 							},
@@ -263,8 +264,8 @@ func TestOtelColConfComplex(t *testing.T) {
 					Spec: v1alpha1.OutputSpec{
 						Fluentforward: &v1alpha1.Fluentforward{
 							TCPClientSettings: v1alpha1.TCPClientSettings{
-								Endpoint: "fluentforward.example-tenant-ns.svc.cluster.local:8888",
-								TLSSetting: v1alpha1.TLSClientSetting{
+								Endpoint: utils.ToPtr("fluentd.example-tenant-b-ns.svc.cluster.local:24224"),
+								TLSSetting: &v1alpha1.TLSClientSetting{
 									Insecure: true,
 								},
 							},

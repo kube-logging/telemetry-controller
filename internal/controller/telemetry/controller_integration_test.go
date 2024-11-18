@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
@@ -177,8 +178,8 @@ var _ = Describe("Telemetry controller integration test", func() {
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
-								Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
-								TLSSetting: v1alpha1.TLSClientSetting{
+								Endpoint: utils.ToPtr("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
+								TLSSetting: &v1alpha1.TLSClientSetting{
 									Insecure: true,
 								},
 							},
@@ -193,8 +194,8 @@ var _ = Describe("Telemetry controller integration test", func() {
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
-								Endpoint: "receiver-collector.example-tenant-ns.svc.cluster.local:4317",
-								TLSSetting: v1alpha1.TLSClientSetting{
+								Endpoint: utils.ToPtr("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
+								TLSSetting: &v1alpha1.TLSClientSetting{
 									Insecure: true,
 								},
 							},

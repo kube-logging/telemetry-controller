@@ -16,11 +16,13 @@ package exporter
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
-	"gopkg.in/yaml.v3"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -30,25 +32,25 @@ func GenerateOTLPHTTPExporters(ctx context.Context, outputsWithSecretData []comp
 	result := make(map[string]any)
 	for _, output := range outputsWithSecretData {
 		if output.Output.Spec.OTLPHTTP != nil {
-			name := components.GetExporterNameForOutput(output.Output)
-
 			if output.Output.Spec.Authentication != nil {
 				if output.Output.Spec.Authentication.BasicAuth != nil {
-					output.Output.Spec.OTLPHTTP.Auth.AuthenticatorID = fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name)
+					output.Output.Spec.OTLPHTTP.Auth = &v1alpha1.Authentication{
+						AuthenticatorID: utils.ToPtr(fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name))}
 				} else if output.Output.Spec.Authentication.BearerAuth != nil {
-					output.Output.Spec.OTLPHTTP.Auth.AuthenticatorID = fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name)
+					output.Output.Spec.OTLPHTTP.Auth = &v1alpha1.Authentication{
+						AuthenticatorID: utils.ToPtr(fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name))}
 				}
 			}
-			otlpHttpValuesMarshaled, err := yaml.Marshal(output.Output.Spec.OTLPHTTP)
+			otlpHttpValuesMarshaled, err := json.Marshal(output.Output.Spec.OTLPHTTP)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 			var otlpHttpValues map[string]any
-			if err := yaml.Unmarshal(otlpHttpValuesMarshaled, &otlpHttpValues); err != nil {
+			if err := json.Unmarshal(otlpHttpValuesMarshaled, &otlpHttpValues); err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 
-			result[name] = otlpHttpValues
+			result[components.GetExporterNameForOutput(output.Output)] = otlpHttpValues
 		}
 	}
 
