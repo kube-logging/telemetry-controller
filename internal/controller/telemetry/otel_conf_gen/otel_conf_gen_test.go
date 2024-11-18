@@ -310,7 +310,7 @@ func TestOtelColConfComplex(t *testing.T) {
 	// Config
 
 	// The receiver and exporter entries are not serialized because of tags on the underlying data structure. The tests won't contain them, this is a known issue.
-	generatedConfig := inputCfg.AssembleConfig(context.TODO())
+	generatedConfig, _ := inputCfg.AssembleConfig(context.TODO())
 	actualJSONBytes, err1 := json.Marshal(generatedConfig)
 	if err1 != nil {
 		t.Fatalf("error %v", err1)

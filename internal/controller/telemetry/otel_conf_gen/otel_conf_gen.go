@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
@@ -270,7 +271,7 @@ func (cfgInput *OtelColConfigInput) generateTelemetry() map[string]any {
 	return telemetry
 }
 
-func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1beta1.Config {
+func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) (otelv1beta1.Config, map[string]string) {
 	exporters := cfgInput.generateExporters(ctx)
 
 	processors := cfgInput.generateProcessors()
@@ -306,7 +307,7 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1be
 		extensionNames = nil
 	}
 
-	return otelv1beta1.Config{
+	otelConfig := otelv1beta1.Config{
 		Receivers:  otelv1beta1.AnyConfig{Object: receivers},
 		Exporters:  otelv1beta1.AnyConfig{Object: exporters},
 		Processors: &otelv1beta1.AnyConfig{Object: processors},
@@ -318,6 +319,28 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) otelv1be
 			Pipelines:  pipelines,
 		},
 	}
+
+	return otelConfig, assembleAdditionalArgs(&otelConfig)
+}
+
+func assembleAdditionalArgs(otelConfig *otelv1beta1.Config) map[string]string {
+	const (
+		featureGatesKey             = "feature-gates"
+		flattenLogsFeatureGateValue = "transform.flatten.logs"
+
+		transformProcessorID = "transform"
+		flattenDataKey       = "flatten_data"
+	)
+
+	args := make(map[string]string)
+	for processorName, processorConfig := range otelConfig.Processors.Object {
+		if strings.Contains(processorName, transformProcessorID) && processorConfig.(processor.TransformProcessor).FlattenData {
+			args[featureGatesKey] = flattenLogsFeatureGateValue
+			break
+		}
+	}
+
+	return args
 }
 
 func validateTenants(tenants *[]v1alpha1.Tenant) error {

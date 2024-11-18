@@ -32,6 +32,11 @@ type Transform struct {
 	// Name of the Transform processor
 	Name string `json:"name,omitempty"`
 
+	// When FlattenData is true, the processor provides each log record with a distinct copy
+	// of its resource and scope. Then, after applying all transformations,
+	// the log records are regrouped by resource and scope.
+	FlattenData bool `json:"flattenData,omitempty"`
+
 	// +kubebuilder:validation:Enum:=ignore;silent;propagate
 
 	// ErrorMode specifies how errors are handled while processing a statement

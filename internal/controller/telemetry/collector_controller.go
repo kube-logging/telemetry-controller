@@ -211,7 +211,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	otelConfig := otelConfigInput.AssembleConfig(ctx)
+	otelConfig, additionalArgs := otelConfigInput.AssembleConfig(ctx)
 	if err := validator.ValidateAssembledConfig(otelConfig); err != nil {
 		logger.Error(errors.WithStack(err), "invalid otel config")
 
@@ -241,6 +241,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Mode:            otelv1beta1.ModeDaemonSet,
 			OpenTelemetryCommonFields: otelv1beta1.OpenTelemetryCommonFields{
 				Image:          axoflowOtelCollectorImageRef,
+				Args:           additionalArgs,
 				ServiceAccount: saName.Name,
 				VolumeMounts: []corev1.VolumeMount{
 					{
