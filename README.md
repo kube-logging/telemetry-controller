@@ -124,6 +124,56 @@ Paste this token to the example manifests:
 sed -i '' -e "s/\<TOKEN\>/INSERT YOUR COPIED TOKEN HERE/" docs/examples/simple-demo/one_tenant_two_subscriptions.yaml
 ```
 
+**Note: Telemetry Controller supports batching, you can enable it by adding it to your `output` definition.**
+
+We reccommend the following settings:
+
+### Low-Latency settings
+
+This configuration prioritizes sending small, frequent batches over achieving efficiency through larger batch sizes, it is useful for scenarios where minimal delay in data transmission is critical:
+
+- `send_batch_size`: 8192 (Minimum viable batch size for fast processing.)
+- `timeout`: 200ms (Low timeout ensures small batches are sent quickly.)
+
+Example config:
+
+```yaml
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: LL-output
+  namespace: example
+spec:
+  batch:
+    send_batch_size: 8192
+    timeout: 200ms
+  otlp:
+    endpoint: example
+```
+
+### Archival settings
+
+This configuration maximizes resource usage, making it ideal for batch processing and data archival purposes, it is useful for scenarios where efficiency and throughput are prioritized over immediate transmission:
+
+- `send_batch_size`: 1048576 (Large batch size for optimal throughput.)
+- `timeout`: 60s (Wait for more data to maximize batch size.)
+
+Example config:
+
+```yaml
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: Archival-output
+  namespace: example
+spec:
+  batch:
+    send_batch_size: 1048576
+    timeout: 60s
+  otlp:
+    endpoint: example
+```
+
 ```sh
 # Deploy the pipeline definition
 kubectl apply -f docs/examples/simple-demo/one_tenant_two_subscriptions.yaml
