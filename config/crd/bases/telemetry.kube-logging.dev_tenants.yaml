@@ -190,6 +190,12 @@ spec:
                     - silent
                     - propagate
                     type: string
+                  flattenData:
+                    description: |-
+                      When FlattenData is true, the processor provides each log record with a distinct copy
+                      of its resource and scope. Then, after applying all transformations,
+                      the log records are regrouped by resource and scope.
+                    type: boolean
                   logStatements:
                     items:
                       description: |-

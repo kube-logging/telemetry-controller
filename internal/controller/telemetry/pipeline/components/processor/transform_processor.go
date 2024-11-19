@@ -30,6 +30,7 @@ type TransformProcessorStatement struct {
 
 type TransformProcessor struct {
 	ErrorMode        components.ErrorMode          `json:"error_mode,omitempty"`
+	FlattenData      bool                          `json:"flatten_data,omitempty"`
 	TraceStatements  []TransformProcessorStatement `json:"trace_statements,omitempty"`
 	MetricStatements []TransformProcessorStatement `json:"metric_statements,omitempty"`
 	LogStatements    []TransformProcessorStatement `json:"log_statements,omitempty"`
@@ -38,6 +39,7 @@ type TransformProcessor struct {
 func GenerateTransformProcessorForTenant(tenant v1alpha1.Tenant) TransformProcessor {
 	return TransformProcessor{
 		ErrorMode:        components.ErrorMode(tenant.Spec.Transform.ErrorMode),
+		FlattenData:      tenant.Spec.Transform.FlattenData,
 		TraceStatements:  convertAPIStatements(tenant.Spec.Transform.TraceStatements),
 		MetricStatements: convertAPIStatements(tenant.Spec.Transform.MetricStatements),
 		LogStatements:    convertAPIStatements(tenant.Spec.Transform.LogStatements),

@@ -43,6 +43,7 @@ metadata:
 spec:
   transform:
     name: parse-nginx
+    flattenData: true
     logStatements:
       - context: log
         statements:
