@@ -3,29 +3,25 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: tenant-editor-role
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: telemetry-controller
-    app.kubernetes.io/part-of: telemetry-controller
+    app.kubernetes.io/name: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
-  name: tenant-editor-role
+  name: telemetry-tenant-editor-role
 rules:
-  - apiGroups:
-      - telemetry.kube-logging.dev
-    resources:
-      - tenants
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - telemetry.kube-logging.dev
-    resources:
-      - tenants/status
-    verbs:
-      - get
+- apiGroups:
+  - telemetry.kube-logging.dev
+  resources:
+  - tenants
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - telemetry.kube-logging.dev
+  resources:
+  - tenants/status
+  verbs:
+  - get
