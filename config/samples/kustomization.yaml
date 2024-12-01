@@ -5,4 +5,4 @@ resources:
 - telemetry_v1alpha1_tenant.yaml
 - telemetry_v1alpha1_output.yaml
 - telemetry_v1alpha1_bridge.yaml
-#+kubebuilder:scaffold:manifestskustomizesamples
+# +kubebuilder:scaffold:manifestskustomizesamples
