@@ -7,29 +7,18 @@ resources:
 - bases/telemetry.kube-logging.dev_tenants.yaml
 - bases/telemetry.kube-logging.dev_outputs.yaml
 - bases/telemetry.kube-logging.dev_bridges.yaml
-#+kubebuilder:scaffold:crdkustomizeresource
+# +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
-#- path: patches/webhook_in_telemetry_collectors.yaml
-#- path: patches/webhook_in_telemetry_subscriptions.yaml
-#- path: patches/webhook_in_telemetry_tenants.yaml
-#- path: patches/webhook_in_telemetry_outputs.yaml
-#- path: patches/webhook_in_telemetry_bridges.yaml
-#+kubebuilder:scaffold:crdkustomizewebhookpatch
+# +kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.
 # patches here are for enabling the CA injection for each CRD
-#- path: patches/cainjection_in_telemetry_collectors.yaml
-#- path: patches/cainjection_in_telemetry_subscriptions.yaml
-#- path: patches/cainjection_in_telemetry_tenants.yaml
-#- path: patches/cainjection_in_telemetry_outputs.yaml
-#- path: patches/cainjection_in_telemetry_bridges.yaml
-#+kubebuilder:scaffold:crdkustomizecainjectionpatch
+# +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # [WEBHOOK] To enable webhook, uncomment the following section
 # the following config is for teaching kustomize how to do kustomization for CRDs.
-
 #configurations:
 #- kustomizeconfig.yaml

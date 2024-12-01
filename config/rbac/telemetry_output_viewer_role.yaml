@@ -1,16 +1,16 @@
-# permissions for end users to view subscriptions.
+# permissions for end users to view outputs.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
-  name: telemetry-subscription-viewer-role
+  name: telemetry-output-viewer-role
 rules:
 - apiGroups:
   - telemetry.kube-logging.dev
   resources:
-  - subscriptions
+  - outputs
   verbs:
   - get
   - list
@@ -18,6 +18,6 @@ rules:
 - apiGroups:
   - telemetry.kube-logging.dev
   resources:
-  - subscriptions/status
+  - outputs/status
   verbs:
   - get
