@@ -5,8 +5,8 @@ export PATH := $(BIN):$(PATH)
 GOVERSION := $(shell go env GOVERSION)
 
 KIND := ${BIN}/kind
-KIND_VERSION ?= v0.24.0
-KIND_IMAGE ?= kindest/node:v1.31.0@sha256:53df588e04085fd41ae12de0c3fe4c72f7013bba32a20e7325357a1ac94ba865
+KIND_VERSION ?= v0.25.0
+KIND_IMAGE ?= kindest/node:v1.31.2@sha256:18fbefc20a7113353c7b75b5c869d7145a6abd6269154825872dc59c1329912e
 KIND_CLUSTER := kind
 
 # Image URL to use all building/pushing image targets
@@ -83,7 +83,7 @@ test: manifests generate fmt vet envtest ## Run verifications and tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v ./... -coverprofile cover.out
 
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.61.0
+GOLANGCI_LINT_VERSION ?= v1.62.2
 golangci-lint:
 	@[ -f $(GOLANGCI_LINT) ] || { \
 	set -e ;\
@@ -166,6 +166,7 @@ endif
 
 .PHONY: install-deps
 install-deps: ## Install dependencies into the actual K8s cluster
+	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
 	kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.112.0/opentelemetry-operator.yaml
 
 .PHONY: install
@@ -199,8 +200,8 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.2.1
-CONTROLLER_TOOLS_VERSION ?= v0.16.3
+KUSTOMIZE_VERSION ?= v5.5.0
+CONTROLLER_TOOLS_VERSION ?= v0.16.5
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
@@ -217,7 +218,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
-ENVTEST_OTEL_OPERATOR_VERSION=v0.103.0
+ENVTEST_OTEL_OPERATOR_VERSION=v0.112.0
 # Download CRDs for envtest
 crddir/github.com/open-telemetry/opentelemetry-operator:
 	git clone --depth 1 --branch ${ENVTEST_OTEL_OPERATOR_VERSION} https://github.com/open-telemetry/opentelemetry-operator.git crddir/github.com/open-telemetry/opentelemetry-operator
