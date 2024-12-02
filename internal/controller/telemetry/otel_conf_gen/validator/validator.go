@@ -94,7 +94,7 @@ func decodeServiceConfig(serviceConfig otelv1beta1.Service) (service.Config, err
 	}
 
 	if serviceConfig.Extensions != nil {
-		result.Extensions = decodeExtensionsConfig(*serviceConfig.Extensions)
+		result.Extensions = decodeExtensionsConfig(serviceConfig.Extensions)
 	}
 
 	if serviceConfig.Pipelines != nil {

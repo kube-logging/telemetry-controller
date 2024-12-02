@@ -314,7 +314,7 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) (otelv1b
 		Connectors: &otelv1beta1.AnyConfig{Object: connectors},
 		Extensions: &otelv1beta1.AnyConfig{Object: extensions},
 		Service: otelv1beta1.Service{
-			Extensions: &extensionNames,
+			Extensions: extensionNames,
 			Telemetry:  &otelv1beta1.AnyConfig{Object: telemetry},
 			Pipelines:  pipelines,
 		},
