@@ -229,68 +229,14 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("%+v", err)
 	}
 
-	otelCollector := otelv1beta1.OpenTelemetryCollector{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("otelcollector-%s", collector.Name),
-			Namespace: collector.Spec.ControlNamespace,
-		},
-		Spec: otelv1beta1.OpenTelemetryCollectorSpec{
-			UpgradeStrategy: "none",
-			Config:          otelConfig,
-			Mode:            otelv1beta1.ModeDaemonSet,
-			OpenTelemetryCommonFields: otelv1beta1.OpenTelemetryCommonFields{
-				Image:          axoflowOtelCollectorImageRef,
-				Args:           additionalArgs,
-				ServiceAccount: saName.Name,
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "varlog",
-						ReadOnly:  true,
-						MountPath: "/var/log",
-					},
-					{
-						Name:      "varlibdockercontainers",
-						ReadOnly:  true,
-						MountPath: "/var/lib/docker/containers",
-					},
-				},
-				Volumes: []corev1.Volume{
-					{
-						Name: "varlog",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/log",
-							},
-						},
-					},
-					{
-						Name: "varlibdockercontainers",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/lib/docker/containers",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+	otelCollector, state := r.otelCollector(collector, otelConfig, additionalArgs, saName.Name)
 
-	if memoryLimit := collector.Spec.GetMemoryLimit(); memoryLimit != nil {
-		// Calculate 80% of the specified memory limit for GOMEMLIMIT
-		goMemLimitPercent := 0.8
-		goMemLimitValue := int64(math.Round(float64(memoryLimit.Value()) * goMemLimitPercent))
-		goMemLimit := resource.NewQuantity(goMemLimitValue, resource.BinarySI)
-		otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{Name: "GOMEMLIMIT", Value: goMemLimit.String()})
-	}
-
-	if err := ctrl.SetControllerReference(collector, &otelCollector, r.Scheme); err != nil {
+	if err := ctrl.SetControllerReference(collector, otelCollector, r.Scheme); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
-	_, err = resourceReconciler.ReconcileResource(&otelCollector, reconciler.StatePresent)
+	_, err = resourceReconciler.ReconcileResource(otelCollector, state)
 	if err != nil {
 		logger.Error(errors.WithStack(err), "failed reconciling collector")
 
@@ -432,6 +378,75 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		})).
 		Owns(&otelv1beta1.OpenTelemetryCollector{}).
 		Complete(r)
+}
+
+func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState) {
+	otelCollector := otelv1beta1.OpenTelemetryCollector{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("otelcollector-%s", collector.Name),
+			Namespace: collector.Spec.ControlNamespace,
+		},
+		Spec: otelv1beta1.OpenTelemetryCollectorSpec{
+			UpgradeStrategy: "none",
+			Config:          otelConfig,
+			Mode:            otelv1beta1.ModeDaemonSet,
+			OpenTelemetryCommonFields: otelv1beta1.OpenTelemetryCommonFields{
+				Image:          axoflowOtelCollectorImageRef,
+				Args:           additionalArgs,
+				ServiceAccount: saName,
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "varlog",
+						ReadOnly:  true,
+						MountPath: "/var/log",
+					},
+					{
+						Name:      "varlibdockercontainers",
+						ReadOnly:  true,
+						MountPath: "/var/lib/docker/containers",
+					},
+				},
+				Volumes: []corev1.Volume{
+					{
+						Name: "varlog",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/var/log",
+							},
+						},
+					},
+					{
+						Name: "varlibdockercontainers",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/var/lib/docker/containers",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if memoryLimit := collector.Spec.GetMemoryLimit(); memoryLimit != nil {
+		// Calculate 80% of the specified memory limit for GOMEMLIMIT
+		goMemLimitPercent := 0.8
+		goMemLimitValue := int64(math.Round(float64(memoryLimit.Value()) * goMemLimitPercent))
+		goMemLimit := resource.NewQuantity(goMemLimitValue, resource.BinarySI)
+		otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{Name: "GOMEMLIMIT", Value: goMemLimit.String()})
+	}
+
+	beforeUpdateHook := reconciler.DesiredStateHook(func(current runtime.Object) error {
+		if currentCollector, ok := current.(*otelv1beta1.OpenTelemetryCollector); ok {
+			otelCollector.Finalizers = currentCollector.Finalizers
+		} else {
+			return errors.Errorf("unexpected type %T", current)
+		}
+		return nil
+	})
+
+	return &otelCollector, beforeUpdateHook
 }
 
 func (r *CollectorReconciler) reconcileRBAC(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
