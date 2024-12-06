@@ -24,6 +24,7 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/cisco-open/operator-tools/pkg/reconciler"
+	"github.com/imdario/mergo"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -229,7 +230,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("%+v", err)
 	}
 
-	otelCollector, state := r.otelCollector(collector, otelConfig, additionalArgs, saName.Name)
+	otelCollector, state, err := r.otelCollector(collector, otelConfig, additionalArgs, saName.Name)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	if err := ctrl.SetControllerReference(collector, otelCollector, r.Scheme); err != nil {
 		return ctrl.Result{}, err
@@ -380,7 +384,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState) {
+func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState, error) {
 	otelCollector := otelv1beta1.OpenTelemetryCollector{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -388,45 +392,14 @@ func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelC
 			Namespace: collector.Spec.ControlNamespace,
 		},
 		Spec: otelv1beta1.OpenTelemetryCollectorSpec{
-			UpgradeStrategy: "none",
-			Config:          otelConfig,
-			Mode:            otelv1beta1.ModeDaemonSet,
-			OpenTelemetryCommonFields: otelv1beta1.OpenTelemetryCommonFields{
-				Image:          axoflowOtelCollectorImageRef,
-				Args:           additionalArgs,
-				ServiceAccount: saName,
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "varlog",
-						ReadOnly:  true,
-						MountPath: "/var/log",
-					},
-					{
-						Name:      "varlibdockercontainers",
-						ReadOnly:  true,
-						MountPath: "/var/lib/docker/containers",
-					},
-				},
-				Volumes: []corev1.Volume{
-					{
-						Name: "varlog",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/log",
-							},
-						},
-					},
-					{
-						Name: "varlibdockercontainers",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/lib/docker/containers",
-							},
-						},
-					},
-				},
-			},
+			UpgradeStrategy:           "none",
+			Config:                    otelConfig,
+			Mode:                      otelv1beta1.ModeDaemonSet,
+			OpenTelemetryCommonFields: *collector.Spec.OtelCommonFields,
 		},
+	}
+	if err := setOtelCommonFieldsDefaults(&otelCollector.Spec.OpenTelemetryCommonFields, additionalArgs, saName); err != nil {
+		return &otelCollector, nil, err
 	}
 
 	if memoryLimit := collector.Spec.GetMemoryLimit(); memoryLimit != nil {
@@ -446,7 +419,7 @@ func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelC
 		return nil
 	})
 
-	return &otelCollector, beforeUpdateHook
+	return &otelCollector, beforeUpdateHook, nil
 }
 
 func (r *CollectorReconciler) reconcileRBAC(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
@@ -584,4 +557,57 @@ func normalizeStringSlice(inputList []string) []string {
 	slices.Sort(uniqueList)
 
 	return uniqueList
+}
+
+func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, additionalArgs map[string]string, saName string) error {
+	if otelCommonFields == nil {
+		otelCommonFields = &otelv1beta1.OpenTelemetryCommonFields{}
+	}
+
+	otelCommonFields.Image = axoflowOtelCollectorImageRef
+	otelCommonFields.ServiceAccount = saName
+
+	if err := mergo.Merge(&otelCommonFields.Args, additionalArgs, mergo.WithOverride); err != nil {
+		return err
+	}
+
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "varlog",
+			ReadOnly:  true,
+			MountPath: "/var/log",
+		},
+		{
+			Name:      "varlibdockercontainers",
+			ReadOnly:  true,
+			MountPath: "/var/lib/docker/containers",
+		},
+	}
+	if err := mergo.Merge(&otelCommonFields.VolumeMounts, volumeMounts, mergo.WithOverride); err != nil {
+		return err
+	}
+
+	volumes := []corev1.Volume{
+		{
+			Name: "varlog",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/var/log",
+				},
+			},
+		},
+		{
+			Name: "varlibdockercontainers",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/var/lib/docker/containers",
+				},
+			},
+		},
+	}
+	if err := mergo.Merge(&otelCommonFields.Volumes, volumes, mergo.WithOverride); err != nil {
+		return err
+	}
+
+	return nil
 }

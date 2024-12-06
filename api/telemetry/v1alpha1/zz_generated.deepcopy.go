@@ -19,7 +19,7 @@
 package v1alpha1
 
 import (
-	"github.com/cisco-open/operator-tools/pkg/typeoverride"
+	"github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"k8s.io/api/core/v1"
@@ -280,9 +280,9 @@ func (in *CollectorSpec) DeepCopyInto(out *CollectorSpec) {
 		*out = new(MemoryLimiter)
 		**out = **in
 	}
-	if in.DaemonSetOverrides != nil {
-		in, out := &in.DaemonSetOverrides, &out.DaemonSetOverrides
-		*out = new(typeoverride.DaemonSet)
+	if in.OtelCommonFields != nil {
+		in, out := &in.OtelCommonFields, &out.OtelCommonFields
+		*out = new(v1beta1.OpenTelemetryCommonFields)
 		(*in).DeepCopyInto(*out)
 	}
 }
