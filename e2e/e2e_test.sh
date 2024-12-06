@@ -33,13 +33,15 @@ function load_images()
 
 function helm_install_telemetry_controller()
 {
+    local chart_dir="charts/telemetry-controller"
+    helm dependency update "${chart_dir}"
     helm upgrade --install \
         --debug \
         --wait \
         --create-namespace \
         -f "e2e/values.yaml" \
         telemetry-controller \
-        "charts/telemetry-controller/"
+        "${chart_dir}"
 }
 
 function test_one_tenant_two_subscriptions()
