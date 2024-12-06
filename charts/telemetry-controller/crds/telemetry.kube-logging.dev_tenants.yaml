@@ -55,6 +55,10 @@ spec:
             description: TenantSpec defines the desired state of Tenant
             properties:
               logSourceNamespaceSelectors:
+                description: |-
+                  Determines the namespaces from which logs are collected by this tenant.
+                  If initialized with an empty list, logs from all namespaces are collected.
+                  If uninitialized, no logs are collected.
                 items:
                   description: |-
                     A label selector is a label query over a set of resources. The result of matchLabels and
@@ -111,6 +115,8 @@ spec:
                   it will be used to generate routing connectors
                 properties:
                   defaultPipelines:
+                    description: Contains the list of pipelines to use when a record
+                      does not meet any of specified conditions.
                     items:
                       type: string
                     type: array
@@ -124,9 +130,15 @@ spec:
                     - propagate
                     type: string
                   matchOnce:
+                    description: |-
+                      Determines whether the connector matches multiple statements or not.
+                      If enabled, the payload will be routed to the first pipeline in the table whose routing condition is met.
+                      May only be false when used with resource context.
                     type: boolean
                 type: object
               subscriptionNamespaceSelectors:
+                description: Determines the namespaces from which subscriptions are
+                  collected by this tenant.
                 items:
                   description: |-
                     A label selector is a label query over a set of resources. The result of matchLabels and
@@ -192,14 +204,14 @@ spec:
                     type: string
                   flattenData:
                     description: |-
-                      When FlattenData is true, the processor provides each log record with a distinct copy
-                      of its resource and scope. Then, after applying all transformations,
+                      When FlattenData is true, the processor provides each log record with
+                      a distinct copy of its resource and scope. Then, after applying all transformations,
                       the log records are regrouped by resource and scope.
                     type: boolean
                   logStatements:
                     items:
                       description: |-
-                        TransformStatement represents a single statement in a Transform processor
+                        TransformStatement represents a single statement in a Transform processor.
                         ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
                       properties:
                         conditions:
@@ -225,7 +237,7 @@ spec:
                   metricStatements:
                     items:
                       description: |-
-                        TransformStatement represents a single statement in a Transform processor
+                        TransformStatement represents a single statement in a Transform processor.
                         ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
                       properties:
                         conditions:
@@ -254,7 +266,7 @@ spec:
                   traceStatements:
                     items:
                       description: |-
-                        TransformStatement represents a single statement in a Transform processor
+                        TransformStatement represents a single statement in a Transform processor.
                         ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
                       properties:
                         conditions:

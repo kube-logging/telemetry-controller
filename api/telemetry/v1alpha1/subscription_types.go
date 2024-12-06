@@ -20,8 +20,15 @@ import (
 
 // SubscriptionSpec defines the desired state of Subscription
 type SubscriptionSpec struct {
-	Condition string           `json:"condition"`
-	Outputs   []NamespacedName `json:"outputs,omitempty"`
+	// +kubebuilder:validation:Required
+
+	// The condition which must be satisfied in order to forward telemetry to the outputs.
+	Condition string `json:"condition"`
+
+	// +kubebuilder:validation:Required
+
+	// The outputs to which the logs will be routed if the condition evaluates to true.
+	Outputs []NamespacedName `json:"outputs"`
 }
 
 // SubscriptionStatus defines the observed state of Subscription

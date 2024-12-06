@@ -18,10 +18,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TransformStatement represents a single statement in a Transform processor
+// TransformStatement represents a single statement in a Transform processor.
 // ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor
 type TransformStatement struct {
 	// +kubebuilder:validation:Enum:=resource;scope;span;spanevent;metric;datapoint;log
+
 	Context    string   `json:"context,omitempty"`
 	Conditions []string `json:"conditions,omitempty"`
 	Statements []string `json:"statements,omitempty"`
@@ -32,8 +33,8 @@ type Transform struct {
 	// Name of the Transform processor
 	Name string `json:"name,omitempty"`
 
-	// When FlattenData is true, the processor provides each log record with a distinct copy
-	// of its resource and scope. Then, after applying all transformations,
+	// When FlattenData is true, the processor provides each log record with
+	// a distinct copy of its resource and scope. Then, after applying all transformations,
 	// the log records are regrouped by resource and scope.
 	FlattenData bool `json:"flattenData,omitempty"`
 
@@ -51,6 +52,7 @@ type Transform struct {
 // RouteConfig defines the routing configuration for a tenant
 // it will be used to generate routing connectors
 type RouteConfig struct {
+	// Contains the list of pipelines to use when a record does not meet any of specified conditions.
 	DefaultPipelines []string `json:"defaultPipelines,omitempty"` // TODO: Provide users with a guide to determine generated pipeline names
 
 	// +kubebuilder:validation:Enum:=ignore;silent;propagate
@@ -58,15 +60,24 @@ type RouteConfig struct {
 	// ErrorMode specifies how errors are handled while processing a statement
 	// vaid options are: ignore, silent, propagate; (default: propagate)
 	ErrorMode string `json:"errorMode,omitempty"`
-	MatchOnce bool   `json:"matchOnce,omitempty"`
+
+	// Determines whether the connector matches multiple statements or not.
+	// If enabled, the payload will be routed to the first pipeline in the table whose routing condition is met.
+	// May only be false when used with resource context.
+	MatchOnce bool `json:"matchOnce,omitempty"`
 }
 
 // TenantSpec defines the desired state of Tenant
 type TenantSpec struct {
+	// Determines the namespaces from which subscriptions are collected by this tenant.
 	SubscriptionNamespaceSelectors []metav1.LabelSelector `json:"subscriptionNamespaceSelectors,omitempty"`
-	LogSourceNamespaceSelectors    []metav1.LabelSelector `json:"logSourceNamespaceSelectors,omitempty"`
-	Transform                      Transform              `json:"transform,omitempty"`
-	RouteConfig                    RouteConfig            `json:"routeConfig,omitempty"`
+
+	// Determines the namespaces from which logs are collected by this tenant.
+	// If initialized with an empty list, logs from all namespaces are collected.
+	// If uninitialized, no logs are collected.
+	LogSourceNamespaceSelectors []metav1.LabelSelector `json:"logSourceNamespaceSelectors,omitempty"`
+	Transform                   `json:"transform,omitempty"`
+	RouteConfig                 `json:"routeConfig,omitempty"`
 }
 
 // TenantStatus defines the observed state of Tenant

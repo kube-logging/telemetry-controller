@@ -49,13 +49,19 @@ type MemoryLimiter struct {
 
 // CollectorSpec defines the desired state of Collector
 type CollectorSpec struct {
+	// TenantSelector is used to select tenants for which the collector should collect data.
 	TenantSelector metav1.LabelSelector `json:"tenantSelector,omitempty"`
-	// Namespace where OTel collector DaemonSet is deployed
+
+	// Namespace where the Otel collector DaemonSet is deployed.
 	ControlNamespace string `json:"controlNamespace"`
-	// Enables debug logging for the collector
+
+	// Enables debug logging for the collector.
 	Debug bool `json:"debug,omitempty"`
-	// Setting memory limits for the Collector
-	MemoryLimiter      *MemoryLimiter          `json:"memoryLimiter,omitempty"`
+
+	// Setting memory limits for the Collector using the memory limiter processor.
+	MemoryLimiter *MemoryLimiter `json:"memoryLimiter,omitempty"`
+
+	// DaemonSetOverrides is used to override the default DaemonSet configuration.
 	DaemonSetOverrides *typeoverride.DaemonSet `json:"daemonSet,omitempty"`
 }
 
