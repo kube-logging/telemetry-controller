@@ -44,13 +44,14 @@ import (
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
 )
 
-var (
-	ErrTenantFailed = errors.New("tenant failed")
-)
-
 const (
+	otelCollectorKind            = "OpenTelemetryCollector"
 	requeueDelayOnFailedTenant   = 20 * time.Second
 	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.112.0-dev1"
+)
+
+var (
+	ErrTenantFailed = errors.New("tenant failed")
 )
 
 // CollectorReconciler reconciles a Collector object
@@ -386,7 +387,10 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState, error) {
 	otelCollector := otelv1beta1.OpenTelemetryCollector{
-		TypeMeta: metav1.TypeMeta{},
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: otelv1beta1.GroupVersion.String(),
+			Kind:       otelCollectorKind,
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("otelcollector-%s", collector.Name),
 			Namespace: collector.Spec.ControlNamespace,

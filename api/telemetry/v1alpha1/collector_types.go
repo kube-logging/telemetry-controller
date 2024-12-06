@@ -49,8 +49,10 @@ type MemoryLimiter struct {
 
 // CollectorSpec defines the desired state of Collector
 type CollectorSpec struct {
+	// +kubebuilder:validation:Required
+
 	// TenantSelector is used to select tenants for which the collector should collect data.
-	TenantSelector metav1.LabelSelector `json:"tenantSelector,omitempty"`
+	TenantSelector metav1.LabelSelector `json:"tenantSelector"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable, please recreate the resource"
@@ -60,8 +62,10 @@ type CollectorSpec struct {
 
 	// Enables debug logging for the collector.
 	Debug bool `json:"debug,omitempty"`
+
 	// Setting memory limits for the Collector using the memory limiter processor.
 	MemoryLimiter *MemoryLimiter `json:"memoryLimiter,omitempty"`
+
 	// OtelcommonFields is used to override the default DaemonSet's common fields.
 	OtelCommonFields *otelv1beta1.OpenTelemetryCommonFields `json:"otelCommonFields,omitempty"`
 }

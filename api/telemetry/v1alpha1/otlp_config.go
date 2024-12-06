@@ -31,10 +31,13 @@ type TimeoutSettings struct {
 type QueueSettings struct {
 	// Enabled indicates whether to not enqueue batches before sending to the consumerSender.
 	Enabled bool `json:"enabled,omitempty"`
+
 	// NumConsumers is the number of consumers from the queue.
 	NumConsumers int `json:"num_consumers,omitempty"`
+
 	// QueueSize is the maximum number of batches allowed in queue at a given time.
 	QueueSize int `json:"queue_size,omitempty"`
+
 	// StorageID if not empty, enables the persistent storage and uses the component specified
 	// as a storage extension for the persistent queue
 	StorageID string `json:"storage,omitempty"` //TODO this is *component.ID at Otel
@@ -45,16 +48,21 @@ type QueueSettings struct {
 type BackOffConfig struct {
 	// Enabled indicates whether to not retry sending batches in case of export failure.
 	Enabled bool `json:"enabled,omitempty"`
+
 	// InitialInterval the time to wait after the first failure before retrying.
 	InitialInterval time.Duration `json:"initial_interval,omitempty"`
+
 	// RandomizationFactor is a random factor used to calculate next backoffs
 	// Randomized interval = RetryInterval * (1 ± RandomizationFactor)
 	RandomizationFactor string `json:"randomization_factor,omitempty"`
+
 	// Multiplier is the value multiplied by the backoff interval bounds
 	Multiplier string `json:"multiplier,omitempty"`
+
 	// MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
 	// consecutive retries will always be `MaxInterval`.
 	MaxInterval time.Duration `json:"max_interval,omitempty"`
+
 	// MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
 	// Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
 	MaxElapsedTime time.Duration `json:"max_elapsed_time,omitempty"`
@@ -129,8 +137,10 @@ type TLSClientSetting struct {
 	// https://godoc.org/crypto/tls#Config for more information.
 	// (optional, default false)
 	Insecure bool `json:"insecure,omitempty"`
+
 	// InsecureSkipVerify will enable TLS but not verify the certificate.
 	InsecureSkipVerify bool `json:"insecure_skip_verify,omitempty"`
+
 	// ServerName requested by client for virtual hosting.
 	// This sets the ServerName in the TLSConfig. Please refer to
 	// https://godoc.org/crypto/tls#Config for more information. (optional)
@@ -241,6 +251,7 @@ type HTTPClientConfig struct {
 	// HTTP2ReadIdleTimeout if the connection has been idle for the configured value send a ping frame for health check
 	// 0s means no health check will be performed.
 	HTTP2ReadIdleTimeout *time.Duration `json:"http2_read_idle_timeout,omitempty"`
+
 	// HTTP2PingTimeout if there's no response to the ping within the configured value, the connection will be closed.
 	// If not set or set to 0, it defaults to 15s.
 	HTTP2PingTimeout *time.Duration `json:"http2_ping_timeout,omitempty"`
