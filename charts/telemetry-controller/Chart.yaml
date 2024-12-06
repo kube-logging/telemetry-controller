@@ -1,12 +1,16 @@
 apiVersion: v2
-name: telemetry-controller
-description: A Helm chart for deploying telemetry-controller
-
 type: application
-
+name: telemetry-controller
 version: 0.0.0
 appVersion: latest
-
+kubeVersion: ">=1.26.0"
+description: A Helm chart for deploying telemetry-controller
+keywords:
+  - opentelemetry-collector
+  - telemetry-controller
+  - collector
+sources:
+  - https://github.com/kube-logging/telemetry-controller
 dependencies:
   - name: opentelemetry-operator
     version: 0.74.3
