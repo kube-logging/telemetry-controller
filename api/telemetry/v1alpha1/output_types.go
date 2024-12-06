@@ -115,10 +115,9 @@ type Fluentforward struct {
 	// DefaultLabelsEnabled is a map of default attributes to be added to each log record.
 	DefaultLabelsEnabled *map[string]bool `json:"default_labels_enabled,omitempty"`
 
-	QueueConfig *QueueSettings `json:"sending_queue,omitempty"`
-	RetryConfig *BackOffConfig `json:"retry_on_failure,omitempty"`
-
-	Kubernetes *KubernetesMetadata `json:"kubernetes_metadata,omitempty"`
+	QueueConfig *QueueSettings      `json:"sending_queue,omitempty"`
+	RetryConfig *BackOffConfig      `json:"retry_on_failure,omitempty"`
+	Kubernetes  *KubernetesMetadata `json:"kubernetes_metadata,omitempty"`
 }
 
 type KubernetesMetadata struct {

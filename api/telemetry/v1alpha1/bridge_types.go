@@ -30,6 +30,8 @@ type BridgeSpec struct {
 	// The target tenant to which telemetry will be forwarded.
 	TargetTenant string `json:"targetTenant"`
 
+	// +kubebuilder:validation:Required
+
 	// The condition which must be satisfied in order to forward telemetry
 	// from the source tenant to the target tenant.
 	Condition string `json:"condition"`

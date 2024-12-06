@@ -17,7 +17,7 @@ package v1alpha1
 import (
 	"time"
 
-	"github.com/cisco-open/operator-tools/pkg/typeoverride"
+	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -49,8 +49,10 @@ type MemoryLimiter struct {
 
 // CollectorSpec defines the desired state of Collector
 type CollectorSpec struct {
+	// +kubebuilder:validation:Required
+
 	// TenantSelector is used to select tenants for which the collector should collect data.
-	TenantSelector metav1.LabelSelector `json:"tenantSelector,omitempty"`
+	TenantSelector metav1.LabelSelector `json:"tenantSelector"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable, please recreate the resource"
@@ -64,8 +66,8 @@ type CollectorSpec struct {
 	// Setting memory limits for the Collector using the memory limiter processor.
 	MemoryLimiter *MemoryLimiter `json:"memoryLimiter,omitempty"`
 
-	// DaemonSetOverrides is used to override the default DaemonSet configuration.
-	DaemonSetOverrides *typeoverride.DaemonSet `json:"daemonSet,omitempty"`
+	// OtelcommonFields is used to override the default DaemonSet's common fields.
+	OtelCommonFields *otelv1beta1.OpenTelemetryCommonFields `json:"otelCommonFields,omitempty"`
 }
 
 func (c *CollectorSpec) SetDefaults() {
@@ -76,14 +78,16 @@ func (c *CollectorSpec) SetDefaults() {
 			MemorySpikeLimitMiB:   25,
 		}
 	}
+	if c.OtelCommonFields == nil {
+		c.OtelCommonFields = &otelv1beta1.OpenTelemetryCommonFields{}
+	}
 }
 
 func (c CollectorSpec) GetMemoryLimit() *resource.Quantity {
-	if c.DaemonSetOverrides != nil && len(c.DaemonSetOverrides.Spec.Template.Spec.Containers) > 0 {
-		if memoryLimit := c.DaemonSetOverrides.Spec.Template.Spec.Containers[0].Resources.Limits.Memory(); !memoryLimit.IsZero() {
-			return memoryLimit
-		}
+	if c.OtelCommonFields.Resources.Requests != nil && c.OtelCommonFields.Resources.Limits != nil {
+		return c.OtelCommonFields.Resources.Limits.Memory()
 	}
+
 	return nil
 }
 
