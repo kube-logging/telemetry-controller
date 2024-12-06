@@ -42,6 +42,7 @@ spec:
             description: OutputSpec defines the desired state of Output
             properties:
               authentication:
+                description: Output Authentication configuration.
                 properties:
                   basicauth:
                     properties:
@@ -87,6 +88,7 @@ spec:
                     type: object
                 type: object
               batch:
+                description: Batch processor configuration.
                 properties:
                   metadata_cardinality_limit:
                     description: |-
@@ -132,6 +134,7 @@ spec:
                     type: string
                 type: object
               fluentforward:
+                description: Configuration for the fluentforward exporter.
                 properties:
                   compress_gzip:
                     description: CompressGzip enables gzip compression for the payload.
@@ -293,7 +296,9 @@ spec:
                     type: object
                 type: object
               otlp:
-                description: 'OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go'
+                description: |-
+                  Configuration for the OTLP gRPC exporter.
+                  ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
                 properties:
                   auth:
                     description: Auth configuration for outgoing RPCs.
@@ -497,6 +502,7 @@ spec:
                 - endpoint
                 type: object
               otlphttp:
+                description: Configuration for the OTLP HTTP exporter.
                 properties:
                   auth:
                     description: Auth configuration for outgoing HTTP calls.

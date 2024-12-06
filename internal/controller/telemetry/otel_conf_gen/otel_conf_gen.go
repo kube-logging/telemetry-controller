@@ -133,8 +133,10 @@ func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
 			return tenantName == t.Name
 		}); tenantIdx != -1 {
 			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
-			// Generate filelog receiver for the tenant if it has any logsource namespaces
-			if len(namespaces) > 0 {
+
+			// Generate filelog receiver for the tenant if it has any logsource namespaces.
+			// Or Handle "all namespaces" case: selectors are initialized but empty
+			if len(namespaces) > 0 || (cfgInput.Tenants[tenantIdx].Spec.LogSourceNamespaceSelectors != nil && len(namespaces) == 0) {
 				receivers[fmt.Sprintf("filelog/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces)
 			}
 		}
@@ -348,12 +350,6 @@ func validateTenants(tenants *[]v1alpha1.Tenant) error {
 
 	if len(*tenants) == 0 {
 		return errors.New("no tenants provided, at least one tenant must be provided")
-	}
-
-	for _, tenant := range *tenants {
-		if len(tenant.Spec.SubscriptionNamespaceSelectors) == 0 && len(tenant.Spec.LogSourceNamespaceSelectors) == 0 {
-			result = multierror.Append(result, fmt.Errorf("tenant must have at least one subscription or logsource namespace selector, tenant: %s has neither", tenant.Name))
-		}
 	}
 
 	return result.ErrorOrNil()

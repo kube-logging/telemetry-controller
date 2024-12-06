@@ -52,8 +52,12 @@ spec:
             description: SubscriptionSpec defines the desired state of Subscription
             properties:
               condition:
+                description: The condition which must be satisfied in order to forward
+                  telemetry to the outputs.
                 type: string
               outputs:
+                description: The outputs to which the logs will be routed if the condition
+                  evaluates to true.
                 items:
                   properties:
                     name:
@@ -67,6 +71,7 @@ spec:
                 type: array
             required:
             - condition
+            - outputs
             type: object
           status:
             description: SubscriptionStatus defines the observed state of Subscription

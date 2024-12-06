@@ -49,11 +49,14 @@ spec:
             description: CollectorSpec defines the desired state of Collector
             properties:
               controlNamespace:
-                description: Namespace where OTel collector DaemonSet is deployed
+                description: Namespace where the Otel collector DaemonSet is deployed.
                 type: string
+                x-kubernetes-validations:
+                - message: Value is immutable, please recreate the resource
+                  rule: self == oldSelf
               daemonSet:
-                description: DaemonSet is a subset of [DaemonSet in k8s.io/api/apps/v1](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#daemonset-v1-apps),
-                  with [DaemonSetSpec replaced by the local variant](#daemonset-spec).
+                description: DaemonSetOverrides is used to override the default DaemonSet
+                  configuration.
                 properties:
                   metadata:
                     description: ObjectMeta contains only a [subset of the fields
@@ -8049,10 +8052,11 @@ spec:
                     type: object
                 type: object
               debug:
-                description: Enables debug logging for the collector
+                description: Enables debug logging for the collector.
                 type: boolean
               memoryLimiter:
-                description: Setting memory limits for the Collector
+                description: Setting memory limits for the Collector using the memory
+                  limiter processor.
                 properties:
                   check_interval:
                     description: |-
@@ -8093,10 +8097,8 @@ spec:
                 - spike_limit_percentage
                 type: object
               tenantSelector:
-                description: |-
-                  A label selector is a label query over a set of resources. The result of matchLabels and
-                  matchExpressions are ANDed. An empty label selector matches all objects. A null
-                  label selector matches no objects.
+                description: TenantSelector is used to select tenants for which the
+                  collector should collect data.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.

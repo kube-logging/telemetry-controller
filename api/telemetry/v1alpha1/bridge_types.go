@@ -20,10 +20,18 @@ import (
 
 // BridgeSpec defines the desired state of Bridge
 type BridgeSpec struct {
+	// +kubebuilder:validation:Required
+
+	// The source tenant from which telemetry will be forwarded.
 	SourceTenant string `json:"sourceTenant"`
+
+	// +kubebuilder:validation:Required
+
+	// The target tenant to which telemetry will be forwarded.
 	TargetTenant string `json:"targetTenant"`
-	// The OTTL condition which must be satisfied in order to forward telemetry
-	// from the source tenant to the target tenant
+
+	// The condition which must be satisfied in order to forward telemetry
+	// from the source tenant to the target tenant.
 	Condition string `json:"condition"`
 }
 

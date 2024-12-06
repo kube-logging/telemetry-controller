@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Batch processor configuration.
 type Batch struct {
 	// From 	go.opentelemetry.io/collector/processor/batchprocessor
 
@@ -65,6 +66,7 @@ type OutputSpec struct {
 	Batch          *Batch         `json:"batch,omitempty"`
 }
 
+// Output Authentication configuration.
 type OutputAuth struct {
 	BasicAuth  *BasicAuthConfig  `json:"basicauth,omitempty"`
 	BearerAuth *BearerAuthConfig `json:"bearerauth,omitempty"`
@@ -81,7 +83,8 @@ type BearerAuthConfig struct {
 	TokenField string                  `json:"tokenField,omitempty"`
 }
 
-// OTLP grpc exporter config ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
+// Configuration for the OTLP gRPC exporter.
+// ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
 type OTLPGRPC struct {
 	QueueConfig      *QueueSettings `json:"sending_queue,omitempty"`
 	RetryConfig      *BackOffConfig `json:"retry_on_failure,omitempty"`
@@ -89,12 +92,14 @@ type OTLPGRPC struct {
 	GRPCClientConfig `json:",inline"`
 }
 
+// Configuration for the OTLP HTTP exporter.
 type OTLPHTTP struct {
 	QueueConfig      *QueueSettings `json:"sending_queue,omitempty"`
 	RetryConfig      *BackOffConfig `json:"retry_on_failure,omitempty"`
 	HTTPClientConfig `json:",inline"`
 }
 
+// Configuration for the fluentforward exporter.
 type Fluentforward struct {
 	TCPClientSettings `json:",inline"`
 

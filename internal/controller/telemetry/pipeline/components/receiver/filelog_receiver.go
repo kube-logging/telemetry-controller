@@ -99,9 +99,13 @@ func GenerateDefaultKubernetesReceiver(namespaces []string) map[string]any {
 	}
 
 	includeList := make([]string, 0, len(namespaces))
-	for _, ns := range namespaces {
-		include := fmt.Sprintf("/var/log/pods/%s_*/*/*.log", ns)
-		includeList = append(includeList, include)
+	if len(namespaces) > 0 {
+		for _, ns := range namespaces {
+			include := fmt.Sprintf("/var/log/pods/%s_*/*/*.log", ns)
+			includeList = append(includeList, include)
+		}
+	} else {
+		includeList = append(includeList, "/var/log/pods/*/*/*.log")
 	}
 
 	k8sReceiver := map[string]any{

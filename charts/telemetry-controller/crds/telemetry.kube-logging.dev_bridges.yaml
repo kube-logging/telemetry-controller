@@ -50,12 +50,14 @@ spec:
             properties:
               condition:
                 description: |-
-                  The OTTL condition which must be satisfied in order to forward telemetry
-                  from the source tenant to the target tenant
+                  The condition which must be satisfied in order to forward telemetry
+                  from the source tenant to the target tenant.
                 type: string
               sourceTenant:
+                description: The source tenant from which telemetry will be forwarded.
                 type: string
               targetTenant:
+                description: The target tenant to which telemetry will be forwarded.
                 type: string
             required:
             - condition
