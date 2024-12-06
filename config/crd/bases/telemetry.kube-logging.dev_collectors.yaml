@@ -51,6 +51,9 @@ spec:
               controlNamespace:
                 description: Namespace where the Otel collector DaemonSet is deployed.
                 type: string
+                x-kubernetes-validations:
+                - message: Value is immutable, please recreate the resource
+                  rule: self == oldSelf
               daemonSet:
                 description: DaemonSetOverrides is used to override the default DaemonSet
                   configuration.

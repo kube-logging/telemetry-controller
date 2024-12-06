@@ -52,6 +52,9 @@ type CollectorSpec struct {
 	// TenantSelector is used to select tenants for which the collector should collect data.
 	TenantSelector metav1.LabelSelector `json:"tenantSelector,omitempty"`
 
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable, please recreate the resource"
+
 	// Namespace where the Otel collector DaemonSet is deployed.
 	ControlNamespace string `json:"controlNamespace"`
 
