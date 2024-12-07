@@ -22,6 +22,7 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension/storage"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -54,6 +55,15 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 			expectedResult: map[string]any{
 				"fluentforwardexporter/default_output1": map[string]any{
 					"endpoint": "http://example.com",
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(1000),
+						"storage":    storage.DefaultFileStorageName.String(),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": float64(0),
+					},
 				},
 			},
 		},
@@ -77,8 +87,8 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 								Tag:                  utils.ToPtr("tag"),
 								CompressGzip:         utils.ToPtr(true),
 								DefaultLabelsEnabled: &map[string]bool{"label1": true},
-								QueueConfig:          &v1alpha1.QueueSettings{},
-								RetryConfig:          &v1alpha1.BackOffConfig{},
+								QueueConfig:          v1alpha1.QueueSettings{},
+								RetryConfig:          v1alpha1.BackOffConfig{},
 								Kubernetes:           &v1alpha1.KubernetesMetadata{Key: "key", IncludePodLabels: true},
 							},
 						},
@@ -94,8 +104,15 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 					"tag":                    "tag",
 					"compress_gzip":          true,
 					"default_labels_enabled": map[string]any{"label1": true},
-					"sending_queue":          map[string]any{},
-					"retry_on_failure":       map[string]any{},
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(1000),
+						"storage":    storage.DefaultFileStorageName.String(),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": float64(0),
+					},
 					"kubernetes_metadata": map[string]any{
 						"key":                "key",
 						"include_pod_labels": true,

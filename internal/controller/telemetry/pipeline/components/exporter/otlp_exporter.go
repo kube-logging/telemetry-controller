@@ -32,6 +32,9 @@ func GenerateOTLPGRPCExporters(ctx context.Context, outputsWithSecretData []comp
 	result := make(map[string]any)
 	for _, output := range outputsWithSecretData {
 		if output.Output.Spec.OTLPGRPC != nil {
+			output.Output.Spec.OTLPGRPC.QueueConfig.SetDefaultQueueSettings()
+			output.Output.Spec.OTLPGRPC.RetryConfig.SetDefaultBackOffConfig()
+
 			if output.Output.Spec.Authentication != nil {
 				if output.Output.Spec.Authentication.BasicAuth != nil {
 					output.Output.Spec.OTLPGRPC.Auth = &v1alpha1.Authentication{

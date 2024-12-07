@@ -7049,6 +7049,17 @@ spec:
                 required:
                 - managementState
                 type: object
+              persistence_config:
+                description: |-
+                  Configuration for persistence, will be used to generate
+                  the filestorage extension.
+                properties:
+                  directory:
+                    description: |-
+                      The directory where logs will be persisted, if not set, or invalid
+                      defaults will be used, based on the OS.
+                    type: string
+                type: object
               tenantSelector:
                 description: TenantSelector is used to select tenants for which the
                   collector should collect data.

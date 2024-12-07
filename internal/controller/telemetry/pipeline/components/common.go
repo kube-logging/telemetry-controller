@@ -16,6 +16,8 @@ package components
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,4 +47,10 @@ func GetExporterNameForOutput(output v1alpha1.Output) string {
 	}
 
 	return exporterName
+}
+
+func SortNamespacedNames(names []v1alpha1.NamespacedName) {
+	slices.SortFunc(names, func(a, b v1alpha1.NamespacedName) int {
+		return strings.Compare(a.String(), b.String())
+	})
 }

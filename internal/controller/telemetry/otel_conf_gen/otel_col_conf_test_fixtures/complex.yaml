@@ -59,6 +59,9 @@ exporters: {}
 extensions:
   bearertokenauth/collector_otlp-test-output:
     token: testtoken
+  file_storage/default:
+    create_directory: true
+    directory: /var/lib/otelcol/file_storage
 processors:
   attributes/exporter_name_fluentforward-test-output:
     actions:
@@ -159,7 +162,8 @@ processors:
 receivers: {}
 service:
   extensions:
-    - bearertokenauth/collector_otlp-test-output
+  - bearertokenauth/collector_otlp-test-output
+  - file_storage/default
   pipelines:
     logs/output_example-tenant-a-ns_subscription-example-1_collector_loki-test-output:
       exporters:

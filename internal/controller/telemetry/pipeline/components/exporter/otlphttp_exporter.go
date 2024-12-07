@@ -32,6 +32,9 @@ func GenerateOTLPHTTPExporters(ctx context.Context, outputsWithSecretData []comp
 	result := make(map[string]any)
 	for _, output := range outputsWithSecretData {
 		if output.Output.Spec.OTLPHTTP != nil {
+			output.Output.Spec.OTLPHTTP.QueueConfig.SetDefaultQueueSettings()
+			output.Output.Spec.OTLPHTTP.RetryConfig.SetDefaultBackOffConfig()
+
 			if output.Output.Spec.Authentication != nil {
 				if output.Output.Spec.Authentication.BasicAuth != nil {
 					output.Output.Spec.OTLPHTTP.Auth = &v1alpha1.Authentication{

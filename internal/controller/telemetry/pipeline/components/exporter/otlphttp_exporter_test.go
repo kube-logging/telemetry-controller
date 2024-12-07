@@ -26,6 +26,7 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension/storage"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -81,6 +82,15 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					"auth": map[string]any{
 						"authenticator": "basicauth/default_output1",
 					},
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(1000),
+						"storage":    storage.DefaultFileStorageName.String(),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": float64(0),
+					},
 				},
 			},
 		},
@@ -127,6 +137,15 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					"auth": map[string]any{
 						"authenticator": "bearertokenauth/default_output2",
 					},
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(1000),
+						"storage":    storage.DefaultFileStorageName.String(),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": float64(0),
+					},
 				},
 			},
 		},
@@ -152,6 +171,15 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 			expectedResult: map[string]any{
 				"otlphttp/default_output3": map[string]any{
 					"endpoint": "http://example.com",
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(1000),
+						"storage":    storage.DefaultFileStorageName.String(),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": float64(0),
+					},
 				},
 			},
 		},
@@ -166,19 +194,19 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 						},
 						Spec: v1alpha1.OutputSpec{
 							OTLPHTTP: &v1alpha1.OTLPHTTP{
-								QueueConfig: &v1alpha1.QueueSettings{
+								QueueConfig: v1alpha1.QueueSettings{
 									Enabled:      true,
 									NumConsumers: 10,
 									QueueSize:    100,
-									StorageID:    "storage-id",
+									Storage:      utils.ToPtr(storage.DefaultFileStorageName.String()),
 								},
-								RetryConfig: &v1alpha1.BackOffConfig{
+								RetryConfig: v1alpha1.BackOffConfig{
 									Enabled:             true,
 									InitialInterval:     5 * time.Second,
 									RandomizationFactor: "0.1",
 									Multiplier:          "2.0",
 									MaxInterval:         10 * time.Second,
-									MaxElapsedTime:      60 * time.Second,
+									MaxElapsedTime:      utils.ToPtr(60 * time.Second),
 								},
 								HTTPClientConfig: v1alpha1.HTTPClientConfig{
 									Endpoint: utils.ToPtr("http://example.com"),
@@ -235,7 +263,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 						"enabled":       true,
 						"num_consumers": float64(10),
 						"queue_size":    float64(100),
-						"storage":       "storage-id",
+						"storage":       storage.DefaultFileStorageName.String(),
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":              true,

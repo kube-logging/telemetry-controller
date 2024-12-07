@@ -221,6 +221,7 @@ spec:
                         description: |-
                           StorageID if not empty, enables the persistent storage and uses the component specified
                           as a storage extension for the persistent queue
+                          WARNING: This field will be always overwritten by the operator.
                         type: string
                     type: object
                   shared_key:
@@ -416,6 +417,7 @@ spec:
                         description: |-
                           StorageID if not empty, enables the persistent storage and uses the component specified
                           as a storage extension for the persistent queue
+                          WARNING: This field will be always overwritten by the operator.
                         type: string
                     type: object
                   timeout:
@@ -638,6 +640,7 @@ spec:
                         description: |-
                           StorageID if not empty, enables the persistent storage and uses the component specified
                           as a storage extension for the persistent queue
+                          WARNING: This field will be always overwritten by the operator.
                         type: string
                     type: object
                   timeout:
