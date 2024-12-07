@@ -28,7 +28,7 @@ type TransformStatement struct {
 	Statements []string `json:"statements,omitempty"`
 }
 
-// Transform represents the Transform processor, which modifies telemetry based on its configuration
+// Transform represents the Transform processor, which modifies telemetry based on its configuration.
 type Transform struct {
 	// Name of the Transform processor
 	Name string `json:"name,omitempty"`
@@ -50,7 +50,7 @@ type Transform struct {
 }
 
 // RouteConfig defines the routing configuration for a tenant
-// it will be used to generate routing connectors
+// it will be used to generate routing connectors.
 type RouteConfig struct {
 	// Contains the list of pipelines to use when a record does not meet any of specified conditions.
 	DefaultPipelines []string `json:"defaultPipelines,omitempty"` // TODO: Provide users with a guide to determine generated pipeline names

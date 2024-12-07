@@ -130,6 +130,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 	}
 
 	return otelcolconfgen.OtelColConfigInput{
+		Collector:             *collector,
 		Tenants:               tenants,
 		Subscriptions:         subscriptions,
 		Bridges:               bridgesReferencedByTenant,

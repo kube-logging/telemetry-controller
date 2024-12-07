@@ -112,7 +112,7 @@ spec:
               routeConfig:
                 description: |-
                   RouteConfig defines the routing configuration for a tenant
-                  it will be used to generate routing connectors
+                  it will be used to generate routing connectors.
                 properties:
                   defaultPipelines:
                     description: Contains the list of pipelines to use when a record
@@ -191,7 +191,7 @@ spec:
                 type: array
               transform:
                 description: Transform represents the Transform processor, which modifies
-                  telemetry based on its configuration
+                  telemetry based on its configuration.
                 properties:
                   errorMode:
                     description: |-

@@ -47,6 +47,14 @@ type MemoryLimiter struct {
 	MemorySpikePercentage uint32 `json:"spike_limit_percentage"`
 }
 
+// Configuration for persistence, will be used to generate
+// the filestorage extension.
+type PersistenceConfig struct {
+	// The directory where logs will be persisted, if not set, or invalid
+	// defaults will be used, based on the OS.
+	Directory string `json:"directory,omitempty"`
+}
+
 // CollectorSpec defines the desired state of Collector
 type CollectorSpec struct {
 	// +kubebuilder:validation:Required
@@ -65,6 +73,8 @@ type CollectorSpec struct {
 
 	// Setting memory limits for the Collector using the memory limiter processor.
 	MemoryLimiter *MemoryLimiter `json:"memoryLimiter,omitempty"`
+
+	PersistenceConfig `json:"persistence_config,omitempty"`
 
 	// OtelcommonFields is used to override the default DaemonSet's common fields.
 	OtelCommonFields *otelv1beta1.OpenTelemetryCommonFields `json:"otelCommonFields,omitempty"`

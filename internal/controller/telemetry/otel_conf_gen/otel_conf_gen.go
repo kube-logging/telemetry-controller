@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -29,6 +30,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/connector"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/exporter"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension/storage"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/processor"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/receiver"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
@@ -39,6 +41,7 @@ var ErrNoResources = errors.New("there are no resources deployed that the collec
 
 type OtelColConfigInput struct {
 	// These must only include resources that are selected by the collector, tenant labelselectors, and listed outputs in the subscriptions
+	Collector             v1alpha1.Collector
 	Tenants               []v1alpha1.Tenant
 	Subscriptions         map[v1alpha1.NamespacedName]v1alpha1.Subscription
 	Bridges               []v1alpha1.Bridge
@@ -108,7 +111,7 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	return processors
 }
 
-func (cfgInput *OtelColConfigInput) generateExtensions() map[string]any {
+func (cfgInput *OtelColConfigInput) generateExtensions() (map[string]any, []string) {
 	extensions := make(map[string]any)
 	for _, output := range cfgInput.OutputsWithSecretData {
 		if output.Output.Spec.Authentication != nil {
@@ -123,7 +126,20 @@ func (cfgInput *OtelColConfigInput) generateExtensions() map[string]any {
 		}
 	}
 
-	return extensions
+	extensions[storage.DefaultFileStorageName.String()] = storage.GenerateFileStorageExtension(cfgInput.Collector.Spec.PersistenceConfig.Directory)
+
+	var extensionNames []string
+	if len(extensions) > 0 {
+		extensionNames = make([]string, 0, len(extensions))
+		for k := range extensions {
+			extensionNames = append(extensionNames, k)
+		}
+	} else {
+		extensionNames = nil
+	}
+	sort.Strings(extensionNames)
+
+	return extensions, extensionNames
 }
 
 func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
@@ -278,7 +294,7 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) (otelv1b
 
 	processors := cfgInput.generateProcessors()
 
-	extensions := cfgInput.generateExtensions()
+	extensions, extensionNames := cfgInput.generateExtensions()
 
 	receivers := cfgInput.generateReceivers()
 
@@ -297,16 +313,6 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) (otelv1b
 			pipeline.Processors = memProcessors
 			pipelines[name] = pipeline
 		}
-	}
-
-	var extensionNames []string
-	if len(extensions) > 0 {
-		extensionNames = make([]string, 0, len(extensions))
-		for k := range extensions {
-			extensionNames = append(extensionNames, k)
-		}
-	} else {
-		extensionNames = nil
 	}
 
 	otelConfig := otelv1beta1.Config{

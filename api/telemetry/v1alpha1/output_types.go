@@ -86,16 +86,16 @@ type BearerAuthConfig struct {
 // Configuration for the OTLP gRPC exporter.
 // ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/config.go
 type OTLPGRPC struct {
-	QueueConfig      *QueueSettings `json:"sending_queue,omitempty"`
-	RetryConfig      *BackOffConfig `json:"retry_on_failure,omitempty"`
+	QueueConfig      QueueSettings `json:"sending_queue,omitempty"`
+	RetryConfig      BackOffConfig `json:"retry_on_failure,omitempty"`
 	TimeoutSettings  `json:",inline"`
 	GRPCClientConfig `json:",inline"`
 }
 
 // Configuration for the OTLP HTTP exporter.
 type OTLPHTTP struct {
-	QueueConfig      *QueueSettings `json:"sending_queue,omitempty"`
-	RetryConfig      *BackOffConfig `json:"retry_on_failure,omitempty"`
+	QueueConfig      QueueSettings `json:"sending_queue,omitempty"`
+	RetryConfig      BackOffConfig `json:"retry_on_failure,omitempty"`
 	HTTPClientConfig `json:",inline"`
 }
 
@@ -115,8 +115,8 @@ type Fluentforward struct {
 	// DefaultLabelsEnabled is a map of default attributes to be added to each log record.
 	DefaultLabelsEnabled *map[string]bool `json:"default_labels_enabled,omitempty"`
 
-	QueueConfig *QueueSettings      `json:"sending_queue,omitempty"`
-	RetryConfig *BackOffConfig      `json:"retry_on_failure,omitempty"`
+	QueueConfig QueueSettings       `json:"sending_queue,omitempty"`
+	RetryConfig BackOffConfig       `json:"retry_on_failure,omitempty"`
 	Kubernetes  *KubernetesMetadata `json:"kubernetes_metadata,omitempty"`
 }
 

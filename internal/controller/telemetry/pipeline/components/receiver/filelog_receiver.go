@@ -14,7 +14,11 @@
 
 package receiver
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension/storage"
+)
 
 func GenerateDefaultKubernetesReceiver(namespaces []string) map[string]any {
 	// TODO: fix parser-crio
@@ -111,6 +115,7 @@ func GenerateDefaultKubernetesReceiver(namespaces []string) map[string]any {
 	k8sReceiver := map[string]any{
 		"include":           includeList,
 		"exclude":           []string{"/var/log/pods/*/otc-container/*.log"},
+		"storage":           storage.DefaultFileStorageName.String(),
 		"start_at":          "end",
 		"include_file_path": true,
 		"include_file_name": false,

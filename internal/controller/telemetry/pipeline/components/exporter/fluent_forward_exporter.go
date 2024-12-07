@@ -30,6 +30,9 @@ func GenerateFluentforwardExporters(ctx context.Context, outputsWithSecretData [
 	result := make(map[string]any)
 	for _, output := range outputsWithSecretData {
 		if output.Output.Spec.Fluentforward != nil {
+			output.Output.Spec.Fluentforward.QueueConfig.SetDefaultQueueSettings()
+			output.Output.Spec.Fluentforward.RetryConfig.SetDefaultBackOffConfig()
+
 			fluentForwardMarshaled, err := json.Marshal(output.Output.Spec.Fluentforward)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
