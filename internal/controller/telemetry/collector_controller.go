@@ -42,6 +42,8 @@ import (
 	otelcolconfgen "github.com/kube-logging/telemetry-controller/internal/controller/telemetry/otel_conf_gen"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/otel_conf_gen/validator"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension/storage"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 )
 
 const (
@@ -130,14 +132,16 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 	}
 
 	return otelcolconfgen.OtelColConfigInput{
-		Tenants:               tenants,
-		Subscriptions:         subscriptions,
-		Bridges:               bridgesReferencedByTenant,
-		OutputsWithSecretData: outputs,
-		TenantSubscriptionMap: tenantSubscriptionMap,
-		SubscriptionOutputMap: subscriptionOutputMap,
-		Debug:                 collector.Spec.Debug,
-		MemoryLimiter:         *collector.Spec.MemoryLimiter,
+		ResourceRelations: components.ResourceRelations{
+			Tenants:               tenants,
+			Subscriptions:         subscriptions,
+			Bridges:               bridgesReferencedByTenant,
+			OutputsWithSecretData: outputs,
+			TenantSubscriptionMap: tenantSubscriptionMap,
+			SubscriptionOutputMap: subscriptionOutputMap,
+		},
+		Debug:         collector.Spec.Debug,
+		MemoryLimiter: *collector.Spec.MemoryLimiter,
 	}, nil
 }
 
@@ -231,7 +235,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("%+v", err)
 	}
 
-	otelCollector, state, err := r.otelCollector(collector, otelConfig, additionalArgs, saName.Name)
+	otelCollector, state, err := r.otelCollector(collector, otelConfig, additionalArgs, otelConfigInput.Tenants, saName.Name)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -385,7 +389,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState, error) {
+func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, tenants []v1alpha1.Tenant, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState, error) {
 	otelCollector := otelv1beta1.OpenTelemetryCollector{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: otelv1beta1.GroupVersion.String(),
@@ -402,6 +406,7 @@ func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelC
 			OpenTelemetryCommonFields: *collector.Spec.OtelCommonFields,
 		},
 	}
+	appendAdditionalVolumesForTenantsFileStorage(&otelCollector.Spec.OpenTelemetryCommonFields, tenants)
 	if err := setOtelCommonFieldsDefaults(&otelCollector.Spec.OpenTelemetryCommonFields, additionalArgs, saName); err != nil {
 		return &otelCollector, nil, err
 	}
@@ -561,6 +566,44 @@ func normalizeStringSlice(inputList []string) []string {
 	slices.Sort(uniqueList)
 
 	return uniqueList
+}
+
+func appendAdditionalVolumesForTenantsFileStorage(otelComonFields *otelv1beta1.OpenTelemetryCommonFields, tenants []v1alpha1.Tenant) {
+	for _, tenant := range tenants {
+		if tenant.Spec.PersistenceConfig.EnableFileStorage {
+			mountPath := storage.DetermineFileStorageDirectory(tenant.Spec.PersistenceConfig.Directory)
+			switch tenant.Spec.PersistenceConfig.VolumeSource {
+			case "hostPath":
+				otelComonFields.VolumeMounts = append(otelComonFields.VolumeMounts, corev1.VolumeMount{
+					Name:      fmt.Sprintf("buffervolume/%s", tenant.Name),
+					MountPath: mountPath,
+				})
+				otelComonFields.Volumes = append(otelComonFields.Volumes, corev1.Volume{
+					Name: fmt.Sprintf("buffervolume/%s", tenant.Name),
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: mountPath,
+							Type: utils.ToPtr(corev1.HostPathDirectoryOrCreate),
+						},
+					},
+				})
+
+			case "emptyDir":
+				otelComonFields.VolumeMounts = append(otelComonFields.VolumeMounts, corev1.VolumeMount{
+					Name:      fmt.Sprintf("buffervolume/%s", tenant.Name),
+					MountPath: mountPath,
+				})
+				otelComonFields.Volumes = append(otelComonFields.Volumes, corev1.Volume{
+					Name: fmt.Sprintf("buffervolume/%s", tenant.Name),
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{
+							Medium: corev1.StorageMediumDefault,
+						},
+					},
+				})
+			}
+		}
+	}
 }
 
 func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, additionalArgs map[string]string, saName string) error {

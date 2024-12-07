@@ -14,19 +14,6 @@
 
 package utils
 
-import (
-	"slices"
-	"strings"
-
-	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
-)
-
-func SortNamespacedNames(names []v1alpha1.NamespacedName) {
-	slices.SortFunc(names, func(a, b v1alpha1.NamespacedName) int {
-		return strings.Compare(a.String(), b.String())
-	})
-}
-
 func ToPtr[T any](v T) *T {
 	return &v
 }

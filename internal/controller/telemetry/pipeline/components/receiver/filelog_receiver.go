@@ -14,9 +14,13 @@
 
 package receiver
 
-import "fmt"
+import (
+	"fmt"
 
-func GenerateDefaultKubernetesReceiver(namespaces []string) map[string]any {
+	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+)
+
+func GenerateDefaultKubernetesReceiver(namespaces []string, tenant v1alpha1.Tenant) map[string]any {
 	// TODO: fix parser-crio
 	operators := []map[string]any{
 		{
@@ -98,18 +102,8 @@ func GenerateDefaultKubernetesReceiver(namespaces []string) map[string]any {
 		},
 	}
 
-	includeList := make([]string, 0, len(namespaces))
-	if len(namespaces) > 0 {
-		for _, ns := range namespaces {
-			include := fmt.Sprintf("/var/log/pods/%s_*/*/*.log", ns)
-			includeList = append(includeList, include)
-		}
-	} else {
-		includeList = append(includeList, "/var/log/pods/*/*/*.log")
-	}
-
 	k8sReceiver := map[string]any{
-		"include":           includeList,
+		"include":           createIncludeList(namespaces),
 		"exclude":           []string{"/var/log/pods/*/otc-container/*.log"},
 		"start_at":          "end",
 		"include_file_path": true,
@@ -120,6 +114,24 @@ func GenerateDefaultKubernetesReceiver(namespaces []string) map[string]any {
 			"max_elapsed_time": 0,
 		},
 	}
+	if tenant.Spec.EnableFileStorage {
+		k8sReceiver["storage"] = fmt.Sprintf("filestorage/%s", tenant.Name)
+	}
 
 	return k8sReceiver
+}
+
+func createIncludeList(namespaces []string) []string {
+	includeList := make([]string, 0, len(namespaces))
+	if len(namespaces) == 0 {
+		return []string{"/var/log/pods/*/*/*.log"}
+	}
+
+	for _, ns := range namespaces {
+		if ns != "" {
+			includeList = append(includeList, fmt.Sprintf("/var/log/pods/%s_*/*/*.log", ns))
+		}
+	}
+
+	return includeList
 }

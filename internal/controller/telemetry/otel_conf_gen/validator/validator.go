@@ -16,6 +16,7 @@ package validator
 
 import (
 	"fmt"
+	"strings"
 
 	"emperror.dev/errors"
 	"github.com/mitchellh/mapstructure"
@@ -122,7 +123,12 @@ func decodeTelemetryConfig(anyConfig otelv1beta1.AnyConfig) (telemetry.Config, e
 func decodeExtensionsConfig(extensionsConfig []string) extensions.Config {
 	var result extensions.Config
 	for _, extName := range extensionsConfig {
-		result = append(result, component.NewID(component.MustNewType(extName)))
+		parts := strings.Split(extName, "/")
+		if len(parts) != 2 {
+			result = append(result, component.MustNewID(extName))
+		} else {
+			result = append(result, component.MustNewIDWithName(parts[0], parts[1]))
+		}
 	}
 
 	return result

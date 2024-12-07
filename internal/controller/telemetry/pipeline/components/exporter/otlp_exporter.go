@@ -26,12 +26,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func GenerateOTLPGRPCExporters(ctx context.Context, outputsWithSecretData []components.OutputWithSecretData) map[string]any {
+func GenerateOTLPGRPCExporters(ctx context.Context, resourceRelations components.ResourceRelations) map[string]any {
 	logger := log.FromContext(ctx)
 
 	result := make(map[string]any)
-	for _, output := range outputsWithSecretData {
+	for _, output := range resourceRelations.OutputsWithSecretData {
 		if output.Output.Spec.OTLPGRPC != nil {
+			output.Output.Spec.OTLPGRPC.QueueConfig.SetDefaultQueueSettings()
+			output.Output.Spec.OTLPGRPC.RetryConfig.SetDefaultBackOffConfig()
+			tenant, err := resourceRelations.FindTenantForOutput(output.Output.NamespacedName())
+			if err != nil {
+				logger.Error(err, "failed to find tenant for output, skipping", "output", output.Output.NamespacedName().String())
+				continue
+			}
+			if tenant.Spec.PersistenceConfig.EnableFileStorage {
+				output.Output.Spec.OTLPGRPC.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("filestorage/%s", tenant.Name))
+			}
+
 			if output.Output.Spec.Authentication != nil {
 				if output.Output.Spec.Authentication.BasicAuth != nil {
 					output.Output.Spec.OTLPGRPC.Auth = &v1alpha1.Authentication{

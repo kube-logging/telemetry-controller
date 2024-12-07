@@ -16,6 +16,7 @@ package exporter
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -32,45 +33,97 @@ import (
 
 func TestGenerateOTLPHTTPExporters(t *testing.T) {
 	tests := []struct {
-		name                  string
-		outputsWithSecretData []components.OutputWithSecretData
-		expectedResult        map[string]any
+		name              string
+		resourceRelations components.ResourceRelations
+		expectedResult    map[string]any
 	}{
 		{
 			name: "Basic auth",
-			outputsWithSecretData: []components.OutputWithSecretData{
-				{
-					Output: v1alpha1.Output{
+			resourceRelations: components.ResourceRelations{
+				Tenants: []v1alpha1.Tenant{
+					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "output1",
+							Name: testTenantName,
+						},
+						Spec: v1alpha1.TenantSpec{
+							PersistenceConfig: v1alpha1.PersistenceConfig{
+								EnableFileStorage: true,
+							},
+						},
+					},
+				},
+				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
+					{
+						Name:      "default",
+						Namespace: "default",
+					}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sub1",
 							Namespace: "default",
 						},
-						Spec: v1alpha1.OutputSpec{
-							OTLPHTTP: &v1alpha1.OTLPHTTP{
-								HTTPClientConfig: v1alpha1.HTTPClientConfig{
-									Endpoint: utils.ToPtr("http://example.com"),
-								},
-							},
-							Authentication: &v1alpha1.OutputAuth{
-								BasicAuth: &v1alpha1.BasicAuthConfig{
-									SecretRef: &corev1.SecretReference{
-										Name:      "secret-name",
-										Namespace: "secret-ns",
-									},
-									UsernameField: "username",
-									PasswordField: "password",
+						Spec: v1alpha1.SubscriptionSpec{
+							Outputs: []v1alpha1.NamespacedName{
+								{
+									Name:      "output1",
+									Namespace: "default",
 								},
 							},
 						},
 					},
-					Secret: corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "secret-name",
-							Namespace: "secret-ns",
+				},
+				OutputsWithSecretData: []components.OutputWithSecretData{
+					{
+						Output: v1alpha1.Output{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "output1",
+								Namespace: "default",
+							},
+							Spec: v1alpha1.OutputSpec{
+								OTLPHTTP: &v1alpha1.OTLPHTTP{
+									HTTPClientConfig: v1alpha1.HTTPClientConfig{
+										Endpoint: utils.ToPtr("http://example.com"),
+									},
+								},
+								Authentication: &v1alpha1.OutputAuth{
+									BasicAuth: &v1alpha1.BasicAuthConfig{
+										SecretRef: &corev1.SecretReference{
+											Name:      "secret-name",
+											Namespace: "secret-ns",
+										},
+										UsernameField: "username",
+										PasswordField: "password",
+									},
+								},
+							},
 						},
-						Data: map[string][]byte{
-							"username": []byte("user"),
-							"password": []byte("pass"),
+						Secret: corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "secret-name",
+								Namespace: "secret-ns",
+							},
+							Data: map[string][]byte{
+								"username": []byte("user"),
+								"password": []byte("pass"),
+							},
+						},
+					},
+				},
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					testTenantName: {
+						{
+							Name:      "sub1",
+							Namespace: "default",
+						},
+					},
+				},
+				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+					{
+						Name:      "sub1",
+						Namespace: "default",
+					}: {
+						{
+							Name:      "output1",
+							Namespace: "default",
 						},
 					},
 				},
@@ -81,42 +134,103 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					"auth": map[string]any{
 						"authenticator": "basicauth/default_output1",
 					},
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(100),
+						"storage":    fmt.Sprintf("filestorage/%s", testTenantName),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": float64(0),
+					},
 				},
 			},
 		},
 		{
 			name: "Bearer auth",
-			outputsWithSecretData: []components.OutputWithSecretData{
-				{
-					Output: v1alpha1.Output{
+			resourceRelations: components.ResourceRelations{
+				Tenants: []v1alpha1.Tenant{
+					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "output2",
+							Name: testTenantName,
+						},
+						Spec: v1alpha1.TenantSpec{
+							PersistenceConfig: v1alpha1.PersistenceConfig{
+								EnableFileStorage: true,
+							},
+						},
+					},
+				},
+				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
+					{
+						Name:      "default",
+						Namespace: "default",
+					}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sub2",
 							Namespace: "default",
 						},
-						Spec: v1alpha1.OutputSpec{
-							OTLPHTTP: &v1alpha1.OTLPHTTP{
-								HTTPClientConfig: v1alpha1.HTTPClientConfig{
-									Endpoint: utils.ToPtr("http://example.com"),
-								},
-							},
-							Authentication: &v1alpha1.OutputAuth{
-								BearerAuth: &v1alpha1.BearerAuthConfig{
-									SecretRef: &corev1.SecretReference{
-										Name:      "secret-name",
-										Namespace: "secret-ns",
-									},
-									TokenField: "token",
+						Spec: v1alpha1.SubscriptionSpec{
+							Outputs: []v1alpha1.NamespacedName{
+								{
+									Name:      "output2",
+									Namespace: "default",
 								},
 							},
 						},
 					},
-					Secret: corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "secret-name",
-							Namespace: "secret-ns",
+				},
+				OutputsWithSecretData: []components.OutputWithSecretData{
+					{
+						Output: v1alpha1.Output{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "output2",
+								Namespace: "default",
+							},
+							Spec: v1alpha1.OutputSpec{
+								OTLPHTTP: &v1alpha1.OTLPHTTP{
+									HTTPClientConfig: v1alpha1.HTTPClientConfig{
+										Endpoint: utils.ToPtr("http://example.com"),
+									},
+								},
+								Authentication: &v1alpha1.OutputAuth{
+									BearerAuth: &v1alpha1.BearerAuthConfig{
+										SecretRef: &corev1.SecretReference{
+											Name:      "secret-name",
+											Namespace: "secret-ns",
+										},
+										TokenField: "token",
+									},
+								},
+							},
 						},
-						Data: map[string][]byte{
-							"token": []byte("token-value"),
+						Secret: corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "secret-name",
+								Namespace: "secret-ns",
+							},
+							Data: map[string][]byte{
+								"token": []byte("token-value"),
+							},
+						},
+					},
+				},
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					testTenantName: {
+						{
+							Name:      "sub2",
+							Namespace: "default",
+						},
+					},
+				},
+				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+					{
+						Name:      "sub2",
+						Namespace: "default",
+					}: {
+						{
+							Name:      "output2",
+							Namespace: "default",
 						},
 					},
 				},
@@ -127,24 +241,85 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					"auth": map[string]any{
 						"authenticator": "bearertokenauth/default_output2",
 					},
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(100),
+						"storage":    fmt.Sprintf("filestorage/%s", testTenantName),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": float64(0),
+					},
 				},
 			},
 		},
 		{
 			name: "No auth",
-			outputsWithSecretData: []components.OutputWithSecretData{
-				{
-					Output: v1alpha1.Output{
+			resourceRelations: components.ResourceRelations{
+				Tenants: []v1alpha1.Tenant{
+					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "output3",
+							Name: testTenantName,
+						},
+						Spec: v1alpha1.TenantSpec{
+							PersistenceConfig: v1alpha1.PersistenceConfig{
+								EnableFileStorage: true,
+							},
+						},
+					},
+				},
+				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
+					{
+						Name:      "default",
+						Namespace: "default",
+					}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sub3",
 							Namespace: "default",
 						},
-						Spec: v1alpha1.OutputSpec{
-							OTLPHTTP: &v1alpha1.OTLPHTTP{
-								HTTPClientConfig: v1alpha1.HTTPClientConfig{
-									Endpoint: utils.ToPtr("http://example.com"),
+						Spec: v1alpha1.SubscriptionSpec{
+							Outputs: []v1alpha1.NamespacedName{
+								{
+									Name:      "output3",
+									Namespace: "default",
 								},
 							},
+						},
+					},
+				},
+				OutputsWithSecretData: []components.OutputWithSecretData{
+					{
+						Output: v1alpha1.Output{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "output3",
+								Namespace: "default",
+							},
+							Spec: v1alpha1.OutputSpec{
+								OTLPHTTP: &v1alpha1.OTLPHTTP{
+									HTTPClientConfig: v1alpha1.HTTPClientConfig{
+										Endpoint: utils.ToPtr("http://example.com"),
+									},
+								},
+							},
+						},
+					},
+				},
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					testTenantName: {
+						{
+							Name:      "sub3",
+							Namespace: "default",
+						},
+					},
+				},
+				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+					{
+						Name:      "sub3",
+						Namespace: "default",
+					}: {
+						{
+							Name:      "output3",
+							Namespace: "default",
 						},
 					},
 				},
@@ -152,58 +327,118 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 			expectedResult: map[string]any{
 				"otlphttp/default_output3": map[string]any{
 					"endpoint": "http://example.com",
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(100),
+						"storage":    fmt.Sprintf("filestorage/%s", testTenantName),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": float64(0),
+					},
 				},
 			},
 		},
 		{
 			name: "All fields set",
-			outputsWithSecretData: []components.OutputWithSecretData{
-				{
-					Output: v1alpha1.Output{
+			resourceRelations: components.ResourceRelations{
+				Tenants: []v1alpha1.Tenant{
+					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "output4",
+							Name: testTenantName,
+						},
+						Spec: v1alpha1.TenantSpec{
+							PersistenceConfig: v1alpha1.PersistenceConfig{
+								EnableFileStorage: true,
+							},
+						},
+					},
+				},
+				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
+					{
+						Name:      "default",
+						Namespace: "default",
+					}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sub4",
 							Namespace: "default",
 						},
-						Spec: v1alpha1.OutputSpec{
-							OTLPHTTP: &v1alpha1.OTLPHTTP{
-								QueueConfig: &v1alpha1.QueueSettings{
-									Enabled:      true,
-									NumConsumers: 10,
-									QueueSize:    100,
-									StorageID:    "storage-id",
-								},
-								RetryConfig: &v1alpha1.BackOffConfig{
-									Enabled:             true,
-									InitialInterval:     5 * time.Second,
-									RandomizationFactor: "0.1",
-									Multiplier:          "2.0",
-									MaxInterval:         10 * time.Second,
-									MaxElapsedTime:      60 * time.Second,
-								},
-								HTTPClientConfig: v1alpha1.HTTPClientConfig{
-									Endpoint: utils.ToPtr("http://example.com"),
-									ProxyURL: utils.ToPtr("http://proxy.example.com"),
-									TLSSetting: &v1alpha1.TLSClientSetting{
-										Insecure:           true,
-										InsecureSkipVerify: true,
-										ServerName:         "server-name",
-									},
-									ReadBufferSize:  utils.ToPtr(1024),
-									WriteBufferSize: utils.ToPtr(1024),
-									Timeout:         utils.ToPtr(5 * time.Second),
-									Headers: &map[string]configopaque.String{
-										"header1": configopaque.String("value1"),
-									},
-									Compression:          utils.ToPtr(configcompression.Type("gzip")),
-									MaxIdleConns:         utils.ToPtr(10),
-									MaxIdleConnsPerHost:  utils.ToPtr(10),
-									MaxConnsPerHost:      utils.ToPtr(10),
-									IdleConnTimeout:      utils.ToPtr(5 * time.Second),
-									DisableKeepAlives:    utils.ToPtr(true),
-									HTTP2ReadIdleTimeout: utils.ToPtr(5 * time.Second),
-									HTTP2PingTimeout:     utils.ToPtr(5 * time.Second),
+						Spec: v1alpha1.SubscriptionSpec{
+							Outputs: []v1alpha1.NamespacedName{
+								{
+									Name:      "output4",
+									Namespace: "default",
 								},
 							},
+						},
+					},
+				},
+				OutputsWithSecretData: []components.OutputWithSecretData{
+					{
+						Output: v1alpha1.Output{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "output4",
+								Namespace: "default",
+							},
+							Spec: v1alpha1.OutputSpec{
+								OTLPHTTP: &v1alpha1.OTLPHTTP{
+									QueueConfig: v1alpha1.QueueSettings{
+										Enabled:      true,
+										NumConsumers: 10,
+										QueueSize:    100,
+									},
+									RetryConfig: v1alpha1.BackOffConfig{
+										Enabled:             true,
+										InitialInterval:     5 * time.Second,
+										RandomizationFactor: "0.1",
+										Multiplier:          "2.0",
+										MaxInterval:         10 * time.Second,
+										MaxElapsedTime:      utils.ToPtr(60 * time.Second),
+									},
+									HTTPClientConfig: v1alpha1.HTTPClientConfig{
+										Endpoint: utils.ToPtr("http://example.com"),
+										ProxyURL: utils.ToPtr("http://proxy.example.com"),
+										TLSSetting: &v1alpha1.TLSClientSetting{
+											Insecure:           true,
+											InsecureSkipVerify: true,
+											ServerName:         "server-name",
+										},
+										ReadBufferSize:  utils.ToPtr(1024),
+										WriteBufferSize: utils.ToPtr(1024),
+										Timeout:         utils.ToPtr(5 * time.Second),
+										Headers: &map[string]configopaque.String{
+											"header1": configopaque.String("value1"),
+										},
+										Compression:          utils.ToPtr(configcompression.Type("gzip")),
+										MaxIdleConns:         utils.ToPtr(10),
+										MaxIdleConnsPerHost:  utils.ToPtr(10),
+										MaxConnsPerHost:      utils.ToPtr(10),
+										IdleConnTimeout:      utils.ToPtr(5 * time.Second),
+										DisableKeepAlives:    utils.ToPtr(true),
+										HTTP2ReadIdleTimeout: utils.ToPtr(5 * time.Second),
+										HTTP2PingTimeout:     utils.ToPtr(5 * time.Second),
+									},
+								},
+							},
+						},
+					},
+				},
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					testTenantName: {
+						{
+							Name:      "sub4",
+							Namespace: "default",
+						},
+					},
+				},
+				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+					{
+						Name:      "sub4",
+						Namespace: "default",
+					}: {
+						{
+							Name:      "output4",
+							Namespace: "default",
 						},
 					},
 				},
@@ -235,7 +470,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 						"enabled":       true,
 						"num_consumers": float64(10),
 						"queue_size":    float64(100),
-						"storage":       "storage-id",
+						"storage":       fmt.Sprintf("filestorage/%s", testTenantName),
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":              true,
@@ -253,7 +488,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 	for _, tt := range tests {
 		ttp := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateOTLPHTTPExporters(context.TODO(), ttp.outputsWithSecretData))
+			assert.Equal(t, ttp.expectedResult, GenerateOTLPHTTPExporters(context.TODO(), ttp.resourceRelations))
 		})
 	}
 }

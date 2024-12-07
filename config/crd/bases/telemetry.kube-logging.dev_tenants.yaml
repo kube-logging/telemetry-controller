@@ -109,10 +109,33 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              persistenceConfig:
+                description: |-
+                  Configuration for persistence, will be used to generate
+                  the filestorage extension.
+                properties:
+                  directory:
+                    description: |-
+                      The directory where logs will be persisted.
+                      If unset or an invalid path is given, then an OS specific
+                      default value will be used.
+                    type: string
+                  enableFileStorage:
+                    description: Determines whether file storage is enabled or not.
+                    type: boolean
+                  volumeSource:
+                    description: |-
+                      Type of volume source to use, currently supporting:
+                      host-path and empty-dir.
+                    enum:
+                    - hostPath
+                    - emptyDir
+                    type: string
+                type: object
               routeConfig:
                 description: |-
                   RouteConfig defines the routing configuration for a tenant
-                  it will be used to generate routing connectors
+                  it will be used to generate routing connectors.
                 properties:
                   defaultPipelines:
                     description: Contains the list of pipelines to use when a record
@@ -191,7 +214,7 @@ spec:
                 type: array
               transform:
                 description: Transform represents the Transform processor, which modifies
-                  telemetry based on its configuration
+                  telemetry based on its configuration.
                 properties:
                   errorMode:
                     description: |-

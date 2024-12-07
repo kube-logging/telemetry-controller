@@ -17,6 +17,7 @@ package v1alpha1
 import (
 	"time"
 
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configopaque"
 )
@@ -36,11 +37,24 @@ type QueueSettings struct {
 	NumConsumers int `json:"num_consumers,omitempty"`
 
 	// QueueSize is the maximum number of batches allowed in queue at a given time.
+	// Default value is 100.
 	QueueSize int `json:"queue_size,omitempty"`
 
-	// StorageID if not empty, enables the persistent storage and uses the component specified
-	// as a storage extension for the persistent queue
-	StorageID string `json:"storage,omitempty"` //TODO this is *component.ID at Otel
+	// If Storage is not empty, enables the persistent storage and uses the component specified
+	// as a storage extension for the persistent queue.
+	// WARNING: This field will be set by the operator, based on the persistence config
+	// set on the tenant that the output belongs to.
+	Storage *string `json:"storage,omitempty"`
+}
+
+func (q *QueueSettings) SetDefaultQueueSettings() {
+	if q == nil {
+		q = &QueueSettings{}
+	}
+	q.Enabled = true
+	if q.QueueSize == 0 || q.QueueSize < 0 {
+		q.QueueSize = 100
+	}
 }
 
 // BackOffConfig defines configuration for retrying batches in case of export failure.
@@ -65,7 +79,17 @@ type BackOffConfig struct {
 
 	// MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
 	// Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
-	MaxElapsedTime time.Duration `json:"max_elapsed_time,omitempty"`
+	MaxElapsedTime *time.Duration `json:"max_elapsed_time,omitempty"`
+}
+
+func (b *BackOffConfig) SetDefaultBackOffConfig() {
+	if b == nil {
+		b = &BackOffConfig{}
+	}
+	b.Enabled = true
+	if b.MaxElapsedTime == nil {
+		b.MaxElapsedTime = utils.ToPtr(0 * time.Second)
+	}
 }
 
 // KeepaliveClientConfig exposes the keepalive.ClientParameters to be used by the exporter.

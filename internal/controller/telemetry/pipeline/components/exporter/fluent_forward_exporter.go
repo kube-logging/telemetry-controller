@@ -21,15 +21,27 @@ import (
 	"fmt"
 
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func GenerateFluentforwardExporters(ctx context.Context, outputsWithSecretData []components.OutputWithSecretData) map[string]any {
+func GenerateFluentforwardExporters(ctx context.Context, resourceRelations components.ResourceRelations) map[string]any {
 	logger := log.FromContext(ctx)
 
 	result := make(map[string]any)
-	for _, output := range outputsWithSecretData {
+	for _, output := range resourceRelations.OutputsWithSecretData {
 		if output.Output.Spec.Fluentforward != nil {
+			output.Output.Spec.Fluentforward.QueueConfig.SetDefaultQueueSettings()
+			output.Output.Spec.Fluentforward.RetryConfig.SetDefaultBackOffConfig()
+			tenant, err := resourceRelations.FindTenantForOutput(output.Output.NamespacedName())
+			if err != nil {
+				logger.Error(err, "failed to find tenant for output, skipping", "output", output.Output.NamespacedName().String())
+				continue
+			}
+			if tenant.Spec.PersistenceConfig.EnableFileStorage {
+				output.Output.Spec.Fluentforward.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("filestorage/%s", tenant.Name))
+			}
+
 			fluentForwardMarshaled, err := json.Marshal(output.Output.Spec.Fluentforward)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
