@@ -79,6 +79,7 @@ type BackOffConfig struct {
 
 	// MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
 	// Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+	// Default value is 0 to ensure that the data is never discarded.
 	MaxElapsedTime *time.Duration `json:"max_elapsed_time,omitempty"`
 }
 
