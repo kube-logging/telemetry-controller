@@ -148,11 +148,7 @@ func TestSetOtelCommonFieldsDefaults(t *testing.T) {
 			if ttp.initialCommonFields != nil {
 				commonFieldsCopy = ttp.initialCommonFields.DeepCopy()
 			}
-
-			err := setOtelCommonFieldsDefaults(commonFieldsCopy, ttp.additionalArgs, ttp.saName)
-			if err != nil {
-				assert.EqualError(t, err, ttp.expectedError.Error())
-			}
+			setOtelCommonFieldsDefaults(commonFieldsCopy, ttp.additionalArgs, ttp.saName)
 
 			assert.Equal(t, ttp.expectedResult, commonFieldsCopy)
 		})

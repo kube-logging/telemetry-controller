@@ -183,6 +183,7 @@ spec:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                          Default value is 0 to ensure that the data is never discarded.
                         format: int64
                         type: integer
                       max_interval:
@@ -214,13 +215,16 @@ spec:
                           the queue.
                         type: integer
                       queue_size:
-                        description: QueueSize is the maximum number of batches allowed
-                          in queue at a given time.
+                        description: |-
+                          QueueSize is the maximum number of batches allowed in queue at a given time.
+                          Default value is 100.
                         type: integer
                       storage:
                         description: |-
-                          StorageID if not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue
+                          If Storage is not empty, enables the persistent storage and uses the component specified
+                          as a storage extension for the persistent queue.
+                          WARNING: This field will be set by the operator, based on the persistence config
+                          set on the tenant that the output belongs to.
                         type: string
                     type: object
                   shared_key:
@@ -378,6 +382,7 @@ spec:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                          Default value is 0 to ensure that the data is never discarded.
                         format: int64
                         type: integer
                       max_interval:
@@ -409,13 +414,16 @@ spec:
                           the queue.
                         type: integer
                       queue_size:
-                        description: QueueSize is the maximum number of batches allowed
-                          in queue at a given time.
+                        description: |-
+                          QueueSize is the maximum number of batches allowed in queue at a given time.
+                          Default value is 100.
                         type: integer
                       storage:
                         description: |-
-                          StorageID if not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue
+                          If Storage is not empty, enables the persistent storage and uses the component specified
+                          as a storage extension for the persistent queue.
+                          WARNING: This field will be set by the operator, based on the persistence config
+                          set on the tenant that the output belongs to.
                         type: string
                     type: object
                   timeout:
@@ -600,6 +608,7 @@ spec:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                          Default value is 0 to ensure that the data is never discarded.
                         format: int64
                         type: integer
                       max_interval:
@@ -631,13 +640,16 @@ spec:
                           the queue.
                         type: integer
                       queue_size:
-                        description: QueueSize is the maximum number of batches allowed
-                          in queue at a given time.
+                        description: |-
+                          QueueSize is the maximum number of batches allowed in queue at a given time.
+                          Default value is 100.
                         type: integer
                       storage:
                         description: |-
-                          StorageID if not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue
+                          If Storage is not empty, enables the persistent storage and uses the component specified
+                          as a storage extension for the persistent queue.
+                          WARNING: This field will be set by the operator, based on the persistence config
+                          set on the tenant that the output belongs to.
                         type: string
                     type: object
                   timeout:
