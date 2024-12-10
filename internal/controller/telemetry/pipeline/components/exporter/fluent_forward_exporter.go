@@ -39,7 +39,7 @@ func GenerateFluentforwardExporters(ctx context.Context, resourceRelations compo
 				continue
 			}
 			if tenant.Spec.PersistenceConfig.EnableFileStorage {
-				output.Output.Spec.Fluentforward.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("filestorage/%s", tenant.Name))
+				output.Output.Spec.Fluentforward.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("file_storage/%s", tenant.Name))
 			}
 
 			fluentForwardMarshaled, err := json.Marshal(output.Output.Spec.Fluentforward)

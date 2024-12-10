@@ -20,11 +20,11 @@ import (
 	"math"
 	"reflect"
 	"slices"
+	"strings"
 	"time"
 
 	"emperror.dev/errors"
 	"github.com/cisco-open/operator-tools/pkg/reconciler"
-	"github.com/imdario/mergo"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -235,10 +235,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("%+v", err)
 	}
 
-	otelCollector, state, err := r.otelCollector(collector, otelConfig, additionalArgs, otelConfigInput.Tenants, saName.Name)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	otelCollector, state := r.otelCollector(collector, otelConfig, additionalArgs, otelConfigInput.Tenants, saName.Name)
 
 	if err := ctrl.SetControllerReference(collector, otelCollector, r.Scheme); err != nil {
 		return ctrl.Result{}, err
@@ -389,7 +386,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, tenants []v1alpha1.Tenant, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState, error) {
+func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, tenants []v1alpha1.Tenant, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState) {
 	otelCollector := otelv1beta1.OpenTelemetryCollector{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: otelv1beta1.GroupVersion.String(),
@@ -407,9 +404,7 @@ func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelC
 		},
 	}
 	appendAdditionalVolumesForTenantsFileStorage(&otelCollector.Spec.OpenTelemetryCommonFields, tenants)
-	if err := setOtelCommonFieldsDefaults(&otelCollector.Spec.OpenTelemetryCommonFields, additionalArgs, saName); err != nil {
-		return &otelCollector, nil, err
-	}
+	setOtelCommonFieldsDefaults(&otelCollector.Spec.OpenTelemetryCommonFields, additionalArgs, saName)
 
 	if memoryLimit := collector.Spec.GetMemoryLimit(); memoryLimit != nil {
 		// Calculate 80% of the specified memory limit for GOMEMLIMIT
@@ -428,7 +423,7 @@ func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelC
 		return nil
 	})
 
-	return &otelCollector, beforeUpdateHook, nil
+	return &otelCollector, beforeUpdateHook
 }
 
 func (r *CollectorReconciler) reconcileRBAC(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
@@ -568,18 +563,26 @@ func normalizeStringSlice(inputList []string) []string {
 	return uniqueList
 }
 
-func appendAdditionalVolumesForTenantsFileStorage(otelComonFields *otelv1beta1.OpenTelemetryCommonFields, tenants []v1alpha1.Tenant) {
+func appendAdditionalVolumesForTenantsFileStorage(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, tenants []v1alpha1.Tenant) {
+	var volumeMountsForInit []corev1.VolumeMount
+	var chmodCommands []string
+
 	for _, tenant := range tenants {
 		if tenant.Spec.PersistenceConfig.EnableFileStorage {
+			bufferVolumeName := fmt.Sprintf("buffervolume-%s", tenant.Name)
 			mountPath := storage.DetermineFileStorageDirectory(tenant.Spec.PersistenceConfig.Directory)
+			volumeMount := corev1.VolumeMount{
+				Name:      bufferVolumeName,
+				MountPath: mountPath,
+			}
+			volumeMountsForInit = append(volumeMountsForInit, volumeMount)
+			chmodCommands = append(chmodCommands, fmt.Sprintf("chmod -R 777 %s", mountPath))
+
+			otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, volumeMount)
 			switch tenant.Spec.PersistenceConfig.VolumeSource {
 			case "hostPath":
-				otelComonFields.VolumeMounts = append(otelComonFields.VolumeMounts, corev1.VolumeMount{
-					Name:      fmt.Sprintf("buffervolume/%s", tenant.Name),
-					MountPath: mountPath,
-				})
-				otelComonFields.Volumes = append(otelComonFields.Volumes, corev1.Volume{
-					Name: fmt.Sprintf("buffervolume/%s", tenant.Name),
+				otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
+					Name: bufferVolumeName,
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
 							Path: mountPath,
@@ -587,14 +590,9 @@ func appendAdditionalVolumesForTenantsFileStorage(otelComonFields *otelv1beta1.O
 						},
 					},
 				})
-
 			case "emptyDir":
-				otelComonFields.VolumeMounts = append(otelComonFields.VolumeMounts, corev1.VolumeMount{
-					Name:      fmt.Sprintf("buffervolume/%s", tenant.Name),
-					MountPath: mountPath,
-				})
-				otelComonFields.Volumes = append(otelComonFields.Volumes, corev1.Volume{
-					Name: fmt.Sprintf("buffervolume/%s", tenant.Name),
+				otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
+					Name: bufferVolumeName,
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{
 							Medium: corev1.StorageMediumDefault,
@@ -604,9 +602,21 @@ func appendAdditionalVolumesForTenantsFileStorage(otelComonFields *otelv1beta1.O
 			}
 		}
 	}
+
+	// Add a single initContainer to handle all chmod operations
+	if len(chmodCommands) > 0 && len(volumeMountsForInit) > 0 {
+		initContainer := corev1.Container{
+			Name:         "init-chmod",
+			Image:        "busybox",
+			Command:      []string{"sh", "-c"},
+			Args:         []string{strings.Join(chmodCommands, " && ")},
+			VolumeMounts: volumeMountsForInit,
+		}
+		otelCommonFields.InitContainers = append(otelCommonFields.InitContainers, initContainer)
+	}
 }
 
-func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, additionalArgs map[string]string, saName string) error {
+func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, additionalArgs map[string]string, saName string) {
 	if otelCommonFields == nil {
 		otelCommonFields = &otelv1beta1.OpenTelemetryCommonFields{}
 	}
@@ -614,8 +624,11 @@ func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryComm
 	otelCommonFields.Image = axoflowOtelCollectorImageRef
 	otelCommonFields.ServiceAccount = saName
 
-	if err := mergo.Merge(&otelCommonFields.Args, additionalArgs, mergo.WithOverride); err != nil {
-		return err
+	if otelCommonFields.Args == nil {
+		otelCommonFields.Args = make(map[string]string)
+	}
+	for key, value := range additionalArgs {
+		otelCommonFields.Args[key] = value
 	}
 
 	volumeMounts := []corev1.VolumeMount{
@@ -630,9 +643,7 @@ func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryComm
 			MountPath: "/var/lib/docker/containers",
 		},
 	}
-	if err := mergo.Merge(&otelCommonFields.VolumeMounts, volumeMounts, mergo.WithOverride); err != nil {
-		return err
-	}
+	otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, volumeMounts...)
 
 	volumes := []corev1.Volume{
 		{
@@ -652,9 +663,5 @@ func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryComm
 			},
 		},
 	}
-	if err := mergo.Merge(&otelCommonFields.Volumes, volumes, mergo.WithOverride); err != nil {
-		return err
-	}
-
-	return nil
+	otelCommonFields.Volumes = append(otelCommonFields.Volumes, volumes...)
 }

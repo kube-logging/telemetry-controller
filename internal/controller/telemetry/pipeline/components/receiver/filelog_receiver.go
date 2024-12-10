@@ -115,7 +115,7 @@ func GenerateDefaultKubernetesReceiver(namespaces []string, tenant v1alpha1.Tena
 		},
 	}
 	if tenant.Spec.EnableFileStorage {
-		k8sReceiver["storage"] = fmt.Sprintf("filestorage/%s", tenant.Name)
+		k8sReceiver["storage"] = fmt.Sprintf("file_storage/%s", tenant.Name)
 	}
 
 	return k8sReceiver

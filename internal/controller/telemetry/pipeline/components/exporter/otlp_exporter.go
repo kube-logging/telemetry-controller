@@ -40,7 +40,7 @@ func GenerateOTLPGRPCExporters(ctx context.Context, resourceRelations components
 				continue
 			}
 			if tenant.Spec.PersistenceConfig.EnableFileStorage {
-				output.Output.Spec.OTLPGRPC.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("filestorage/%s", tenant.Name))
+				output.Output.Spec.OTLPGRPC.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("file_storage/%s", tenant.Name))
 			}
 
 			if output.Output.Spec.Authentication != nil {
