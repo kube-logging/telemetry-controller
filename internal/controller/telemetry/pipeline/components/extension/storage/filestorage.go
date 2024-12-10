@@ -15,6 +15,7 @@
 package storage
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -28,22 +29,22 @@ var (
 	defaultFileStorageDirectoryWindows = filepath.Join(os.Getenv("ProgramData"), "Otelcol", "FileStorage")
 )
 
-func GenerateFileStorageExtensionForTenant(persistDirPath string) map[string]any {
+func GenerateFileStorageExtensionForTenant(persistDirPath string, tenantName string) map[string]any {
 	return map[string]any{
 		"create_directory": true,
-		"directory":        DetermineFileStorageDirectory(persistDirPath),
+		"directory":        DetermineFileStorageDirectory(persistDirPath, tenantName),
 	}
 }
 
-func DetermineFileStorageDirectory(persistDirPath string) string {
+func DetermineFileStorageDirectory(persistDirPath string, tenantName string) string {
 	if persistDirPath != "" {
 		return persistDirPath
 	}
 
 	switch runtime.GOOS {
 	case "windows":
-		return defaultFileStorageDirectoryWindows
+		return fmt.Sprintf("%s/%s", defaultFileStorageDirectoryWindows, tenantName)
 	default:
-		return defaultFileStorageDirectory
+		return fmt.Sprintf("%s/%s", defaultFileStorageDirectory, tenantName)
 	}
 }

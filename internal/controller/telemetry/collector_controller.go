@@ -570,7 +570,7 @@ func appendAdditionalVolumesForTenantsFileStorage(otelCommonFields *otelv1beta1.
 	for _, tenant := range tenants {
 		if tenant.Spec.PersistenceConfig.EnableFileStorage {
 			bufferVolumeName := fmt.Sprintf("buffervolume-%s", tenant.Name)
-			mountPath := storage.DetermineFileStorageDirectory(tenant.Spec.PersistenceConfig.Directory)
+			mountPath := storage.DetermineFileStorageDirectory(tenant.Spec.PersistenceConfig.Directory, tenant.Name)
 			volumeMount := corev1.VolumeMount{
 				Name:      bufferVolumeName,
 				MountPath: mountPath,
@@ -579,27 +579,15 @@ func appendAdditionalVolumesForTenantsFileStorage(otelCommonFields *otelv1beta1.
 			chmodCommands = append(chmodCommands, fmt.Sprintf("chmod -R 777 %s", mountPath))
 
 			otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, volumeMount)
-			switch tenant.Spec.PersistenceConfig.VolumeSource {
-			case "hostPath":
-				otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
-					Name: bufferVolumeName,
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: mountPath,
-							Type: utils.ToPtr(corev1.HostPathDirectoryOrCreate),
-						},
+			otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
+				Name: bufferVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: mountPath,
+						Type: utils.ToPtr(corev1.HostPathDirectoryOrCreate),
 					},
-				})
-			case "emptyDir":
-				otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
-					Name: bufferVolumeName,
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{
-							Medium: corev1.StorageMediumDefault,
-						},
-					},
-				})
-			}
+				},
+			})
 		}
 	}
 

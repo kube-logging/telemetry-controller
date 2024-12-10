@@ -119,18 +119,13 @@ spec:
                       The directory where logs will be persisted.
                       If unset or an invalid path is given, then an OS specific
                       default value will be used.
+                      The cluster administrator must ensure that the directory
+                      is unique for each tenant.
+                      If unset /var/lib/otelcol/file_storage/<tenant_name> will be used.
                     type: string
                   enableFileStorage:
                     description: Determines whether file storage is enabled or not.
                     type: boolean
-                  volumeSource:
-                    description: |-
-                      Type of volume source to use, currently supported types are:
-                      hostPath and emptyDir.
-                    enum:
-                    - hostPath
-                    - emptyDir
-                    type: string
                 type: object
               routeConfig:
                 description: |-

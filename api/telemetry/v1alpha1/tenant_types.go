@@ -76,13 +76,10 @@ type PersistenceConfig struct {
 	// The directory where logs will be persisted.
 	// If unset or an invalid path is given, then an OS specific
 	// default value will be used.
+	// The cluster administrator must ensure that the directory
+	// is unique for each tenant.
+	// If unset /var/lib/otelcol/file_storage/<tenant_name> will be used.
 	Directory string `json:"directory,omitempty"`
-
-	// +kubebuilder:validation:Enum:=hostPath;emptyDir
-
-	// Type of volume source to use, currently supported types are:
-	// hostPath and emptyDir.
-	VolumeSource string `json:"volumeSource,omitempty"`
 }
 
 // TenantSpec defines the desired state of Tenant

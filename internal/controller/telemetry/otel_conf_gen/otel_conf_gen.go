@@ -122,7 +122,7 @@ func (cfgInput *OtelColConfigInput) generateExtensions() (map[string]any, []stri
 
 	for _, tenant := range cfgInput.Tenants {
 		if tenant.Spec.PersistenceConfig.EnableFileStorage {
-			extensions[fmt.Sprintf("file_storage/%s", tenant.Name)] = storage.GenerateFileStorageExtensionForTenant(tenant.Spec.PersistenceConfig.Directory)
+			extensions[fmt.Sprintf("file_storage/%s", tenant.Name)] = storage.GenerateFileStorageExtensionForTenant(tenant.Spec.PersistenceConfig.Directory, tenant.Name)
 		}
 	}
 

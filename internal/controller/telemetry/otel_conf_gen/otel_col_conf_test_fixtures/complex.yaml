@@ -61,10 +61,10 @@ extensions:
     token: testtoken
   file_storage/example-tenant-a:
     create_directory: true
-    directory: /var/lib/otelcol/file_storage
+    directory: /var/lib/otelcol/file_storage/example-tenant-a
   file_storage/example-tenant-b:
     create_directory: true
-    directory: /var/lib/otelcol/file_storage
+    directory: /var/lib/otelcol/file_storage/example-tenant-b
 processors:
   attributes/exporter_name_fluentforward-test-output:
     actions:
