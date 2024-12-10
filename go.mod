@@ -7,25 +7,25 @@ require (
 	github.com/cisco-open/operator-tools v0.37.0
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/imdario/mergo v0.3.16
+	github.com/imdario/mergo v1.0.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/onsi/ginkgo/v2 v2.22.0
-	github.com/onsi/gomega v1.36.0
-	github.com/open-telemetry/opentelemetry-operator v0.114.0
+	github.com/onsi/gomega v1.36.1
+	github.com/open-telemetry/opentelemetry-operator v0.114.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/siliconbrain/go-mapseqs v0.4.0
 	github.com/siliconbrain/go-seqs v0.13.0
 	github.com/stretchr/testify v1.10.0
-	go.opentelemetry.io/collector/component v0.114.0
-	go.opentelemetry.io/collector/config/configauth v0.114.0
-	go.opentelemetry.io/collector/config/configcompression v1.20.0
-	go.opentelemetry.io/collector/config/configopaque v1.20.0
-	go.opentelemetry.io/collector/config/configtelemetry v0.114.0
-	go.opentelemetry.io/collector/otelcol v0.114.0
-	go.opentelemetry.io/collector/pipeline v0.114.0
-	go.opentelemetry.io/collector/service v0.114.0
+	go.opentelemetry.io/collector/component v0.115.0
+	go.opentelemetry.io/collector/config/configauth v0.115.0
+	go.opentelemetry.io/collector/config/configcompression v1.21.0
+	go.opentelemetry.io/collector/config/configopaque v1.21.0
+	go.opentelemetry.io/collector/config/configtelemetry v0.115.0
+	go.opentelemetry.io/collector/otelcol v0.115.0
+	go.opentelemetry.io/collector/pipeline v0.115.0
+	go.opentelemetry.io/collector/service v0.115.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
+	golang.org/x/exp 43b7b7cde48d
 	k8s.io/api v0.31.3
 	k8s.io/apimachinery v0.31.3
 	k8s.io/client-go v0.31.3
@@ -178,4 +178,4 @@ require (
 )
 
 // ref: https://github.com/darccio/mergo/blob/2b1eb9c67d7332f286430af241180c5005a6a5a4/README.md?plain=1#L53
-replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
+replace github.com/imdario/mergo => github.com/imdario/mergo v1.0.1
