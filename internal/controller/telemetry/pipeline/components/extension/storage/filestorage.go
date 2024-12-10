@@ -37,17 +37,13 @@ func GenerateFileStorageExtensionForTenant(persistDirPath string) map[string]any
 
 func DetermineFileStorageDirectory(persistDirPath string) string {
 	if persistDirPath != "" {
-		info, err := os.Stat(persistDirPath)
-		if err == nil && info.IsDir() {
-			return persistDirPath
-		} else {
-			return defaultFileStorageDirectory
-		}
+		return persistDirPath
 	}
 
-	if runtime.GOOS == "windows" {
+	switch runtime.GOOS {
+	case "windows":
 		return defaultFileStorageDirectoryWindows
+	default:
+		return defaultFileStorageDirectory
 	}
-
-	return defaultFileStorageDirectory
 }

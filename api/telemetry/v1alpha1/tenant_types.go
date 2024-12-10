@@ -80,8 +80,8 @@ type PersistenceConfig struct {
 
 	// +kubebuilder:validation:Enum:=hostPath;emptyDir
 
-	// Type of volume source to use, currently supporting:
-	// host-path and empty-dir.
+	// Type of volume source to use, currently supported types are:
+	// hostPath and emptyDir.
 	VolumeSource string `json:"volumeSource,omitempty"`
 }
 
