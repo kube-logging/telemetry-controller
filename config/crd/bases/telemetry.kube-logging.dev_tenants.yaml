@@ -57,8 +57,7 @@ spec:
               logSourceNamespaceSelectors:
                 description: |-
                   Determines the namespaces from which logs are collected by this tenant.
-                  If initialized with an empty list, logs from all namespaces are collected.
-                  If uninitialized, no logs are collected.
+                  Cannot be used together with SelectFromAllNamespaces.
                 items:
                   description: |-
                     A label selector is a label query over a set of resources. The result of matchLabels and
@@ -154,6 +153,11 @@ spec:
                       May only be false when used with resource context.
                     type: boolean
                 type: object
+              selectFromAllNamespaces:
+                description: |-
+                  If true, logs are collected from all namespaces.
+                  Cannot be used together with LogSourceNamespaceSelectors.
+                type: boolean
               subscriptionNamespaceSelectors:
                 description: Determines the namespaces from which subscriptions are
                   collected by this tenant.

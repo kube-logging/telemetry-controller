@@ -36,11 +36,13 @@ func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string) *otelv1b
 	for _, tenant := range tenants {
 		if tenant.Name == tenantName {
 			// Add filelog receiver to tenant's pipeline if it has any logsource namespace selectors
-			if tenant.Spec.LogSourceNamespaceSelectors != nil {
+			// or if it selects from all namespaces
+			if tenant.Status.LogSourceNamespaces != nil || tenant.Spec.SelectFromAllNamespaces {
 				receiverName = fmt.Sprintf("filelog/%s", tenantName)
 			}
 			// Add routing connector to tenant's pipeline if it has any subscription namespace selectors
-			if tenant.Spec.SubscriptionNamespaceSelectors != nil {
+			// or if it selects from all namespaces
+			if tenant.Status.LogSourceNamespaces != nil || tenant.Spec.SelectFromAllNamespaces {
 				exporterName = fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
 			}
 		}
