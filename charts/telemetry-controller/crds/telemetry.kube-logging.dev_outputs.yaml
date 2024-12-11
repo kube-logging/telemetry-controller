@@ -150,8 +150,22 @@ spec:
                       to be added to each log record.
                     type: object
                   endpoint:
-                    description: 'The target endpoint URI to send data to (e.g.: some.url:24224).'
-                    type: string
+                    description: Endpoint to send logs to.
+                    properties:
+                      tcp_addr:
+                        description: TCPAddr is the address of the server to connect
+                          to.
+                        type: string
+                      validate_tcp_resolution:
+                        description: |-
+                          Controls whether to validate the tcp address.
+                          Turning this ON may result in the collector failing to start if it came up faster then the endpoint.
+                          default is false.
+                        type: boolean
+                    required:
+                    - tcp_addr
+                    - validate_tcp_resolution
+                    type: object
                   kubernetes_metadata:
                     properties:
                       include_pod_labels:
@@ -283,6 +297,8 @@ spec:
                           https://godoc.org/crypto/tls#Config for more information. (optional)
                         type: string
                     type: object
+                required:
+                - endpoint
                 type: object
               otlp:
                 description: |-

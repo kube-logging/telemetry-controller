@@ -79,7 +79,9 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								Fluentforward: &v1alpha1.Fluentforward{
 									TCPClientSettings: v1alpha1.TCPClientSettings{
-										Endpoint: utils.ToPtr("http://example.com"),
+										Endpoint: &v1alpha1.Endpoint{
+											TCPAddr: utils.ToPtr("http://example.com"),
+										},
 									},
 								},
 							},
@@ -108,7 +110,10 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 			},
 			expectedResult: map[string]any{
 				"fluentforwardexporter/default_output1": map[string]any{
-					"endpoint": "http://example.com",
+					"endpoint": map[string]any{
+						"tcp_addr":                "http://example.com",
+						"validate_tcp_resolution": false,
+					},
 					"sending_queue": map[string]any{
 						"enabled":    true,
 						"queue_size": float64(100),
@@ -165,7 +170,9 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								Fluentforward: &v1alpha1.Fluentforward{
 									TCPClientSettings: v1alpha1.TCPClientSettings{
-										Endpoint:          utils.ToPtr("http://example.com"),
+										Endpoint: &v1alpha1.Endpoint{
+											TCPAddr: utils.ToPtr("http://example.com"),
+										},
 										ConnectionTimeout: utils.ToPtr("30s"),
 										SharedKey:         utils.ToPtr("shared-key"),
 									},
@@ -203,7 +210,10 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 			},
 			expectedResult: map[string]any{
 				"fluentforwardexporter/default_output2": map[string]any{
-					"endpoint":               "http://example.com",
+					"endpoint": map[string]any{
+						"tcp_addr":                "http://example.com",
+						"validate_tcp_resolution": false,
+					},
 					"connection_timeout":     "30s",
 					"shared_key":             "shared-key",
 					"require_ack":            true,

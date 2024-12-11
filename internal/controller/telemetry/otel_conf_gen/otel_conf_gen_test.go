@@ -271,7 +271,9 @@ func TestOtelColConfComplex(t *testing.T) {
 						Spec: v1alpha1.OutputSpec{
 							Fluentforward: &v1alpha1.Fluentforward{
 								TCPClientSettings: v1alpha1.TCPClientSettings{
-									Endpoint: utils.ToPtr("fluentd.example-tenant-b-ns.svc.cluster.local:24224"),
+									Endpoint: &v1alpha1.Endpoint{
+										TCPAddr: utils.ToPtr("fluentd.example-tenant-b-ns.svc.cluster.local:24224"),
+									},
 									TLSSetting: &v1alpha1.TLSClientSetting{
 										Insecure: true,
 									},

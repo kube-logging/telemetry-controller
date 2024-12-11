@@ -99,6 +99,39 @@ type OTLPHTTP struct {
 	HTTPClientConfig `json:",inline"`
 }
 
+type Endpoint struct {
+	// TCPAddr is the address of the server to connect to.
+	TCPAddr *string `json:"tcp_addr"`
+	// Controls whether to validate the tcp address.
+	// Turning this ON may result in the collector failing to start if it came up faster then the endpoint.
+	// default is false.
+	ValidateTCPResolution bool `json:"validate_tcp_resolution"`
+}
+
+type KubernetesMetadata struct {
+	Key              string `json:"key"`
+	IncludePodLabels bool   `json:"include_pod_labels"`
+}
+
+// TCPClientSettings defines common settings for a TCP client.
+type TCPClientSettings struct {
+	// +kubebuilder:validation:Required
+
+	// Endpoint to send logs to.
+	*Endpoint `json:"endpoint"`
+
+	// +kubebuilder:validation:Format=duration
+
+	// Connection Timeout parameter configures `net.Dialer`.
+	ConnectionTimeout *string `json:"connection_timeout,omitempty"`
+
+	// TLSSetting struct exposes TLS client configuration.
+	TLSSetting *TLSClientSetting `json:"tls,omitempty"`
+
+	// SharedKey is used for authorization with the server that knows it.
+	SharedKey *string `json:"shared_key,omitempty"`
+}
+
 // Configuration for the fluentforward exporter.
 type Fluentforward struct {
 	TCPClientSettings `json:",inline"`
@@ -118,27 +151,6 @@ type Fluentforward struct {
 	QueueConfig *QueueSettings      `json:"sending_queue,omitempty"`
 	RetryConfig *BackOffConfig      `json:"retry_on_failure,omitempty"`
 	Kubernetes  *KubernetesMetadata `json:"kubernetes_metadata,omitempty"`
-}
-
-type KubernetesMetadata struct {
-	Key              string `json:"key"`
-	IncludePodLabels bool   `json:"include_pod_labels"`
-}
-
-type TCPClientSettings struct {
-	// The target endpoint URI to send data to (e.g.: some.url:24224).
-	Endpoint *string `json:"endpoint,omitempty"`
-
-	// +kubebuilder:validation:Format=duration
-
-	// Connection Timeout parameter configures `net.Dialer`.
-	ConnectionTimeout *string `json:"connection_timeout,omitempty"`
-
-	// TLSSetting struct exposes TLS client configuration.
-	TLSSetting *TLSClientSetting `json:"tls,omitempty"`
-
-	// SharedKey is used for authorization with the server that knows it.
-	SharedKey *string `json:"shared_key,omitempty"`
 }
 
 // OutputStatus defines the observed state of Output
