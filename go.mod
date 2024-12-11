@@ -176,3 +176,6 @@ require (
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
+
+// ref: https://github.com/darccio/mergo/blob/2b1eb9c67d7332f286430af241180c5005a6a5a4/README.md?plain=1#L53
+replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.16

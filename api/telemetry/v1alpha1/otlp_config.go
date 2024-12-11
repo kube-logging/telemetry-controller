@@ -17,7 +17,6 @@ package v1alpha1
 import (
 	"time"
 
-	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configopaque"
 )
@@ -30,67 +29,35 @@ type TimeoutSettings struct {
 
 // QueueSettings defines configuration for queueing batches before sending to the consumerSender.
 type QueueSettings struct {
-	// Enabled indicates whether to not enqueue batches before sending to the consumerSender.
-	Enabled bool `json:"enabled,omitempty"`
-
 	// NumConsumers is the number of consumers from the queue.
-	NumConsumers int `json:"num_consumers,omitempty"`
+	NumConsumers *int `json:"num_consumers,omitempty"`
 
 	// QueueSize is the maximum number of batches allowed in queue at a given time.
 	// Default value is 100.
-	QueueSize int `json:"queue_size,omitempty"`
-
-	// If Storage is not empty, enables the persistent storage and uses the component specified
-	// as a storage extension for the persistent queue.
-	// WARNING: This field will be set by the operator, based on the persistence config
-	// set on the tenant that the output belongs to.
-	Storage *string `json:"storage,omitempty"`
-}
-
-func (q *QueueSettings) SetDefaultQueueSettings() {
-	if q == nil {
-		q = &QueueSettings{}
-	}
-	q.Enabled = true
-	if q.QueueSize == 0 || q.QueueSize < 0 {
-		q.QueueSize = 100
-	}
+	QueueSize *int `json:"queue_size,omitempty"`
 }
 
 // BackOffConfig defines configuration for retrying batches in case of export failure.
 // The current supported strategy is exponential backoff.
 type BackOffConfig struct {
-	// Enabled indicates whether to not retry sending batches in case of export failure.
-	Enabled bool `json:"enabled,omitempty"`
-
 	// InitialInterval the time to wait after the first failure before retrying.
-	InitialInterval time.Duration `json:"initial_interval,omitempty"`
+	InitialInterval *time.Duration `json:"initial_interval,omitempty"`
 
 	// RandomizationFactor is a random factor used to calculate next backoffs
 	// Randomized interval = RetryInterval * (1 ± RandomizationFactor)
-	RandomizationFactor string `json:"randomization_factor,omitempty"`
+	RandomizationFactor *string `json:"randomization_factor,omitempty"`
 
 	// Multiplier is the value multiplied by the backoff interval bounds
-	Multiplier string `json:"multiplier,omitempty"`
+	Multiplier *string `json:"multiplier,omitempty"`
 
 	// MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
 	// consecutive retries will always be `MaxInterval`.
-	MaxInterval time.Duration `json:"max_interval,omitempty"`
+	MaxInterval *time.Duration `json:"max_interval,omitempty"`
 
 	// MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
 	// Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
 	// Default value is 0 to ensure that the data is never discarded.
 	MaxElapsedTime *time.Duration `json:"max_elapsed_time,omitempty"`
-}
-
-func (b *BackOffConfig) SetDefaultBackOffConfig() {
-	if b == nil {
-		b = &BackOffConfig{}
-	}
-	b.Enabled = true
-	if b.MaxElapsedTime == nil {
-		b.MaxElapsedTime = utils.ToPtr(0 * time.Second)
-	}
 }
 
 // KeepaliveClientConfig exposes the keepalive.ClientParameters to be used by the exporter.
