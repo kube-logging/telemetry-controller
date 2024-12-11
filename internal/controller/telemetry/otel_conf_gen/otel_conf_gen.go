@@ -69,7 +69,9 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 	maps.Copy(exporters, exporter.GenerateOTLPGRPCExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateOTLPHTTPExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateFluentforwardExporters(ctx, cfgInput.ResourceRelations))
-	maps.Copy(exporters, exporter.GenerateDebugExporters())
+	if cfgInput.Debug {
+		maps.Copy(exporters, exporter.GenerateDebugExporters())
+	}
 
 	return exporters
 }
