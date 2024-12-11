@@ -88,12 +88,15 @@ type TenantSpec struct {
 	SubscriptionNamespaceSelectors []metav1.LabelSelector `json:"subscriptionNamespaceSelectors,omitempty"`
 
 	// Determines the namespaces from which logs are collected by this tenant.
-	// If initialized with an empty list, logs from all namespaces are collected.
-	// If uninitialized, no logs are collected.
+	// Cannot be used together with SelectFromAllNamespaces.
 	LogSourceNamespaceSelectors []metav1.LabelSelector `json:"logSourceNamespaceSelectors,omitempty"`
-	Transform                   `json:"transform,omitempty"`
-	RouteConfig                 `json:"routeConfig,omitempty"`
-	PersistenceConfig           `json:"persistenceConfig,omitempty"`
+
+	// If true, logs are collected from all namespaces.
+	// Cannot be used together with LogSourceNamespaceSelectors.
+	SelectFromAllNamespaces bool `json:"selectFromAllNamespaces,omitempty"`
+	Transform               `json:"transform,omitempty"`
+	RouteConfig             `json:"routeConfig,omitempty"`
+	PersistenceConfig       `json:"persistenceConfig,omitempty"`
 }
 
 // TenantStatus defines the observed state of Tenant
