@@ -170,10 +170,6 @@ spec:
                       BackOffConfig defines configuration for retrying batches in case of export failure.
                       The current supported strategy is exponential backoff.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not retry sending
-                          batches in case of export failure.
-                        type: boolean
                       initial_interval:
                         description: InitialInterval the time to wait after the first
                           failure before retrying.
@@ -206,10 +202,6 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not enqueue batches
-                          before sending to the consumerSender.
-                        type: boolean
                       num_consumers:
                         description: NumConsumers is the number of consumers from
                           the queue.
@@ -219,13 +211,6 @@ spec:
                           QueueSize is the maximum number of batches allowed in queue at a given time.
                           Default value is 100.
                         type: integer
-                      storage:
-                        description: |-
-                          If Storage is not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue.
-                          WARNING: This field will be set by the operator, based on the persistence config
-                          set on the tenant that the output belongs to.
-                        type: string
                     type: object
                   shared_key:
                     description: SharedKey is used for authorization with the server
@@ -369,10 +354,6 @@ spec:
                       BackOffConfig defines configuration for retrying batches in case of export failure.
                       The current supported strategy is exponential backoff.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not retry sending
-                          batches in case of export failure.
-                        type: boolean
                       initial_interval:
                         description: InitialInterval the time to wait after the first
                           failure before retrying.
@@ -405,10 +386,6 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not enqueue batches
-                          before sending to the consumerSender.
-                        type: boolean
                       num_consumers:
                         description: NumConsumers is the number of consumers from
                           the queue.
@@ -418,13 +395,6 @@ spec:
                           QueueSize is the maximum number of batches allowed in queue at a given time.
                           Default value is 100.
                         type: integer
-                      storage:
-                        description: |-
-                          If Storage is not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue.
-                          WARNING: This field will be set by the operator, based on the persistence config
-                          set on the tenant that the output belongs to.
-                        type: string
                     type: object
                   timeout:
                     description: |-
@@ -595,10 +565,6 @@ spec:
                       BackOffConfig defines configuration for retrying batches in case of export failure.
                       The current supported strategy is exponential backoff.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not retry sending
-                          batches in case of export failure.
-                        type: boolean
                       initial_interval:
                         description: InitialInterval the time to wait after the first
                           failure before retrying.
@@ -631,10 +597,6 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not enqueue batches
-                          before sending to the consumerSender.
-                        type: boolean
                       num_consumers:
                         description: NumConsumers is the number of consumers from
                           the queue.
@@ -644,13 +606,6 @@ spec:
                           QueueSize is the maximum number of batches allowed in queue at a given time.
                           Default value is 100.
                         type: integer
-                      storage:
-                        description: |-
-                          If Storage is not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue.
-                          WARNING: This field will be set by the operator, based on the persistence config
-                          set on the tenant that the output belongs to.
-                        type: string
                     type: object
                   timeout:
                     description: Timeout parameter configures `http.Client.Timeout`.

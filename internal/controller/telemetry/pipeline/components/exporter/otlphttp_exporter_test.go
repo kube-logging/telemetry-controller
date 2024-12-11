@@ -382,17 +382,15 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								OTLPHTTP: &v1alpha1.OTLPHTTP{
-									QueueConfig: v1alpha1.QueueSettings{
-										Enabled:      true,
-										NumConsumers: 10,
-										QueueSize:    100,
+									QueueConfig: &v1alpha1.QueueSettings{
+										NumConsumers: utils.ToPtr(10),
+										QueueSize:    utils.ToPtr(100),
 									},
-									RetryConfig: v1alpha1.BackOffConfig{
-										Enabled:             true,
-										InitialInterval:     5 * time.Second,
-										RandomizationFactor: "0.1",
-										Multiplier:          "2.0",
-										MaxInterval:         10 * time.Second,
+									RetryConfig: &v1alpha1.BackOffConfig{
+										InitialInterval:     utils.ToPtr(5 * time.Second),
+										RandomizationFactor: utils.ToPtr("0.1"),
+										Multiplier:          utils.ToPtr("2.0"),
+										MaxInterval:         utils.ToPtr(10 * time.Second),
 										MaxElapsedTime:      utils.ToPtr(60 * time.Second),
 									},
 									HTTPClientConfig: v1alpha1.HTTPClientConfig{

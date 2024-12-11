@@ -26,33 +26,52 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+type OTLPGRPCWrapper struct {
+	QueueConfig               *queueWrapper   `json:"sending_queue,omitempty"`
+	RetryConfig               *backOffWrapper `json:"retry_on_failure,omitempty"`
+	v1alpha1.TimeoutSettings  `json:",inline"`
+	v1alpha1.GRPCClientConfig `json:",inline"`
+}
+
+func (w *OTLPGRPCWrapper) mapToOTLPGRPCWrapper(apiConfig *v1alpha1.OTLPGRPC) {
+	w.QueueConfig = &queueWrapper{}
+	w.RetryConfig = &backOffWrapper{}
+	w.QueueConfig.setDefaultQueueSettings(apiConfig.QueueConfig)
+	w.RetryConfig.setDefaultBackOffConfig(apiConfig.RetryConfig)
+
+	if apiConfig.TimeoutSettings.Timeout != nil {
+		w.TimeoutSettings.Timeout = apiConfig.TimeoutSettings.Timeout
+	}
+	w.GRPCClientConfig = apiConfig.GRPCClientConfig
+}
+
 func GenerateOTLPGRPCExporters(ctx context.Context, resourceRelations components.ResourceRelations) map[string]any {
 	logger := log.FromContext(ctx)
 
 	result := make(map[string]any)
 	for _, output := range resourceRelations.OutputsWithSecretData {
 		if output.Output.Spec.OTLPGRPC != nil {
-			output.Output.Spec.OTLPGRPC.QueueConfig.SetDefaultQueueSettings()
-			output.Output.Spec.OTLPGRPC.RetryConfig.SetDefaultBackOffConfig()
+			internalConfig := OTLPGRPCWrapper{}
+			internalConfig.mapToOTLPGRPCWrapper(output.Output.Spec.OTLPGRPC)
 			tenant, err := resourceRelations.FindTenantForOutput(output.Output.NamespacedName())
 			if err != nil {
 				logger.Error(err, "failed to find tenant for output, skipping", "output", output.Output.NamespacedName().String())
 				continue
 			}
 			if tenant.Spec.PersistenceConfig.EnableFileStorage {
-				output.Output.Spec.OTLPGRPC.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("file_storage/%s", tenant.Name))
+				internalConfig.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("file_storage/%s", tenant.Name))
 			}
 
 			if output.Output.Spec.Authentication != nil {
 				if output.Output.Spec.Authentication.BasicAuth != nil {
-					output.Output.Spec.OTLPGRPC.Auth = &v1alpha1.Authentication{
+					internalConfig.Auth = &v1alpha1.Authentication{
 						AuthenticatorID: utils.ToPtr(fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name))}
 				} else if output.Output.Spec.Authentication.BearerAuth != nil {
-					output.Output.Spec.OTLPGRPC.Auth = &v1alpha1.Authentication{
+					internalConfig.Auth = &v1alpha1.Authentication{
 						AuthenticatorID: utils.ToPtr(fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name))}
 				}
 			}
-			otlpGrpcValuesMarshaled, err := json.Marshal(output.Output.Spec.OTLPGRPC)
+			otlpGrpcValuesMarshaled, err := json.Marshal(internalConfig)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
