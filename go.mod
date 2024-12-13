@@ -12,8 +12,6 @@ require (
 	github.com/onsi/gomega v1.36.0
 	github.com/open-telemetry/opentelemetry-operator v0.114.0
 	github.com/prometheus/client_golang v1.20.5
-	github.com/siliconbrain/go-mapseqs v0.4.0
-	github.com/siliconbrain/go-seqs v0.13.0
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/component v0.115.0
 	go.opentelemetry.io/collector/config/configauth v0.115.0

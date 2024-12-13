@@ -17,15 +17,12 @@ package otel_conf_gen
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
-	"github.com/siliconbrain/go-mapseqs/mapseqs"
-	"github.com/siliconbrain/go-seqs/seqs"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,6 +59,9 @@ func TestOtelColConfComplex(t *testing.T) {
 					},
 				},
 			},
+			Status: v1alpha1.SubscriptionStatus{
+				Tenant: "example-tenant-a",
+			},
 		},
 		{Name: "subscription-example-2", Namespace: "example-tenant-a-ns"}: {
 			ObjectMeta: metav1.ObjectMeta{
@@ -76,6 +76,9 @@ func TestOtelColConfComplex(t *testing.T) {
 						Namespace: "collector",
 					},
 				},
+			},
+			Status: v1alpha1.SubscriptionStatus{
+				Tenant: "example-tenant-a",
 			},
 		},
 		{Name: "subscription-example-3", Namespace: "example-tenant-b-ns"}: {
@@ -95,6 +98,9 @@ func TestOtelColConfComplex(t *testing.T) {
 						Namespace: "collector",
 					},
 				},
+			},
+			Status: v1alpha1.SubscriptionStatus{
+				Tenant: "example-tenant-b",
 			},
 		},
 	}
@@ -129,6 +135,16 @@ func TestOtelColConfComplex(t *testing.T) {
 						LogSourceNamespaces: []string{
 							"example-tenant-a",
 						},
+						Subscriptions: []v1alpha1.NamespacedName{
+							{
+								Namespace: "example-tenant-a-ns",
+								Name:      "subscription-example-1",
+							},
+							{
+								Namespace: "example-tenant-a-ns",
+								Name:      "subscription-example-2",
+							},
+						},
 					},
 				},
 				{
@@ -158,25 +174,10 @@ func TestOtelColConfComplex(t *testing.T) {
 						LogSourceNamespaces: []string{
 							"example-tenant-b",
 						},
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "example-tenant-a",
-					},
-					Spec: v1alpha1.TenantSpec{
-						SubscriptionNamespaceSelectors: []metav1.LabelSelector{
+						Subscriptions: []v1alpha1.NamespacedName{
 							{
-								MatchLabels: map[string]string{
-									"nsSelector": "example-tenant-a",
-								},
-							},
-						},
-						LogSourceNamespaceSelectors: []metav1.LabelSelector{
-							{
-								MatchLabels: map[string]string{
-									"nsSelector": "example-tenant-a",
-								},
+								Namespace: "example-tenant-b-ns",
+								Name:      "subscription-example-3",
 							},
 						},
 					},
@@ -253,7 +254,7 @@ func TestOtelColConfComplex(t *testing.T) {
 						Spec: v1alpha1.OutputSpec{
 							OTLPHTTP: &v1alpha1.OTLPHTTP{
 								HTTPClientConfig: v1alpha1.HTTPClientConfig{
-									Endpoint: utils.ToPtr[string]("loki.example-tenant-a-ns.svc.cluster.local:4317"),
+									Endpoint: utils.ToPtr("loki.example-tenant-a-ns.svc.cluster.local:4317"),
 									TLSSetting: &v1alpha1.TLSClientSetting{
 										Insecure: true,
 									},
@@ -291,42 +292,24 @@ func TestOtelColConfComplex(t *testing.T) {
 		},
 	}
 
-	// TODO extract this logic
-
-	subscriptionOutputMap := map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{}
+	inputCfg.SubscriptionOutputMap = make(map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName)
 	for _, subscription := range inputCfg.Subscriptions {
-		subscriptionOutputMap[subscription.NamespacedName()] = subscription.Spec.Outputs
+		inputCfg.SubscriptionOutputMap[subscription.NamespacedName()] = subscription.Spec.Outputs
 	}
-	inputCfg.SubscriptionOutputMap = subscriptionOutputMap
 
-	inputCfg.TenantSubscriptionMap = map[string][]v1alpha1.NamespacedName{}
-	tenantA := inputCfg.Tenants[0]
-	tenantASubscriptions := make(map[v1alpha1.NamespacedName]v1alpha1.Subscription)
-	for subName, sub := range inputCfg.Subscriptions {
-		if subName.Namespace != "example-tenant-b-ns" {
-			tenantASubscriptions[subName] = sub
+	inputCfg.TenantSubscriptionMap = make(map[string][]v1alpha1.NamespacedName)
+	for _, tenant := range inputCfg.Tenants {
+		for _, subscription := range inputCfg.Subscriptions {
+			if subscription.Status.Tenant == tenant.Name {
+				inputCfg.TenantSubscriptionMap[tenant.Name] = append(inputCfg.TenantSubscriptionMap[tenant.Name], subscription.NamespacedName())
+			}
 		}
-	}
-	inputCfg.TenantSubscriptionMap[tenantA.Name] = seqs.ToSlice(mapseqs.KeysOf(tenantASubscriptions))
-
-	tenantB := inputCfg.Tenants[1]
-	inputCfg.TenantSubscriptionMap[tenantB.Name] = []v1alpha1.NamespacedName{
-		{
-			Name:      "subscription-example-3",
-			Namespace: "example-tenant-b-ns",
-		},
 	}
 
 	// Config
 
 	// The receiver and exporter entries are not serialized because of tags on the underlying data structure. The tests won't contain them, this is a known issue.
 	generatedConfig, _ := inputCfg.AssembleConfig(context.TODO())
-	actualJSONBytes, err1 := json.Marshal(generatedConfig)
-	if err1 != nil {
-		t.Fatalf("error %v", err1)
-
-	}
-	print(actualJSONBytes)
 	actualYAMLBytes, err := yaml.Marshal(generatedConfig)
 	if err != nil {
 		t.Fatalf("error %v", err)
