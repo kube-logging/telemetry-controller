@@ -51,3 +51,12 @@ opentelemetry-operator:
   manager:
     collectorImage:
       repository: otel/opentelemetry-collector-k8s
+
+monitoring:
+  serviceMonitor:
+    # -- Create a Prometheus Operator ServiceMonitor object.
+    enabled: false
+
+    additionalLabels: {}
+    metricRelabelings: []
+    relabelings: []
