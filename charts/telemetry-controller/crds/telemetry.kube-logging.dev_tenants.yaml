@@ -57,8 +57,7 @@ spec:
               logSourceNamespaceSelectors:
                 description: |-
                   Determines the namespaces from which logs are collected by this tenant.
-                  If initialized with an empty list, logs from all namespaces are collected.
-                  If uninitialized, no logs are collected.
+                  Cannot be used together with SelectFromAllNamespaces.
                 items:
                   description: |-
                     A label selector is a label query over a set of resources. The result of matchLabels and
@@ -109,10 +108,28 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              persistenceConfig:
+                description: |-
+                  Configuration for persistence, will be used to generate
+                  the filestorage extension.
+                properties:
+                  directory:
+                    description: |-
+                      The directory where logs will be persisted.
+                      If unset or an invalid path is given, then an OS specific
+                      default value will be used.
+                      The cluster administrator must ensure that the directory
+                      is unique for each tenant.
+                      If unset /var/lib/otelcol/file_storage/<tenant_name> will be used.
+                    type: string
+                  enableFileStorage:
+                    description: Determines whether file storage is enabled or not.
+                    type: boolean
+                type: object
               routeConfig:
                 description: |-
                   RouteConfig defines the routing configuration for a tenant
-                  it will be used to generate routing connectors
+                  it will be used to generate routing connectors.
                 properties:
                   defaultPipelines:
                     description: Contains the list of pipelines to use when a record
@@ -136,6 +153,11 @@ spec:
                       May only be false when used with resource context.
                     type: boolean
                 type: object
+              selectFromAllNamespaces:
+                description: |-
+                  If true, logs are collected from all namespaces.
+                  Cannot be used together with LogSourceNamespaceSelectors.
+                type: boolean
               subscriptionNamespaceSelectors:
                 description: Determines the namespaces from which subscriptions are
                   collected by this tenant.
@@ -191,7 +213,7 @@ spec:
                 type: array
               transform:
                 description: Transform represents the Transform processor, which modifies
-                  telemetry based on its configuration
+                  telemetry based on its configuration.
                 properties:
                   errorMode:
                     description: |-

@@ -28,7 +28,7 @@ type TransformStatement struct {
 	Statements []string `json:"statements,omitempty"`
 }
 
-// Transform represents the Transform processor, which modifies telemetry based on its configuration
+// Transform represents the Transform processor, which modifies telemetry based on its configuration.
 type Transform struct {
 	// Name of the Transform processor
 	Name string `json:"name,omitempty"`
@@ -50,7 +50,7 @@ type Transform struct {
 }
 
 // RouteConfig defines the routing configuration for a tenant
-// it will be used to generate routing connectors
+// it will be used to generate routing connectors.
 type RouteConfig struct {
 	// Contains the list of pipelines to use when a record does not meet any of specified conditions.
 	DefaultPipelines []string `json:"defaultPipelines,omitempty"` // TODO: Provide users with a guide to determine generated pipeline names
@@ -67,17 +67,36 @@ type RouteConfig struct {
 	MatchOnce bool `json:"matchOnce,omitempty"`
 }
 
+// Configuration for persistence, will be used to generate
+// the filestorage extension.
+type PersistenceConfig struct {
+	// Determines whether file storage is enabled or not.
+	EnableFileStorage bool `json:"enableFileStorage,omitempty"`
+
+	// The directory where logs will be persisted.
+	// If unset or an invalid path is given, then an OS specific
+	// default value will be used.
+	// The cluster administrator must ensure that the directory
+	// is unique for each tenant.
+	// If unset /var/lib/otelcol/file_storage/<tenant_name> will be used.
+	Directory string `json:"directory,omitempty"`
+}
+
 // TenantSpec defines the desired state of Tenant
 type TenantSpec struct {
 	// Determines the namespaces from which subscriptions are collected by this tenant.
 	SubscriptionNamespaceSelectors []metav1.LabelSelector `json:"subscriptionNamespaceSelectors,omitempty"`
 
 	// Determines the namespaces from which logs are collected by this tenant.
-	// If initialized with an empty list, logs from all namespaces are collected.
-	// If uninitialized, no logs are collected.
+	// Cannot be used together with SelectFromAllNamespaces.
 	LogSourceNamespaceSelectors []metav1.LabelSelector `json:"logSourceNamespaceSelectors,omitempty"`
-	Transform                   `json:"transform,omitempty"`
-	RouteConfig                 `json:"routeConfig,omitempty"`
+
+	// If true, logs are collected from all namespaces.
+	// Cannot be used together with LogSourceNamespaceSelectors.
+	SelectFromAllNamespaces bool `json:"selectFromAllNamespaces,omitempty"`
+	Transform               `json:"transform,omitempty"`
+	RouteConfig             `json:"routeConfig,omitempty"`
+	PersistenceConfig       `json:"persistenceConfig,omitempty"`
 }
 
 // TenantStatus defines the observed state of Tenant

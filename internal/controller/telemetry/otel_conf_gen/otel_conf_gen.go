@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -29,6 +30,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/connector"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/exporter"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension/storage"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/processor"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/receiver"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
@@ -38,26 +40,21 @@ import (
 var ErrNoResources = errors.New("there are no resources deployed that the collector(s) can use")
 
 type OtelColConfigInput struct {
-	// These must only include resources that are selected by the collector, tenant labelselectors, and listed outputs in the subscriptions
-	Tenants               []v1alpha1.Tenant
-	Subscriptions         map[v1alpha1.NamespacedName]v1alpha1.Subscription
-	Bridges               []v1alpha1.Bridge
-	OutputsWithSecretData []components.OutputWithSecretData
-	MemoryLimiter         v1alpha1.MemoryLimiter
-
-	// Subscriptions map, where the key is the Tenants' name, value is a slice of subscriptions' namespaced name
-	TenantSubscriptionMap map[string][]v1alpha1.NamespacedName
-	SubscriptionOutputMap map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName
-	Debug                 bool
+	components.ResourceRelations
+	MemoryLimiter v1alpha1.MemoryLimiter
+	Debug         bool
 }
 
 func (cfgInput *OtelColConfigInput) IsEmpty() bool {
+	if cfgInput == nil {
+		return true
+	}
+
 	v := reflect.ValueOf(*cfgInput)
 	for i := range v.NumField() {
 		field := v.Field(i)
-		switch field.Kind() {
-		case reflect.Slice, reflect.Map:
-			if field.Len() != 0 {
+		if v.Field(i).Kind() == reflect.Struct {
+			if !reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface()) {
 				return false
 			}
 		}
@@ -69,10 +66,12 @@ func (cfgInput *OtelColConfigInput) IsEmpty() bool {
 func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[string]any {
 	exporters := map[string]any{}
 	maps.Copy(exporters, exporter.GenerateMetricsExporters())
-	maps.Copy(exporters, exporter.GenerateOTLPGRPCExporters(ctx, cfgInput.OutputsWithSecretData))
-	maps.Copy(exporters, exporter.GenerateOTLPHTTPExporters(ctx, cfgInput.OutputsWithSecretData))
-	maps.Copy(exporters, exporter.GenerateFluentforwardExporters(ctx, cfgInput.OutputsWithSecretData))
-	maps.Copy(exporters, exporter.GenerateDebugExporters())
+	maps.Copy(exporters, exporter.GenerateOTLPGRPCExporters(ctx, cfgInput.ResourceRelations))
+	maps.Copy(exporters, exporter.GenerateOTLPHTTPExporters(ctx, cfgInput.ResourceRelations))
+	maps.Copy(exporters, exporter.GenerateFluentforwardExporters(ctx, cfgInput.ResourceRelations))
+	if cfgInput.Debug {
+		maps.Copy(exporters, exporter.GenerateDebugExporters())
+	}
 
 	return exporters
 }
@@ -108,7 +107,7 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	return processors
 }
 
-func (cfgInput *OtelColConfigInput) generateExtensions() map[string]any {
+func (cfgInput *OtelColConfigInput) generateExtensions() (map[string]any, []string) {
 	extensions := make(map[string]any)
 	for _, output := range cfgInput.OutputsWithSecretData {
 		if output.Output.Spec.Authentication != nil {
@@ -123,7 +122,24 @@ func (cfgInput *OtelColConfigInput) generateExtensions() map[string]any {
 		}
 	}
 
-	return extensions
+	for _, tenant := range cfgInput.Tenants {
+		if tenant.Spec.PersistenceConfig.EnableFileStorage {
+			extensions[fmt.Sprintf("file_storage/%s", tenant.Name)] = storage.GenerateFileStorageExtensionForTenant(tenant.Spec.PersistenceConfig.Directory, tenant.Name)
+		}
+	}
+
+	var extensionNames []string
+	if len(extensions) > 0 {
+		extensionNames = make([]string, 0, len(extensions))
+		for k := range extensions {
+			extensionNames = append(extensionNames, k)
+		}
+	} else {
+		extensionNames = nil
+	}
+	sort.Strings(extensionNames)
+
+	return extensions, extensionNames
 }
 
 func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
@@ -133,11 +149,8 @@ func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
 			return tenantName == t.Name
 		}); tenantIdx != -1 {
 			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
-
-			// Generate filelog receiver for the tenant if it has any logsource namespaces.
-			// Or Handle "all namespaces" case: selectors are initialized but empty
-			if len(namespaces) > 0 || (cfgInput.Tenants[tenantIdx].Spec.LogSourceNamespaceSelectors != nil && len(namespaces) == 0) {
-				receivers[fmt.Sprintf("filelog/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces)
+			if len(namespaces) > 0 || cfgInput.Tenants[tenantIdx].Spec.SelectFromAllNamespaces {
+				receivers[fmt.Sprintf("filelog/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces, cfgInput.Tenants[tenantIdx])
 			}
 		}
 	}
@@ -278,7 +291,7 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) (otelv1b
 
 	processors := cfgInput.generateProcessors()
 
-	extensions := cfgInput.generateExtensions()
+	extensions, extensionNames := cfgInput.generateExtensions()
 
 	receivers := cfgInput.generateReceivers()
 
@@ -297,16 +310,6 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) (otelv1b
 			pipeline.Processors = memProcessors
 			pipelines[name] = pipeline
 		}
-	}
-
-	var extensionNames []string
-	if len(extensions) > 0 {
-		extensionNames = make([]string, 0, len(extensions))
-		for k := range extensions {
-			extensionNames = append(extensionNames, k)
-		}
-	} else {
-		extensionNames = nil
 	}
 
 	otelConfig := otelv1beta1.Config{
@@ -350,6 +353,12 @@ func validateTenants(tenants *[]v1alpha1.Tenant) error {
 
 	if len(*tenants) == 0 {
 		return errors.New("no tenants provided, at least one tenant must be provided")
+	}
+
+	for _, tenant := range *tenants {
+		if tenant.Status.LogSourceNamespaces != nil && tenant.Spec.SelectFromAllNamespaces {
+			result = multierror.Append(result, fmt.Errorf("tenant %s has both log source namespace selectors and select from all namespaces enabled", tenant.Name))
+		}
 	}
 
 	return result.ErrorOrNil()

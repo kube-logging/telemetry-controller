@@ -19,7 +19,6 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
-	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 )
 
@@ -57,7 +56,7 @@ func newRoutingConnector(name string, tenantRouteConfig v1alpha1.RouteConfig) Ro
 
 func GenerateRoutingConnectorForTenantsSubscriptions(tenantName string, tenantRouteConfig v1alpha1.RouteConfig, subscriptionNames []v1alpha1.NamespacedName, subscriptions map[v1alpha1.NamespacedName]v1alpha1.Subscription) RoutingConnector {
 	rc := newRoutingConnector(fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName), tenantRouteConfig)
-	utils.SortNamespacedNames(subscriptionNames)
+	components.SortNamespacedNames(subscriptionNames)
 	seenConditionsPipelineMap := make(map[string][]string)
 	for _, subscriptionRef := range subscriptionNames {
 		subscription, ok := subscriptions[subscriptionRef]
@@ -77,7 +76,7 @@ func GenerateRoutingConnectorForTenantsSubscriptions(tenantName string, tenantRo
 
 func GenerateRoutingConnectorForSubscriptionsOutputs(subscriptionRef v1alpha1.NamespacedName, outputNames []v1alpha1.NamespacedName) RoutingConnector {
 	rc := newRoutingConnector(fmt.Sprintf("routing/subscription_%s_%s_outputs", subscriptionRef.Namespace, subscriptionRef.Name), v1alpha1.RouteConfig{})
-	utils.SortNamespacedNames(outputNames)
+	components.SortNamespacedNames(outputNames)
 	pipelines := []string{}
 	for _, outputRef := range outputNames {
 		pipelines = append(pipelines, fmt.Sprintf("logs/output_%s_%s_%s_%s", subscriptionRef.Namespace, subscriptionRef.Name, outputRef.Namespace, outputRef.Name))

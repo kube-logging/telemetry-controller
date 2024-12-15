@@ -150,8 +150,22 @@ spec:
                       to be added to each log record.
                     type: object
                   endpoint:
-                    description: 'The target endpoint URI to send data to (e.g.: some.url:24224).'
-                    type: string
+                    description: Endpoint to send logs to.
+                    properties:
+                      tcp_addr:
+                        description: TCPAddr is the address of the server to connect
+                          to.
+                        type: string
+                      validate_tcp_resolution:
+                        description: |-
+                          Controls whether to validate the tcp address.
+                          Turning this ON may result in the collector failing to start if it came up faster then the endpoint.
+                          default is false.
+                        type: boolean
+                    required:
+                    - tcp_addr
+                    - validate_tcp_resolution
+                    type: object
                   kubernetes_metadata:
                     properties:
                       include_pod_labels:
@@ -170,10 +184,6 @@ spec:
                       BackOffConfig defines configuration for retrying batches in case of export failure.
                       The current supported strategy is exponential backoff.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not retry sending
-                          batches in case of export failure.
-                        type: boolean
                       initial_interval:
                         description: InitialInterval the time to wait after the first
                           failure before retrying.
@@ -183,6 +193,7 @@ spec:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                          Default value is 0 to ensure that the data is never discarded.
                         format: int64
                         type: integer
                       max_interval:
@@ -205,23 +216,15 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not enqueue batches
-                          before sending to the consumerSender.
-                        type: boolean
                       num_consumers:
                         description: NumConsumers is the number of consumers from
                           the queue.
                         type: integer
                       queue_size:
-                        description: QueueSize is the maximum number of batches allowed
-                          in queue at a given time.
-                        type: integer
-                      storage:
                         description: |-
-                          StorageID if not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue
-                        type: string
+                          QueueSize is the maximum number of batches allowed in queue at a given time.
+                          Default value is 100.
+                        type: integer
                     type: object
                   shared_key:
                     description: SharedKey is used for authorization with the server
@@ -294,6 +297,8 @@ spec:
                           https://godoc.org/crypto/tls#Config for more information. (optional)
                         type: string
                     type: object
+                required:
+                - endpoint
                 type: object
               otlp:
                 description: |-
@@ -365,10 +370,6 @@ spec:
                       BackOffConfig defines configuration for retrying batches in case of export failure.
                       The current supported strategy is exponential backoff.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not retry sending
-                          batches in case of export failure.
-                        type: boolean
                       initial_interval:
                         description: InitialInterval the time to wait after the first
                           failure before retrying.
@@ -378,6 +379,7 @@ spec:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                          Default value is 0 to ensure that the data is never discarded.
                         format: int64
                         type: integer
                       max_interval:
@@ -400,23 +402,15 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not enqueue batches
-                          before sending to the consumerSender.
-                        type: boolean
                       num_consumers:
                         description: NumConsumers is the number of consumers from
                           the queue.
                         type: integer
                       queue_size:
-                        description: QueueSize is the maximum number of batches allowed
-                          in queue at a given time.
-                        type: integer
-                      storage:
                         description: |-
-                          StorageID if not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue
-                        type: string
+                          QueueSize is the maximum number of batches allowed in queue at a given time.
+                          Default value is 100.
+                        type: integer
                     type: object
                   timeout:
                     description: |-
@@ -587,10 +581,6 @@ spec:
                       BackOffConfig defines configuration for retrying batches in case of export failure.
                       The current supported strategy is exponential backoff.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not retry sending
-                          batches in case of export failure.
-                        type: boolean
                       initial_interval:
                         description: InitialInterval the time to wait after the first
                           failure before retrying.
@@ -600,6 +590,7 @@ spec:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                          Default value is 0 to ensure that the data is never discarded.
                         format: int64
                         type: integer
                       max_interval:
@@ -622,23 +613,15 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
-                      enabled:
-                        description: Enabled indicates whether to not enqueue batches
-                          before sending to the consumerSender.
-                        type: boolean
                       num_consumers:
                         description: NumConsumers is the number of consumers from
                           the queue.
                         type: integer
                       queue_size:
-                        description: QueueSize is the maximum number of batches allowed
-                          in queue at a given time.
-                        type: integer
-                      storage:
                         description: |-
-                          StorageID if not empty, enables the persistent storage and uses the component specified
-                          as a storage extension for the persistent queue
-                        type: string
+                          QueueSize is the maximum number of batches allowed in queue at a given time.
+                          Default value is 100.
+                        type: integer
                     type: object
                   timeout:
                     description: Timeout parameter configures `http.Client.Timeout`.
