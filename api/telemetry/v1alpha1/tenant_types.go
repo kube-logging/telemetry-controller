@@ -82,6 +82,8 @@ type PersistenceConfig struct {
 	Directory string `json:"directory,omitempty"`
 }
 
+//+kubebuilder:validation:XValidation:rule="!(has(self.logSourceNamespaceSelectors) && self.logSourceNamespaceSelectors.size() > 0 && has(self.selectFromAllNamespaces) && self.selectFromAllNamespaces == true)",message="LogSourceNamespaceSelectors and SelectFromAllNamespaces cannot be set at the same time"
+
 // TenantSpec defines the desired state of Tenant
 type TenantSpec struct {
 	// Determines the namespaces from which subscriptions are collected by this tenant.

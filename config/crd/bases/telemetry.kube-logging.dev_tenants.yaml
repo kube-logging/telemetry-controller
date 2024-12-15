@@ -313,6 +313,12 @@ spec:
                     type: array
                 type: object
             type: object
+            x-kubernetes-validations:
+            - message: LogSourceNamespaceSelectors and SelectFromAllNamespaces cannot
+                be set at the same time
+              rule: '!(has(self.logSourceNamespaceSelectors) && self.logSourceNamespaceSelectors.size()
+                > 0 && has(self.selectFromAllNamespaces) && self.selectFromAllNamespaces
+                == true)'
           status:
             description: TenantStatus defines the observed state of Tenant
             properties:
