@@ -11,7 +11,7 @@ image:
   tag: ""
 
 extraArgs:
-  - -leader-elect=true
+  - --leader-elect=true
 
 imagePullSecrets: []
 nameOverride: ""
@@ -56,6 +56,8 @@ opentelemetry-operator:
       repository: otel/opentelemetry-collector-k8s
 
 monitoring:
+  secure: true
+
   serviceMonitor:
     # -- Create a Prometheus Operator ServiceMonitor object.
     enabled: false

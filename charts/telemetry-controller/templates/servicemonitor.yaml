@@ -16,12 +16,18 @@ spec:
       control-plane: controller-manager
 {{ include "telemetry-controller.labels" . | indent 6 }}
   endpoints:
+    {{- if .Values.monitoring.secure }}
     - path: /metrics
       port: https
       scheme: https
       bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       tlsConfig:
         insecureSkipVerify: true
+    {{- else }}
+    - path: /metrics
+      port: http
+      scheme: http
+    {{- end }}
     {{- with .Values.monitoring.serviceMonitor.metricRelabelings }}
     metricRelabelings:
       {{- toYaml . | nindent 6 }}

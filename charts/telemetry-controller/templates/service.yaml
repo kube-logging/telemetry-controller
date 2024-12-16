@@ -8,10 +8,17 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   ports:
+    {{- if .Values.monitoring.secure }}
     - name: https
       port: 8443
       protocol: TCP
       targetPort: 8443
+    {{- else }}
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    {{- end }}
   selector:
     control-plane: controller-manager
     app.kubernetes.io/name: {{ include "telemetry-controller.name" . }}
