@@ -66,6 +66,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set up Cosign
+        uses: sigstore/cosign-installer@v3
+
       - name: Set image name
         id: image-name
         run: echo "value=ghcr.io/${{ github.repository }}" >> "$GITHUB_OUTPUT"
@@ -120,6 +123,32 @@ jobs:
           outputs: ${{ steps.build-output.outputs.value }},name=target
           # push: ${{ inputs.publish }}
 
+      - name: Sign image with GitHub OIDC Token
+        if: ${{ inputs.publish && github.repository_owner == 'kube-logging' }} # Check if the workflow is called by the same GitHub organization
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          images=""
+          for tag in ${TAGS[@]}; do
+            images+="${tag}@${DIGEST} "
+          done
+          
+          cosign sign --yes --rekor-url "https://rekor.sigstore.dev/" ${images}
+
+      - name: Verify signed image with cosign
+        if: ${{ inputs.publish && github.repository_owner == 'kube-logging' }} # Check if the workflow is called by the same GitHub organization
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+            for tag in ${TAGS[@]}; do
+              cosign verify "${tag}@${DIGEST}" \
+                --rekor-url "https://rekor.sigstore.dev/" \
+                --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/artifacts.yaml@${{ github.ref }}" \
+                --certificate-oidc-issuer "https://token.actions.githubusercontent.com" | jq
+            done
+
       - name: Set image ref
         id: image-ref
         run: echo "value=${{ steps.image-name.outputs.value }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
@@ -154,6 +183,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@df409f7d9260372bd5f19e5b04e83cb3c43714ae # v3.27.9
         with:
           sarif_file: trivy-results.sarif
+
   helm-chart:
     name: Helm chart
     runs-on: ubuntu-latest
@@ -175,6 +205,9 @@ jobs:
 
       - name: Set up Helm
         uses: azure/setup-helm@v4.2.0
+
+      - name: Set up Cosign
+        uses: sigstore/cosign-installer@v3
 
       - name: Set chart name
         id: chart-name
@@ -223,10 +256,29 @@ jobs:
         if: inputs.publish && inputs.release
 
       - name: Helm push
-        run: helm push ${{ steps.build.outputs.package }} oci://${{ steps.oci-registry-name.outputs.value }}
+        id: push
+        run: |
+          helm push ${{ steps.build.outputs.package }} oci://${{ steps.oci-registry-name.outputs.value }} &> push-metadata.txt
+          echo "digest=$(awk '/Digest: /{print $2}' push-metadata.txt)" >> "$GITHUB_OUTPUT"
         env:
           HELM_REGISTRY_CONFIG: ~/.docker/config.json
         if: inputs.publish && inputs.release
+
+      - name: Sign chart with GitHub OIDC Token
+        if: ${{ inputs.publish && inputs.release && github.repository_owner == 'kube-logging' }} # Check if the workflow is called by the same GitHub organization
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: cosign sign --yes --rekor-url "https://rekor.sigstore.dev/" "${{ steps.oci-chart-name.outputs.value }}@${DIGEST}"
+
+      - name: Verify signed chart with cosign
+        if: ${{ inputs.publish && inputs.release && github.repository_owner == 'kube-logging' }} # Check if the workflow is called by the same GitHub organization
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          cosign verify "${{ steps.oci-chart-name.outputs.value }}@${DIGEST}" \
+            --rekor-url "https://rekor.sigstore.dev/" \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/artifacts.yaml@${{ github.ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" | jq
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # 0.29.0
