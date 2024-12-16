@@ -10,6 +10,9 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+extraArgs:
+  - --leader-elect=true
+
 imagePullSecrets: []
 nameOverride: ""
 namespaceOverride: ""
@@ -51,3 +54,14 @@ opentelemetry-operator:
   manager:
     collectorImage:
       repository: otel/opentelemetry-collector-k8s
+
+monitoring:
+  secure: true
+
+  serviceMonitor:
+    # -- Create a Prometheus Operator ServiceMonitor object.
+    enabled: false
+
+    additionalLabels: {}
+    metricRelabelings: []
+    relabelings: []

@@ -2,11 +2,8 @@ apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Bridge
 metadata:
   labels:
-    app.kubernetes.io/name: bridge
-    app.kubernetes.io/instance: bridge-sample
-    app.kubernetes.io/part-of: telemetry-controller
+    app.kubernetes.io/name: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: telemetry-controller
   name: bridge-sample
 spec:
   sourceTenant: shared

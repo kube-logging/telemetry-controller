@@ -1,0 +1,42 @@
+{{ if and (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "telemetry-controller.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    control-plane: controller-manager
+{{ include "telemetry-controller.labels" . | nindent 4 }}
+{{- with .Values.monitoring.serviceMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+{{ include "telemetry-controller.labels" . | indent 6 }}
+  endpoints:
+    {{- if .Values.monitoring.secure }}
+    - path: /metrics
+      port: https
+      scheme: https
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true
+    {{- else }}
+    - path: /metrics
+      port: http
+      scheme: http
+    {{- end }}
+    {{- with .Values.monitoring.serviceMonitor.metricRelabelings }}
+    metricRelabelings:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.monitoring.serviceMonitor.relabelings }}
+    relabelings:
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}

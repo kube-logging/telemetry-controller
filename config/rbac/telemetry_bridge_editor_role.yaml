@@ -1,31 +1,27 @@
-# permissions for end users to edit tenants.
+# permissions for end users to edit bridges.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: bridge-editor-role
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: telemetry-controller
-    app.kubernetes.io/part-of: telemetry-controller
+    app.kubernetes.io/name: telemetry-controller
     app.kubernetes.io/managed-by: kustomize
-  name: bridge-editor-role
+  name: telemetry-bridge-editor-role
 rules:
-  - apiGroups:
-      - telemetry.kube-logging.dev
-    resources:
-      - bridges
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - telemetry.kube-logging.dev
-    resources:
-      - bridges/status
-    verbs:
-      - get
+- apiGroups:
+  - telemetry.kube-logging.dev
+  resources:
+  - bridges
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - telemetry.kube-logging.dev
+  resources:
+  - bridges/status
+  verbs:
+  - get

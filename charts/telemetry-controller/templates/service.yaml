@@ -2,15 +2,24 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    control-plane: controller-manager
 {{ include "telemetry-controller.labels" . | indent 4 }}
-  name: '{{ include "telemetry-controller.fullname" . }}-metrics-service'
-  namespace: "{{.Release.Namespace}}"
+  name: {{ include "telemetry-controller.fullname" . }}-metrics-service
+  namespace: {{ .Release.Namespace }}
 spec:
   ports:
+    {{- if .Values.monitoring.secure }}
     - name: https
       port: 8443
       protocol: TCP
-      targetPort: https
+      targetPort: 8443
+    {{- else }}
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    {{- end }}
   selector:
+    control-plane: controller-manager
     app.kubernetes.io/name: {{ include "telemetry-controller.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
