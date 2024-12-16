@@ -27,6 +27,8 @@ metadata:
     collectorLabel: example
   name: example-tenant
 spec:
+  persistenceConfig:
+    enableFileStorage: true
   subscriptionNamespaceSelectors:
     - matchLabels:
         nsSelector: example-tenant
@@ -46,31 +48,9 @@ spec:
       namespace: collector
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Subscription
-metadata:
-  name: subscription-sample-2
-  namespace: example-tenant-ns
-spec:
-  condition: "true"
-  outputs:
-    - name: otlp-test-output-2
-      namespace: collector
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
   name: otlp-test-output
-  namespace: collector
-spec:
-  otlp:
-    endpoint: receiver-collector.telemetry-controller-system.svc.cluster.local:4317
-    tls:
-      insecure: true
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Output
-metadata:
-  name: otlp-test-output-2
   namespace: collector
 spec:
   otlp:

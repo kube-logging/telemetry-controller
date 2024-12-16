@@ -1,0 +1,39 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: receiver
+  namespace: telemetry-controller-system
+spec:
+  managementState: managed
+  image: otel/opentelemetry-collector-contrib:0.112.0
+  volumeMounts:
+    - name: e2e
+      mountPath: /tmp/otelcol-contrib/
+  volumes:
+    - name: e2e
+      hostPath:
+        path: /tmp/otelcol-contrib/
+        type: DirectoryOrCreate
+  initContainers:
+    - name: init-chmod
+      image: busybox
+      command: ["sh", "-c"]
+      args: ["chmod -R 777 /tmp/otelcol-contrib/"]
+      volumeMounts:
+        - name: e2e
+          mountPath: /tmp/otelcol-contrib/
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+    exporters:
+      file/direct:
+        path: /tmp/otelcol-contrib/e2e.log
+        append: true
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp]
+          exporters: [file/direct]
