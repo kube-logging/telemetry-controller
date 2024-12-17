@@ -1,3 +1,26 @@
+####
+##  Dependency versions
+####
+
+# renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
+CONTROLLER_TOOLS_VERSION := v0.16.5
+
+# renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver
+KUSTOMIZE_VERSION := v5.5.0
+
+# renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
+GOLANGCI_LINT_VERSION := v1.62.2
+
+# renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
+KIND_VERSION ?= v0.25.0
+
+# renovate: datasource=go depName=github.com/goph/licensei versioning=semver
+LICENSEI_VERSION = v0.9.0
+
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.31.0
+ENVTEST_OTEL_OPERATOR_VERSION=v0.112.0
+
 BIN := ${PWD}/bin
 
 export PATH := $(BIN):$(PATH)
@@ -5,15 +28,11 @@ export PATH := $(BIN):$(PATH)
 GOVERSION := $(shell go env GOVERSION)
 
 KIND := ${BIN}/kind
-KIND_VERSION ?= v0.25.0
 KIND_IMAGE ?= kindest/node:v1.31.2@sha256:18fbefc20a7113353c7b75b5c869d7145a6abd6269154825872dc59c1329912e
 KIND_CLUSTER := kind
 
 # Image URL to use all building/pushing image targets
 IMG ?= controller:local
-
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.31.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -34,7 +53,6 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 LICENSEI := ${BIN}/licensei
-LICENSEI_VERSION = v0.9.0
 
 ##@ General
 
@@ -86,7 +104,6 @@ test: manifests generate fmt vet envtest ## Run verifications and tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v ./... -coverprofile cover.out
 
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.62.2
 golangci-lint:
 	@[ -f $(GOLANGCI_LINT) ] || { \
 	set -e ;\
@@ -202,10 +219,6 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
-## Tool Versions
-KUSTOMIZE_VERSION ?= v5.5.0
-CONTROLLER_TOOLS_VERSION ?= v0.16.5
-
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
 $(KUSTOMIZE): $(LOCALBIN)
@@ -221,7 +234,6 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
-ENVTEST_OTEL_OPERATOR_VERSION=v0.112.0
 # Download CRDs for envtest
 crddir/github.com/open-telemetry/opentelemetry-operator:
 	git clone --depth 1 --branch ${ENVTEST_OTEL_OPERATOR_VERSION} https://github.com/open-telemetry/opentelemetry-operator.git crddir/github.com/open-telemetry/opentelemetry-operator
