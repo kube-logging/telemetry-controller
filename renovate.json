@@ -2,11 +2,82 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
+    "helpers:pinGitHubActionDigestsToSemver",
+    ":semanticCommitTypeAll(chore)",
     "schedule:daily",
     "group:all"
   ],
-  "gomodTidy": true,
+  "configMigration": true,
+  "constraints": {
+    "go": "1.23"
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?( registryUrl=(?<registryUrl>.*?))?\\s.*?_VERSION\\s?:?=\\s?(?<currentValue>.*)\\s"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}",
+      "description": [
+        "Custom dependency manager for updating tools defined in Makefiles."
+      ]
+    }
+  ],
+  "enabled": true,
+  "enabledManagers": [
+    "custom.regex",
+    "dockerfile",
+    "github-actions",
+    "gomod",
+    "ocb",
+    "helm-values",
+    "helmv3",
+    "kubernetes",
+    "kustomize"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "packageRules": [
+    {
+      "matchPackageNames": ["k8s.io/client-go"],
+      "allowedVersions": "/^v[0-9]+\\.[0-9]+\\.[0-9]+(\\.[0-9]+)?$/"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "matchPackagePrefixes": ["k8s.io"],
+      "stabilityDays": 60
+    },
+    {
+      "matchFileNames": [
+        "Makefile"
+      ],
+      "extractVersion": "^v(?<version>.*)$",
+      "description": [
+        "Add build label to PRs which are related to build tools defined in Makefiles.",
+        "Group Makefile dependency updates in single PR."
+      ]
+    }
+  ],
   "postUpdateOptions": [
-    "gomodTidy"
-  ]
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  "postUpgradeTasks": {
+    "commands": ["make tidy, make generate"],
+    "fileFilters": ["**/go.mod", "**/go.sum", "**/*.go", "**/*.yaml"],
+    "executionMode": "branch"
+  },
+  "printConfig": false,
+  "rebaseWhen": "behind-base-branch",
+  "semanticCommits": "enabled",
+  "timezone": "Etc/UTC"
 }
