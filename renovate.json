@@ -7,7 +7,7 @@
     "schedule:daily",
     "group:all"
   ],
-  "allowedPostUpgradeCommands": ["^make"],
+  "allowedPostUpgradeCommands": ["^make (tidy|generate)$"],
   "configMigration": true,
   "constraints": {
     "go": "1.23"
