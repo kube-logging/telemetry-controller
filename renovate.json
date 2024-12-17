@@ -44,17 +44,25 @@
   "osvVulnerabilityAlerts": true,
   "packageRules": [
     {
-      "matchPackageNames": ["k8s.io/client-go"],
+      "matchPackageNames": [
+        "k8s.io/client-go"
+      ],
       "allowedVersions": "/^v[0-9]+\\.[0-9]+\\.[0-9]+(\\.[0-9]+)?$/"
     },
     {
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "enabled": false
     },
     {
-      "matchUpdateTypes": ["minor"],
-      "matchPackagePrefixes": ["k8s.io"],
-      "stabilityDays": 60
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "minimumReleaseAge": "60 days",
+      "matchPackageNames": [
+        "k8s.io{/,}**"
+      ]
     },
     {
       "matchFileNames": [
@@ -72,8 +80,15 @@
     "gomodUpdateImportPaths"
   ],
   "postUpgradeTasks": {
-    "commands": ["make tidy, make generate"],
-    "fileFilters": ["**/go.mod", "**/go.sum", "**/*.go", "**/*.yaml"],
+    "commands": [
+      "make tidy, make generate"
+    ],
+    "fileFilters": [
+      "**/go.mod",
+      "**/go.sum",
+      "**/*.go",
+      "**/*.yaml"
+    ],
     "executionMode": "branch"
   },
   "printConfig": false,
