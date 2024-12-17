@@ -7,7 +7,6 @@
     "schedule:daily",
     "group:all"
   ],
-  "allowedPostUpgradeCommands": ["^make (tidy|generate)$"],
   "configMigration": true,
   "constraints": {
     "go": "1.23"
@@ -80,19 +79,6 @@
     "gomodTidy",
     "gomodUpdateImportPaths"
   ],
-  "postUpgradeTasks": {
-    "commands": [
-      "make tidy",
-      "make generate"
-    ],
-    "fileFilters": [
-      "**/go.mod",
-      "**/go.sum",
-      "**/*.go",
-      "**/*.yaml"
-    ],
-    "executionMode": "branch"
-  },
   "printConfig": false,
   "rebaseWhen": "behind-base-branch",
   "semanticCommits": "enabled",
