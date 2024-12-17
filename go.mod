@@ -188,6 +188,3 @@ require (
 // v1.51.0 is present in the go.mod file of the opentelemetry-operator as retracted
 // automated dependency updates can fail because of this.
 exclude github.com/open-telemetry/opentelemetry-operator v1.51.0
-
-// ref: https://github.com/darccio/mergo/blob/2b1eb9c67d7332f286430af241180c5005a6a5a4/README.md?plain=1#L53
-replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
