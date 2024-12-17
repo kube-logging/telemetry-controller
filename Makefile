@@ -3,19 +3,19 @@
 ####
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
-CONTROLLER_TOOLS_VERSION := v0.16.5
+CONTROLLER_TOOLS_VERSION := 0.16.5
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver
-KUSTOMIZE_VERSION := v5.5.0
+KUSTOMIZE_VERSION := 5.5.0
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-GOLANGCI_LINT_VERSION := v1.62.2
+GOLANGCI_LINT_VERSION := 1.62.2
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
-KIND_VERSION ?= v0.25.0
+KIND_VERSION ?= 0.25.0
 
 # renovate: datasource=go depName=github.com/goph/licensei versioning=semver
-LICENSEI_VERSION = v0.9.0
+LICENSEI_VERSION = 0.9.0
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.31.0
@@ -107,7 +107,7 @@ GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
 golangci-lint:
 	@[ -f $(GOLANGCI_LINT) ] || { \
 	set -e ;\
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell dirname $(GOLANGCI_LINT)) $(GOLANGCI_LINT_VERSION) ;\
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell dirname $(GOLANGCI_LINT)) v$(GOLANGCI_LINT_VERSION) ;\
 	}
 
 .PHONY: test-e2e
@@ -222,17 +222,17 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
 $(KUSTOMIZE): $(LOCALBIN)
-	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION); then \
-		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing."; \
+	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q v$(KUSTOMIZE_VERSION); then \
+		echo "$(LOCALBIN)/kustomize version is not expected v$(KUSTOMIZE_VERSION). Removing it before installing."; \
 		rm -rf $(LOCALBIN)/kustomize; \
 	fi
-	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION)
+	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v5@v$(KUSTOMIZE_VERSION)
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
 $(CONTROLLER_GEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
-	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q v$(CONTROLLER_TOOLS_VERSION) || \
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CONTROLLER_TOOLS_VERSION)
 
 # Download CRDs for envtest
 crddir/github.com/open-telemetry/opentelemetry-operator:
@@ -256,7 +256,7 @@ ${KIND}: ${KIND}_${KIND_VERSION}_${GOVERSION} | ${BIN}
 	ln -sf $(notdir $<) $@
 
 ${KIND}_${KIND_VERSION}_${GOVERSION}: IMPORT_PATH := sigs.k8s.io/kind
-${KIND}_${KIND_VERSION}_${GOVERSION}: VERSION := ${KIND_VERSION}
+${KIND}_${KIND_VERSION}_${GOVERSION}: VERSION := v${KIND_VERSION}
 ${KIND}_${KIND_VERSION}_${GOVERSION}: | ${BIN}
 	${go_install_binary}
 
@@ -264,7 +264,7 @@ ${LICENSEI}: ${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION} | ${BIN}
 	ln -sf $(notdir $<) $@
 
 ${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: IMPORT_PATH := github.com/goph/licensei/cmd/licensei
-${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: VERSION := ${LICENSEI_VERSION}
+${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: VERSION := v${LICENSEI_VERSION}
 ${LICENSEI}_${LICENSEI_VERSION}_${GOVERSION}: | ${BIN}
 	${go_install_binary}
 
