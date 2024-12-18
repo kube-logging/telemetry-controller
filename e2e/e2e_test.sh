@@ -9,7 +9,8 @@ function main()
 
     test_one_tenant_two_subscriptions
     test_tenants_with_bridges
-    test_filestorage
+    test_filestorage_receiver_failure
+    test_filestorage_collector_failure
 
     echo "E2E (helm) test: PASSED"
 }
@@ -76,7 +77,7 @@ function test_tenants_with_bridges()
     undeploy_test_assets "e2e/testdata/tenants_with_bridges/"
 }
 
-function test_filestorage()
+function test_filestorage_receiver_failure()
 {
     helm_install_log_generator_to_ns "example-tenant-ns" "app.count=0" "app.eventPerSec=100"
 
@@ -89,11 +90,15 @@ function test_filestorage()
     JSON_PAYLOAD='{ "type": "web", "format": "apache", "count": 10000 }'
     curl --location --request POST '127.0.0.1:11000/loggen' --header 'Content-Type: application/json' --data-raw "${JSON_PAYLOAD}"
     EXPECTED_NUMBER_OF_LOGS=$(echo "$JSON_PAYLOAD" | jq ".count")
+    kill $(lsof -t -i:11000)
 
     sleep 3
 
     POD_NAME=$(kubectl get pods -A -o custom-columns=':metadata.name' | grep "otelcollector-example-collector")
     kubectl wait --namespace "collector" --for=condition=ready "pods/$POD_NAME" --timeout=300s
+
+    # Wait until 10% of the logs are processed
+    check_logs_until_expected_number_is_reached "$((EXPECTED_NUMBER_OF_LOGS / 10))"
 
     # Stop the receiver-collector deployment to see if the logs are stored in the file storage
     kubectl scale deployments --namespace "telemetry-controller-system" "receiver-collector" --replicas=0
@@ -103,6 +108,42 @@ function test_filestorage()
     sleep 5
 
     check_logs_until_expected_number_is_reached "$EXPECTED_NUMBER_OF_LOGS"
+    echo "SUCCESS: All logs have been processed."
+
+    rm -rd /tmp/otelcol-contrib
+    helm_uninstall_log_generator_from_ns "example-tenant-ns"
+    undeploy_test_assets "e2e/testdata/filestorage/"
+}
+
+function test_filestorage_collector_failure()
+{
+    helm_install_log_generator_to_ns "example-tenant-ns" "app.count=0" "app.eventPerSec=100"
+
+    deploy_test_assets "e2e/testdata/filestorage/"
+
+    kubectl port-forward --namespace "example-tenant-ns" "deployments/log-generator" 11000:11000 &
+
+    kubectl wait --namespace "telemetry-controller-system" --for=condition=available "deployments/receiver-collector" --timeout=300s
+
+    JSON_PAYLOAD='{ "type": "web", "format": "apache", "count": 10000 }'
+    curl --location --request POST '127.0.0.1:11000/loggen' --header 'Content-Type: application/json' --data-raw "${JSON_PAYLOAD}"
+    EXPECTED_NUMBER_OF_LOGS=$(echo "$JSON_PAYLOAD" | jq ".count")
+    kill $(lsof -t -i:11000)
+
+    sleep 3
+
+    POD_NAME=$(kubectl get pods -A -o custom-columns=':metadata.name' | grep "otelcollector-example-collector")
+    kubectl wait --namespace "collector" --for=condition=ready "pods/$POD_NAME" --timeout=300s
+
+    # Wait until 10% of the logs are processed
+    check_logs_until_expected_number_is_reached "$((EXPECTED_NUMBER_OF_LOGS / 10))"
+
+    kubectl delete pods --namespace "collector" $POD_NAME
+
+    sleep 5
+
+    check_logs_until_expected_number_is_reached "$EXPECTED_NUMBER_OF_LOGS"
+    echo "SUCCESS: All logs have been processed."
 
     rm -rd /tmp/otelcol-contrib
     helm_uninstall_log_generator_from_ns "example-tenant-ns"
@@ -196,7 +237,7 @@ function check_logs_until_expected_number_is_reached() {
             if [ $? -eq 0 ] && [ -s "$log_path" ]; then
                 NUM_OF_LOGS=$(cat "$log_path" | jq -r '.resourceLogs|map(.scopeLogs)[0][0].logRecords|map(.body.stringValue)' | wc -l)
                 if [[ "$NUM_OF_LOGS" -ge "$expected_number_of_logs" ]]; then
-                    echo "All logs have been processed."
+                    echo "Expected number of logs processed."
                     return 0
                 fi
             fi
