@@ -123,10 +123,11 @@ kubectl -n openobserve port-forward svc/openobserve 5080:5080 &
 #kubectl -n openobserve port-forward svc/openobserve-otlp-grpc 5081:5081 &
 sleep 5
 
-# TODO: use yq instead of sed
-OO_ORG_PWD=$(curl --silent localhost:5080/api/default/organizations/passcode -v --user root@example.com:Complexpass#123 | jq .data.passcode -r)
-OO_TOKEN=$(echo -n root@example.com:$OO_ORG_PWD | base64)
-sed -i '' -e "s/Authorization.*/Authorization:\ \"Basic ${OO_TOKEN}\"/" ./demo.yaml
+OO_USER="root@example.com"
+OO_PWD="Complexpass#123"
+OO_PASSCODE=$(curl --silent localhost:5080/api/default/passcode -v --user $OO_USER:$OO_PWD | jq .data.passcode -r)
+OO_TOKEN=$(echo "$OO_USER:$OO_PASSCODE" | tr -d '\n' | base64)
+yq eval '(.spec.otlp.headers.Authorization = "Basic '${OO_TOKEN}'") as $auth | select(.kind == "Output") | $auth' -i ./demo.yaml
 
 
 # Install prerequisites
@@ -149,7 +150,7 @@ kubectl wait --namespace opentelemetry-operator-system --for=condition=available
 (cd ../../.. && make manifests generate install)
 
 cd ../../../ && make docker-build
-kind load docker-image controller:latest --name "${KIND_CLUSTER_NAME}"
+kind load docker-image controller:local --name "${KIND_CLUSTER_NAME}"
 make deploy && cd -
 
 kubectl apply -f ./demo.yaml
