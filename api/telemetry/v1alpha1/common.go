@@ -14,6 +14,8 @@
 
 package v1alpha1
 
+import "k8s.io/apimachinery/pkg/types"
+
 type State string
 
 const (
@@ -24,6 +26,11 @@ const (
 type NamespacedName struct {
 	Namespace string `json:"namespace"`
 	Name      string `json:"name"`
+}
+
+type NamespacedNameWithUID struct {
+	NamespacedName `json:",inline"`
+	UID            types.UID `json:"uid"`
 }
 
 const (

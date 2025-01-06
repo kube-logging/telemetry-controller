@@ -103,10 +103,11 @@ type TenantSpec struct {
 
 // TenantStatus defines the observed state of Tenant
 type TenantStatus struct {
-	Subscriptions       []NamespacedName `json:"subscriptions,omitempty"`
-	LogSourceNamespaces []string         `json:"logSourceNamespaces,omitempty"`
-	ConnectedBridges    []string         `json:"connectedBridges,omitempty"`
-	State               State            `json:"state,omitempty"`
+	Subscriptions       []NamespacedName        `json:"subscriptions,omitempty"`
+	LogSourceNamespaces []string                `json:"logSourceNamespaces,omitempty"`
+	ConnectedBridges    []string                `json:"connectedBridges,omitempty"`
+	ExcludedPods        []NamespacedNameWithUID `json:"excludedPods,omitempty"`
+	State               State                   `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true

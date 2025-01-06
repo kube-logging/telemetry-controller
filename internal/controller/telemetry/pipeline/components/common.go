@@ -110,3 +110,9 @@ func SortNamespacedNames(names []v1alpha1.NamespacedName) {
 		return strings.Compare(a.String(), b.String())
 	})
 }
+
+func SortNamespacedNamesWithUID(names []v1alpha1.NamespacedNameWithUID) {
+	slices.SortFunc(names, func(a, b v1alpha1.NamespacedNameWithUID) int {
+		return strings.Compare(a.String(), b.String())
+	})
+}

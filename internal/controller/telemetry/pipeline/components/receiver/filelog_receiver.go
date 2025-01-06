@@ -104,7 +104,7 @@ func GenerateDefaultKubernetesReceiver(namespaces []string, tenant v1alpha1.Tena
 
 	k8sReceiver := map[string]any{
 		"include":           createIncludeList(namespaces, tenant.Spec.SelectFromAllNamespaces),
-		"exclude":           []string{"/var/log/pods/*/otc-container/*.log"},
+		"exclude":           createExcludeList(tenant.Status.ExcludedPods),
 		"start_at":          "end",
 		"include_file_path": true,
 		"include_file_name": false,
@@ -134,4 +134,15 @@ func createIncludeList(namespaces []string, includeAll bool) []string {
 	}
 
 	return includeList
+}
+
+func createExcludeList(excludedPods []v1alpha1.NamespacedNameWithUID) []string {
+	excludeList := make([]string, 0, len(excludedPods))
+	excludeList = append(excludeList, "/var/log/pods/*/otc-container/*.log")
+
+	for _, pod := range excludedPods {
+		excludeList = append(excludeList, fmt.Sprintf("/var/log/pods/%s_%s_%s/*/*.log", pod.Namespace, pod.Name, pod.UID))
+	}
+
+	return excludeList
 }

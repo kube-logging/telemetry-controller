@@ -43,6 +43,8 @@ const (
 	bridgeSourceTenantReferenceField = ".spec.sourceTenant"
 	bridgeTargetTenantReferenceField = ".spec.targetTenant"
 	tenantNameField                  = ".metadata.name"
+
+	excludeAnnotation = "telemetry.kube-logging.dev/exclude"
 )
 
 // RouteReconciler is responsible for reconciling Tenant resources
@@ -167,6 +169,20 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	slices.Sort(logsourceNamespacesForTenant)
 	tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
+	excludedPods, err := r.getExcludedWorkloadsForTenant(ctx, *tenant)
+	if err != nil {
+		tenant.Status.State = v1alpha1.StateFailed
+		logger.Error(errors.WithStack(err), "failed to get excluded pods for tenant", "tenant", tenant.Name)
+		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
+			logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			return ctrl.Result{}, errors.Append(err, updateErr)
+		}
+
+		return ctrl.Result{}, err
+	}
+	components.SortNamespacedNamesWithUID(excludedPods)
+	tenant.Status.ExcludedPods = excludedPods
+
 	tenant.Status.State = v1alpha1.StateReady
 	if !reflect.DeepEqual(originalTenantStatus, tenant.Status) {
 		logger.Info("tenant status changed")
@@ -289,6 +305,33 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			for _, tenant := range tenants.Items {
 				requests = addTenantRequest(requests, tenant.Name)
+			}
+
+			return
+		})).
+		Watches(&apiv1.Pod{}, handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+			logger := log.FromContext(ctx)
+
+			pod := object.(*apiv1.Pod)
+			tenants, err := r.getTenants(ctx, &client.ListOptions{})
+			if err != nil {
+				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
+				return
+			}
+
+			for _, tenant := range tenants {
+				namespaces, err := r.getNamespacesForSelectorSlice(ctx, tenant.Spec.LogSourceNamespaceSelectors)
+				if err != nil {
+					logger.Error(errors.WithStack(err), "failed getting namespaces for tenant", "tenant", tenant.Name)
+					continue
+				}
+
+				for _, ns := range namespaces {
+					if pod.Namespace == ns.Name {
+						requests = addTenantRequest(requests, tenant.Name)
+						break
+					}
+				}
 			}
 
 			return
@@ -495,6 +538,35 @@ func (r *RouteReconciler) checkBridgeConnection(ctx context.Context, tenantName 
 	}
 
 	return nil
+}
+
+func (r *RouteReconciler) getExcludedWorkloadsForTenant(ctx context.Context, tenant v1alpha1.Tenant) ([]v1alpha1.NamespacedNameWithUID, error) {
+	namespaces, err := r.getNamespacesForSelectorSlice(ctx, tenant.Spec.LogSourceNamespaceSelectors)
+	if err != nil {
+		return nil, err
+	}
+
+	var excludeList []v1alpha1.NamespacedNameWithUID
+	for _, ns := range namespaces {
+		pod := &apiv1.PodList{}
+		if err := r.Client.List(ctx, pod, &client.ListOptions{Namespace: ns.Name}); client.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+
+		for _, p := range pod.Items {
+			if p.Annotations[excludeAnnotation] == "true" {
+				excludeList = append(excludeList, v1alpha1.NamespacedNameWithUID{
+					NamespacedName: v1alpha1.NamespacedName{
+						Namespace: p.Namespace,
+						Name:      p.Name,
+					},
+					UID: p.UID,
+				})
+			}
+		}
+	}
+
+	return excludeList, nil
 }
 
 func (r *RouteReconciler) updateStatus(ctx context.Context, obj client.Object) error {
