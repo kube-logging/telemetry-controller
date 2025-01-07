@@ -14,6 +14,8 @@
 
 package processor
 
+import "github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
+
 func GenerateDefaultKubernetesProcessor() map[string]any {
 	type Source struct {
 		Name string `json:"name,omitempty"`
@@ -44,11 +46,18 @@ func GenerateDefaultKubernetesProcessor() map[string]any {
 		"k8s.pod.start_time",
 	}
 
-	defaultLabels := []map[string]string{
+	type FieldExtract struct {
+		TagName  *string `json:"tag_name,omitempty"`
+		Key      *string `json:"key,omitempty"`
+		KeyRegex *string `json:"key_regex,omitempty"`
+		From     *string `json:"from,omitempty"`
+	}
+
+	defaultLabels := []FieldExtract{
 		{
-			"from":      "pod",
-			"tag_name":  "all_labels",
-			"key_regex": ".*",
+			From:     utils.ToPtr("pod"),
+			TagName:  utils.ToPtr("all_labels"),
+			KeyRegex: utils.ToPtr(".*"),
 		},
 	}
 
@@ -58,6 +67,18 @@ func GenerateDefaultKubernetesProcessor() map[string]any {
 		"extract": map[string]any{
 			"metadata": defaultMetadata,
 			"labels":   defaultLabels,
+			"annotations": []FieldExtract{
+				{
+					TagName: utils.ToPtr("exclude-tc"),
+					Key:     utils.ToPtr("telemetry.kube-logging.dev/exclude"),
+					From:    utils.ToPtr("pod"),
+				},
+				{
+					TagName: utils.ToPtr("exclude-fluentbit"),
+					Key:     utils.ToPtr("fluentbit.io/exclude"),
+					From:    utils.ToPtr("pod"),
+				},
+			},
 		},
 		"pod_association": defaultPodAssociation,
 	}

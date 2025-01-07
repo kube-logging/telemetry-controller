@@ -80,6 +80,7 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	processors := make(map[string]any)
 	processors["k8sattributes"] = processor.GenerateDefaultKubernetesProcessor()
 	processors["memory_limiter"] = processor.GenerateProcessorMemoryLimiter(cfgInput.MemoryLimiter)
+	processors["filter/exclude"] = processor.GenerateFilterProcessor()
 	maps.Copy(processors, processor.GenerateMetricsProcessors())
 
 	for _, tenant := range cfgInput.Tenants {

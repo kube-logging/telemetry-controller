@@ -137,9 +137,22 @@ processors:
     send_batch_size: 512
     timeout: 5s
   deltatocumulative: {}
+  filter/exclude:
+    error_mode: ignore
+    logs:
+      log_record:
+      - resource.attributes["exclude-tc"] == "true"
+      - resource.attributes["exclude-fluentbit"] == "true"
   k8sattributes:
     auth_type: serviceAccount
     extract:
+      annotations:
+      - from: pod
+        key: telemetry.kube-logging.dev/exclude
+        tag_name: exclude-tc
+      - from: pod
+        key: fluentbit.io/exclude
+        tag_name: exclude-fluentbit
       labels:
       - from: pod
         key_regex: .*
@@ -223,6 +236,7 @@ service:
       - memory_limiter
       - k8sattributes
       - attributes/tenant_example-tenant-a
+      - filter/exclude
       receivers:
       - filelog/example-tenant-a
     logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1:
@@ -249,6 +263,7 @@ service:
       - memory_limiter
       - k8sattributes
       - attributes/tenant_example-tenant-b
+      - filter/exclude
       receivers:
       - filelog/example-tenant-b
     logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3:

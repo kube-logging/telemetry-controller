@@ -185,6 +185,8 @@ Create a workload, which will generate logs for the pipeline:
 helm install --wait --create-namespace --namespace example-tenant-ns --generate-name oci://ghcr.io/kube-logging/helm-charts/log-generator
 ```
 
+**NOTE: To exclude logs from a specific pod, add the `telemetry.kube-logging.dev/exclude: "true"` annotation to the pod.**
+
 Open the OpenObserve UI and inspect the generated log messages:
 
 Set up portforwarding for OpenObserve UI
