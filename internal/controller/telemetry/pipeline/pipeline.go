@@ -47,7 +47,7 @@ func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string) *otelv1b
 		}
 	}
 
-	return GeneratePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName)}, []string{exporterName, tenantCountConnectorName})
+	return GeneratePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName), "filter/exclude"}, []string{exporterName, tenantCountConnectorName})
 }
 
 func GenerateMetricsPipelines() map[string]*otelv1beta1.Pipeline {

@@ -664,12 +664,12 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
 				"logs/tenant_tenant1": {
 					Receivers:  []string{"filelog/tenant1"},
-					Processors: []string{"k8sattributes", "attributes/tenant_tenant1"},
+					Processors: []string{"k8sattributes", "attributes/tenant_tenant1", "filter/exclude"},
 					Exporters:  []string{"count/tenant_metrics", "routing/bridge_bridge1", "routing/bridge_bridge2"},
 				},
 				"logs/tenant_tenant2": {
 					Receivers:  []string{"routing/bridge_bridge1"},
-					Processors: []string{"k8sattributes", "attributes/tenant_tenant2"},
+					Processors: []string{"k8sattributes", "attributes/tenant_tenant2", "filter/exclude"},
 					Exporters:  []string{"routing/tenant_tenant2_subscriptions", "count/tenant_metrics"},
 				},
 				"logs/tenant_tenant2_subscription_ns2_sub2": {
@@ -679,7 +679,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				},
 				"logs/tenant_tenant3": {
 					Receivers:  []string{"routing/bridge_bridge2"},
-					Processors: []string{"k8sattributes", "attributes/tenant_tenant3"},
+					Processors: []string{"k8sattributes", "attributes/tenant_tenant3", "filter/exclude"},
 					Exporters:  []string{"routing/tenant_tenant3_subscriptions", "count/tenant_metrics"},
 				},
 				"logs/tenant_tenant3_subscription_ns3_sub3": {
