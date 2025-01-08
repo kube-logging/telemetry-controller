@@ -162,6 +162,7 @@ func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
 func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	connectors := make(map[string]any)
 	maps.Copy(connectors, connector.GenerateCountConnectors())
+	maps.Copy(connectors, connector.GenerateBytesConnectors())
 
 	for _, tenant := range cfgInput.Tenants {
 		// Generate routing connector for the tenant's subscription if it has any
@@ -189,6 +190,7 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 
 func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1beta1.Pipeline {
 	const outputCountConnectorName = "count/output_metrics"
+	const outputBytesConnectorName = "bytes/exporter"
 
 	var namedPipelines = make(map[string]*otelv1beta1.Pipeline)
 	tenants := []string{}
@@ -235,15 +237,15 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 					var exporters []string
 
 					if output.Output.Spec.OTLPGRPC != nil {
-						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName}
+						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName}
 					}
 
 					if output.Output.Spec.OTLPHTTP != nil {
-						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName}
+						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName}
 					}
 
 					if output.Output.Spec.Fluentforward != nil {
-						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName}
+						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName}
 					}
 					if cfgInput.Debug {
 						exporters = append(exporters, "debug")
