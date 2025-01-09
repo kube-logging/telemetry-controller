@@ -15,10 +15,9 @@
 package otel_conf_gen
 
 import (
-	k8syaml "sigs.k8s.io/yaml"
-
 	"context"
 	_ "embed"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -28,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8syaml "sigs.k8s.io/yaml"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline"
@@ -38,36 +38,6 @@ import (
 
 //go:embed otel_col_conf_test_fixtures/complex.yaml
 var otelColTargetYAML string
-
-type UniversalMap = map[string]any
-
-func workAroundExportersMarshaling(cfg otelv1beta1.Config) (UniversalMap, error) {
-	actualExporters, err := cfg.Exporters.MarshalJSON()
-	if err != nil {
-		return UniversalMap{}, err
-	}
-
-	var actualUniversalExporters UniversalMap
-	if err := k8syaml.Unmarshal(actualExporters, &actualUniversalExporters); err != nil {
-		return UniversalMap{}, err
-	}
-
-	return actualUniversalExporters, nil
-}
-
-func workAroundReceiversMarshaling(cfg otelv1beta1.Config) (UniversalMap, error) {
-	actualReceivers, err := cfg.Receivers.MarshalJSON()
-	if err != nil {
-		return UniversalMap{}, err
-	}
-
-	var actualUniversalReceivers map[string]any
-	if err := k8syaml.Unmarshal(actualReceivers, &actualUniversalReceivers); err != nil {
-		return UniversalMap{}, err
-	}
-
-	return actualUniversalReceivers, nil
-}
 
 func TestOtelColConfComplex(t *testing.T) {
 	// Required inputs
@@ -342,51 +312,32 @@ func TestOtelColConfComplex(t *testing.T) {
 	// The receiver and exporter entries are not (properly) serialized because of tags on the underlying data structure, this is a known issue.
 	// The following hacks are workarounds around the different tags and their handlings.
 	// Receiver and exporter entries are marshalled, then unmarshalled and added to the actual rendered config.
-	generatedConfig, _ := inputCfg.AssembleConfig(context.TODO())
-
-	actualUniversalExporters, err := workAroundExportersMarshaling(generatedConfig)
+	actualUniversalMap, expectedUniversalMap, err := createUniversalMaps(t, inputCfg, otelColTargetYAML)
 	if err != nil {
-		t.Fatalf("error: %v", err)
+		t.Fatalf("Error creating universal maps: %v", err)
 	}
 
-	actualUniversalReceivers, err := workAroundReceiversMarshaling(generatedConfig)
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
-	actualYAMLBytes, err := k8syaml.Marshal(generatedConfig)
-	if err != nil {
-		t.Fatalf("error %v", err)
-	}
-
-	var actualUniversalMap map[string]any
-	if err := k8syaml.Unmarshal(actualYAMLBytes, &actualUniversalMap); err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
-	actualUniversalMap["exporters"] = actualUniversalExporters
-	actualUniversalMap["receivers"] = actualUniversalReceivers
-
-	var expectedUniversalMap map[string]any
-	if err := k8syaml.Unmarshal([]byte(otelColTargetYAML), &expectedUniversalMap); err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
-	// use dyff for YAML comparison
+	// Compare using cmp.Diff for detailed differences
 	if diff := cmp.Diff(expectedUniversalMap, actualUniversalMap); diff != "" {
-		t.Logf("mismatch:\n---%s\n---\n", diff)
+		t.Errorf("config mismatch (-expected +actual):\n%s", diff)
 	}
 
+	// Additional DeepEqual check with full YAML output on failure
 	if !reflect.DeepEqual(actualUniversalMap, expectedUniversalMap) {
+		actualYAML, err := k8syaml.Marshal(actualUniversalMap)
+		if err != nil {
+			t.Fatalf("failed to marshal actual config: %v", err)
+		}
+
 		t.Fatalf(`yaml mismatch:
-expected=
----
-%s
----
-actual=
----
-%s
----`, otelColTargetYAML, string(actualYAMLBytes))
+	expected=
+	---
+	%s
+	---
+	actual=
+	---
+	%s
+	---`, otelColTargetYAML, string(actualYAML))
 	}
 }
 
@@ -754,4 +705,73 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 			assert.Equal(t, ttp.expectedPipelines, ttp.cfgInput.generateNamedPipelines())
 		})
 	}
+}
+
+type UniversalMap = map[string]any
+
+// createUniversalMaps creates the actual and expected universal maps for comparison
+func createUniversalMaps(t *testing.T, inputCfg OtelColConfigInput, expectedYAML string) (UniversalMap, UniversalMap, error) {
+	t.Helper()
+
+	generatedConfig, _ := inputCfg.AssembleConfig(context.TODO())
+	actualUniversalMap, err := buildActualConfig(t, generatedConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("building actual config: %w", err)
+	}
+
+	var expectedUniversalMap UniversalMap
+	if err := k8syaml.Unmarshal([]byte(expectedYAML), &expectedUniversalMap); err != nil {
+		return nil, nil, fmt.Errorf("unmarshaling expected YAML: %w", err)
+	}
+
+	return actualUniversalMap, expectedUniversalMap, nil
+}
+
+// buildActualConfig handles the special marshaling requirements for the config
+func buildActualConfig(t *testing.T, generatedConfig otelv1beta1.Config) (UniversalMap, error) {
+	t.Helper()
+
+	actualYAMLBytes, err := k8syaml.Marshal(generatedConfig)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling generated config: %w", err)
+	}
+
+	var actualUniversalMap UniversalMap
+	if err := k8syaml.Unmarshal(actualYAMLBytes, &actualUniversalMap); err != nil {
+		return nil, fmt.Errorf("unmarshaling base config: %w", err)
+	}
+
+	// Handle special cases for exporters and receivers due to serialization issues
+	exporters, err := marshalToUniversalMap(t, generatedConfig.Exporters)
+	if err != nil {
+		return nil, fmt.Errorf("handling exporters: %w", err)
+	}
+	actualUniversalMap["exporters"] = exporters
+
+	// Handle receivers
+	receivers, err := marshalToUniversalMap(t, generatedConfig.Receivers)
+	if err != nil {
+		return nil, fmt.Errorf("handling receivers: %w", err)
+	}
+	actualUniversalMap["receivers"] = receivers
+
+	return actualUniversalMap, nil
+}
+
+// marshalToUniversalMap is a generic helper function that handles marshaling
+// of any JSON-marshalable type to UniversalMap
+func marshalToUniversalMap(t *testing.T, anyConfig otelv1beta1.AnyConfig) (UniversalMap, error) {
+	t.Helper()
+
+	data, err := anyConfig.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("marshaling to JSON: %w", err)
+	}
+
+	var result UniversalMap
+	if err := k8syaml.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("unmarshaling to UniversalMap: %w", err)
+	}
+
+	return result, nil
 }
