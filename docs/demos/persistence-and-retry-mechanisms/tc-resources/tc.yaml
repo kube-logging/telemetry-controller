@@ -1,0 +1,75 @@
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  name: tenant-web
+  labels:
+    collectorLabel: webdb
+spec:
+  persistenceConfig:
+    enableFileStorage: true
+  subscriptionNamespaceSelectors:
+  - matchLabels:
+      nsSelector: tenant-web
+  logSourceNamespaceSelectors:
+  - matchLabels:
+      nsSelector: tenant-web
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: sub-web
+  namespace: web
+spec:
+  condition: "true"
+  outputs:
+  - name: output-web
+    namespace: web
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: output-web
+  namespace: web
+spec:
+  otlp:
+    endpoint: collector-receiver-web-collector.web.svc.cluster.local:4317
+    tls:
+      insecure: true
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  name: tenant-db
+  labels:
+    collectorLabel: webdb
+spec:
+  persistenceConfig:
+    enableFileStorage: true
+  subscriptionNamespaceSelectors:
+  - matchLabels:
+      nsSelector: tenant-db
+  logSourceNamespaceSelectors:
+  - matchLabels:
+      nsSelector: tenant-db
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: sub-db
+  namespace: db
+spec:
+  condition: "true"
+  outputs:
+  - name: output-db
+    namespace: db
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: output-db
+  namespace: db
+spec:
+  otlp:
+    endpoint: collector-receiver-db-collector.db.svc.cluster.local:4317
+    tls:
+      insecure: true

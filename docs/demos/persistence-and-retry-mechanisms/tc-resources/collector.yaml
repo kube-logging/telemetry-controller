@@ -1,0 +1,9 @@
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Collector
+metadata:
+  name: cluster
+spec:
+  controlNamespace: collector # The namespace where the collector will be deployed
+  tenantSelector:
+    matchLabels:
+      collectorLabel: webdb

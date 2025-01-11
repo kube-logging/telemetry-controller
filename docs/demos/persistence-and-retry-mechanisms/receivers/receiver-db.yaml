@@ -1,0 +1,40 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: collector-receiver-db
+  namespace: db
+spec:
+  managementState: managed
+  mode: deployment
+  image: otel/opentelemetry-collector-contrib:0.112.0
+  volumeMounts:
+    - name: export-db
+      mountPath: /etc/otelcol-contrib/
+  volumes:
+    - name: export-db
+      hostPath:
+        path: /etc/otelcol-contrib/
+        type: DirectoryOrCreate
+  initContainers:
+    - name: init-chmod
+      image: busybox
+      command: ["sh", "-c"]
+      args: ["chmod -R 777 /etc/otelcol-contrib/"]
+      volumeMounts:
+        - name: export-db
+          mountPath: /etc/otelcol-contrib/
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+    exporters:
+      file/direct:
+        path: /etc/otelcol-contrib/export-db.log
+        append: true
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp]
+          exporters: [file/direct]
