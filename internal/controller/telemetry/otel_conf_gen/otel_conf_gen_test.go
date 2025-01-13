@@ -497,6 +497,11 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 					[]string{"deltatocumulative", "attributes/metricattributes"},
 					[]string{"prometheus/message_metrics_exporter"},
 				),
+				"metrics/output_bytes": pipeline.GeneratePipeline(
+					[]string{"bytes/exporter"},
+					[]string{"deltatocumulative", "attributes/metricattributes"},
+					[]string{"prometheus/message_metrics_exporter"},
+				),
 				"metrics/tenant": pipeline.GeneratePipeline(
 					[]string{"count/tenant_metrics"},
 					[]string{"deltatocumulative", "attributes/metricattributes"},
@@ -705,6 +710,11 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				},
 				"metrics/output": {
 					Receivers:  []string{"count/output_metrics"},
+					Processors: []string{"deltatocumulative", "attributes/metricattributes"},
+					Exporters:  []string{"prometheus/message_metrics_exporter"},
+				},
+				"metrics/output_bytes": {
+					Receivers:  []string{"bytes/exporter"},
 					Processors: []string{"deltatocumulative", "attributes/metricattributes"},
 					Exporters:  []string{"prometheus/message_metrics_exporter"},
 				},

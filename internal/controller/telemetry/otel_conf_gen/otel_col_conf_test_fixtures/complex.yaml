@@ -1,4 +1,11 @@
 connectors:
+  bytes/exporter:
+    logs:
+      otelcol_exporter_sent_log_records_bytes:
+        description:
+          Bytes of log records successfully sent to destination
+        attributes:
+          - key: exporter
   count/output_metrics:
     logs:
       telemetry_controller_output_log_count:
@@ -372,6 +379,7 @@ service:
       exporters:
       - otlphttp/collector_loki-test-output
       - count/output_metrics
+      - bytes/exporter
       processors:
       - memory_limiter
       - attributes/exporter_name_loki-test-output
@@ -381,6 +389,7 @@ service:
       exporters:
       - otlp/collector_otlp-test-output
       - count/output_metrics
+      - bytes/exporter
       processors:
       - memory_limiter
       - attributes/exporter_name_otlp-test-output
@@ -391,6 +400,7 @@ service:
       exporters:
       - otlp/collector_otlp-test-output-2
       - count/output_metrics
+      - bytes/exporter
       processors:
       - memory_limiter
       - attributes/exporter_name_otlp-test-output-2
@@ -400,6 +410,7 @@ service:
       exporters:
       - fluentforwardexporter/collector_fluentforward-test-output
       - count/output_metrics
+      - bytes/exporter
       processors:
       - memory_limiter
       - attributes/exporter_name_fluentforward-test-output
@@ -409,6 +420,7 @@ service:
       exporters:
       - otlp/collector_otlp-test-output-3
       - count/output_metrics
+      - bytes/exporter
       processors:
       - memory_limiter
       - attributes/exporter_name_otlp-test-output-3
@@ -469,6 +481,15 @@ service:
       - attributes/metricattributes
       receivers:
       - count/output_metrics
+    metrics/output_bytes:
+      exporters:
+      - prometheus/message_metrics_exporter
+      processors:
+      - memory_limiter
+      - deltatocumulative
+      - attributes/metricattributes
+      receivers:
+      - bytes/exporter
     metrics/tenant:
       exporters:
       - prometheus/message_metrics_exporter

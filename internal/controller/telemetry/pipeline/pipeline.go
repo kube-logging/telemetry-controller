@@ -63,6 +63,12 @@ func GenerateMetricsPipelines() map[string]*otelv1beta1.Pipeline {
 		Exporters:  []string{"prometheus/message_metrics_exporter"},
 	}
 
+	metricsPipelines["metrics/output_bytes"] = &otelv1beta1.Pipeline{
+		Receivers:  []string{"bytes/exporter"},
+		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
+		Exporters:  []string{"prometheus/message_metrics_exporter"},
+	}
+
 	return metricsPipelines
 }
 
