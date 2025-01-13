@@ -43,7 +43,7 @@ connectors:
     - condition: "true"
       pipelines:
       - logs/output_example-tenant-b-ns_subscription-example-3_collector_fluentforward-test-output
-      - logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2
+      - logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-3
   routing/tenant_example-tenant-a_subscriptions:
     table:
     - condition: "true"
@@ -93,6 +93,17 @@ exporters:
       storage: file_storage/example-tenant-a
     tls:
       insecure: true
+  otlp/collector_otlp-test-output-3:
+    endpoint: "receiver-collector.example-tenant-b-ns.svc.cluster.local:4317"
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0.0
+    sending_queue:
+      enabled: true
+      queue_size: 100.0
+      storage: "file_storage/example-tenant-b"
+    tls:
+      insecure: true
   otlphttp/collector_loki-test-output:
     endpoint: loki.example-tenant-a-ns.svc.cluster.local:4317
     retry_on_failure:
@@ -136,6 +147,11 @@ processors:
     - action: insert
       key: exporter
       value: otlp/collector_otlp-test-output-2
+  attributes/exporter_name_otlp-test-output-3:
+    actions:
+    - action: "insert"
+      key: "exporter"
+      value: "otlp/collector_otlp-test-output-3"
   attributes/metricattributes:
     actions:
     - action: insert
@@ -389,13 +405,13 @@ service:
       - attributes/exporter_name_fluentforward-test-output
       receivers:
       - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
-    logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2:
+    logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-3:
       exporters:
-      - otlp/collector_otlp-test-output-2
+      - otlp/collector_otlp-test-output-3
       - count/output_metrics
       processors:
       - memory_limiter
-      - attributes/exporter_name_otlp-test-output-2
+      - attributes/exporter_name_otlp-test-output-3
       receivers:
       - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
     logs/tenant_example-tenant-a:

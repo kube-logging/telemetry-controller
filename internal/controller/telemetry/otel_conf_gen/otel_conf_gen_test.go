@@ -91,7 +91,7 @@ func TestOtelColConfComplex(t *testing.T) {
 				Condition: "true",
 				Outputs: []v1alpha1.NamespacedName{
 					{
-						Name:      "otlp-test-output-2",
+						Name:      "otlp-test-output-3",
 						Namespace: "collector",
 					},
 					{
@@ -238,6 +238,24 @@ func TestOtelColConfComplex(t *testing.T) {
 							OTLPGRPC: &v1alpha1.OTLPGRPC{
 								GRPCClientConfig: v1alpha1.GRPCClientConfig{
 									Endpoint: utils.ToPtr("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
+									TLSSetting: &v1alpha1.TLSClientSetting{
+										Insecure: true,
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Output: v1alpha1.Output{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "otlp-test-output-3",
+							Namespace: "collector",
+						},
+						Spec: v1alpha1.OutputSpec{
+							OTLPGRPC: &v1alpha1.OTLPGRPC{
+								GRPCClientConfig: v1alpha1.GRPCClientConfig{
+									Endpoint: utils.ToPtr("receiver-collector.example-tenant-b-ns.svc.cluster.local:4317"),
 									TLSSetting: &v1alpha1.TLSClientSetting{
 										Insecure: true,
 									},
