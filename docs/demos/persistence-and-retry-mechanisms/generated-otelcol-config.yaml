@@ -1,0 +1,363 @@
+connectors:
+  count/output_metrics:
+    logs:
+      telemetry_controller_output_log_count:
+        attributes:
+          - key: tenant
+          - key: subscription
+          - key: exporter
+        description: The number of logs sent out from each exporter.
+        resource_attributes:
+          - key: k8s.namespace.name
+          - key: k8s.node.name
+          - key: k8s.container.name
+          - key: k8s.pod.name
+          - key: k8s.pod.labels.app.kubernetes.io/name
+          - key: k8s.pod.labels.app
+  count/tenant_metrics:
+    logs:
+      telemetry_controller_tenant_log_count:
+        attributes:
+          - key: tenant
+        description: The number of logs from each tenant pipeline.
+        resource_attributes:
+          - key: k8s.namespace.name
+          - key: k8s.node.name
+          - key: k8s.container.name
+          - key: k8s.pod.name
+          - key: k8s.pod.labels.app.kubernetes.io/name
+          - key: k8s.pod.labels.app
+  routing/subscription_db_sub-db_outputs:
+    table:
+      - condition: "true"
+        pipelines:
+          - logs/output_db_sub-db_db_output-db
+  routing/subscription_web_sub-web_outputs:
+    table:
+      - condition: "true"
+        pipelines:
+          - logs/output_web_sub-web_web_output-web
+  routing/tenant_tenant-db_subscriptions:
+    table:
+      - condition: "true"
+        pipelines:
+          - logs/tenant_tenant-db_subscription_db_sub-db
+  routing/tenant_tenant-web_subscriptions:
+    table:
+      - condition: "true"
+        pipelines:
+          - logs/tenant_tenant-web_subscription_web_sub-web
+exporters:
+  otlp/db_output-db:
+    endpoint: collector-receiver-db-collector.db.svc.cluster.local:4317
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    sending_queue:
+      enabled: true
+      queue_size: 100
+      storage: file_storage/tenant-db
+    tls:
+      insecure: true
+  otlp/web_output-web:
+    endpoint: collector-receiver-web-collector.web.svc.cluster.local:4317
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    sending_queue:
+      enabled: true
+      queue_size: 100
+      storage: file_storage/tenant-web
+    tls:
+      insecure: true
+  prometheus/message_metrics_exporter:
+    endpoint: :9999
+extensions:
+  file_storage/tenant-db:
+    create_directory: true
+    directory: /var/lib/otelcol/file_storage/tenant-db
+  file_storage/tenant-web:
+    create_directory: true
+    directory: /var/lib/otelcol/file_storage/tenant-web
+processors:
+  attributes/exporter_name_output-db:
+    actions:
+      - action: insert
+        key: exporter
+        value: otlp/db_output-db
+  attributes/exporter_name_output-web:
+    actions:
+      - action: insert
+        key: exporter
+        value: otlp/web_output-web
+  attributes/metricattributes:
+    actions:
+      - action: insert
+        from_attribute: k8s.pod.labels.app
+        key: app
+      - action: insert
+        from_attribute: k8s.node.name
+        key: host
+      - action: insert
+        from_attribute: k8s.namespace.name
+        key: namespace
+      - action: insert
+        from_attribute: k8s.container.name
+        key: container
+      - action: insert
+        from_attribute: k8s.pod.name
+        key: pod
+  attributes/subscription_sub-db:
+    actions:
+      - action: insert
+        key: subscription
+        value: sub-db
+  attributes/subscription_sub-web:
+    actions:
+      - action: insert
+        key: subscription
+        value: sub-web
+  attributes/tenant_tenant-db:
+    actions:
+      - action: insert
+        key: tenant
+        value: tenant-db
+  attributes/tenant_tenant-web:
+    actions:
+      - action: insert
+        key: tenant
+        value: tenant-web
+  deltatocumulative: {}
+  k8sattributes:
+    auth_type: serviceAccount
+    extract:
+      labels:
+        - from: pod
+          key_regex: .*
+          tag_name: all_labels
+      metadata:
+        - k8s.pod.name
+        - k8s.pod.uid
+        - k8s.deployment.name
+        - k8s.namespace.name
+        - k8s.node.name
+        - k8s.pod.start_time
+    passthrough: false
+    pod_association:
+      - sources:
+          - from: resource_attribute
+            name: k8s.namespace.name
+          - from: resource_attribute
+            name: k8s.pod.name
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_mib: 25
+receivers:
+  filelog/tenant-db:
+    exclude:
+      - /var/log/pods/*/otc-container/*.log
+    include:
+      - /var/log/pods/db_*/*/*.log
+    include_file_name: false
+    include_file_path: true
+    operators:
+      - id: get-format
+        routes:
+          - expr: body matches "^\\{"
+            output: parser-docker
+          - expr: body matches "^[^ Z]+Z"
+            output: parser-containerd
+        type: router
+      - id: parser-containerd
+        output: extract_metadata_from_filepath
+        regex: ^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$
+        timestamp:
+          layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          parse_from: attributes.time
+        type: regex_parser
+      - id: parser-docker
+        output: extract_metadata_from_filepath
+        timestamp:
+          layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          parse_from: attributes.time
+        type: json_parser
+      - cache:
+          size: 128
+        id: extract_metadata_from_filepath
+        parse_from: attributes["log.file.path"]
+        regex: ^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9-]+)\/(?P<container_name>[^\/]+)\/(?P<restart_count>\d+)\.log$
+        type: regex_parser
+      - from: attributes.log
+        to: body
+        type: move
+      - from: attributes.stream
+        to: attributes["log.iostream"]
+        type: move
+      - from: attributes.container_name
+        to: resource["k8s.container.name"]
+        type: move
+      - from: attributes.namespace
+        to: resource["k8s.namespace.name"]
+        type: move
+      - from: attributes.pod_name
+        to: resource["k8s.pod.name"]
+        type: move
+      - from: attributes.restart_count
+        to: resource["k8s.container.restart_count"]
+        type: move
+      - from: attributes.uid
+        to: resource["k8s.pod.uid"]
+        type: move
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    start_at: end
+    storage: file_storage/tenant-db
+  filelog/tenant-web:
+    exclude:
+      - /var/log/pods/*/otc-container/*.log
+    include:
+      - /var/log/pods/web_*/*/*.log
+    include_file_name: false
+    include_file_path: true
+    operators:
+      - id: get-format
+        routes:
+          - expr: body matches "^\\{"
+            output: parser-docker
+          - expr: body matches "^[^ Z]+Z"
+            output: parser-containerd
+        type: router
+      - id: parser-containerd
+        output: extract_metadata_from_filepath
+        regex: ^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$
+        timestamp:
+          layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          parse_from: attributes.time
+        type: regex_parser
+      - id: parser-docker
+        output: extract_metadata_from_filepath
+        timestamp:
+          layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          parse_from: attributes.time
+        type: json_parser
+      - cache:
+          size: 128
+        id: extract_metadata_from_filepath
+        parse_from: attributes["log.file.path"]
+        regex: ^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9-]+)\/(?P<container_name>[^\/]+)\/(?P<restart_count>\d+)\.log$
+        type: regex_parser
+      - from: attributes.log
+        to: body
+        type: move
+      - from: attributes.stream
+        to: attributes["log.iostream"]
+        type: move
+      - from: attributes.container_name
+        to: resource["k8s.container.name"]
+        type: move
+      - from: attributes.namespace
+        to: resource["k8s.namespace.name"]
+        type: move
+      - from: attributes.pod_name
+        to: resource["k8s.pod.name"]
+        type: move
+      - from: attributes.restart_count
+        to: resource["k8s.container.restart_count"]
+        type: move
+      - from: attributes.uid
+        to: resource["k8s.pod.uid"]
+        type: move
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    start_at: end
+    storage: file_storage/tenant-web
+service:
+  extensions:
+    - file_storage/tenant-db
+    - file_storage/tenant-web
+  pipelines:
+    logs/output_db_sub-db_db_output-db:
+      exporters:
+        - otlp/db_output-db
+        - count/output_metrics
+      processors:
+        - memory_limiter
+        - attributes/exporter_name_output-db
+      receivers:
+        - routing/subscription_db_sub-db_outputs
+    logs/output_web_sub-web_web_output-web:
+      exporters:
+        - otlp/web_output-web
+        - count/output_metrics
+      processors:
+        - memory_limiter
+        - attributes/exporter_name_output-web
+      receivers:
+        - routing/subscription_web_sub-web_outputs
+    logs/tenant_tenant-db:
+      exporters:
+        - routing/tenant_tenant-db_subscriptions
+        - count/tenant_metrics
+      processors:
+        - memory_limiter
+        - k8sattributes
+        - attributes/tenant_tenant-db
+      receivers:
+        - filelog/tenant-db
+    logs/tenant_tenant-db_subscription_db_sub-db:
+      exporters:
+        - routing/subscription_db_sub-db_outputs
+      processors:
+        - memory_limiter
+        - attributes/subscription_sub-db
+      receivers:
+        - routing/tenant_tenant-db_subscriptions
+    logs/tenant_tenant-web:
+      exporters:
+        - routing/tenant_tenant-web_subscriptions
+        - count/tenant_metrics
+      processors:
+        - memory_limiter
+        - k8sattributes
+        - attributes/tenant_tenant-web
+      receivers:
+        - filelog/tenant-web
+    logs/tenant_tenant-web_subscription_web_sub-web:
+      exporters:
+        - routing/subscription_web_sub-web_outputs
+      processors:
+        - memory_limiter
+        - attributes/subscription_sub-web
+      receivers:
+        - routing/tenant_tenant-web_subscriptions
+    metrics/output:
+      exporters:
+        - prometheus/message_metrics_exporter
+      processors:
+        - memory_limiter
+        - deltatocumulative
+        - attributes/metricattributes
+      receivers:
+        - count/output_metrics
+    metrics/tenant:
+      exporters:
+        - prometheus/message_metrics_exporter
+      processors:
+        - memory_limiter
+        - deltatocumulative
+        - attributes/metricattributes
+      receivers:
+        - count/tenant_metrics
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888
+      level: detailed
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: ""
+                port: 8888
