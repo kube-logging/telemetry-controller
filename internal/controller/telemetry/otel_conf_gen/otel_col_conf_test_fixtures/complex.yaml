@@ -43,7 +43,7 @@ connectors:
     - condition: "true"
       pipelines:
       - logs/output_example-tenant-b-ns_subscription-example-3_collector_fluentforward-test-output
-      - logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2
+      - logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-3
   routing/tenant_example-tenant-a_subscriptions:
     table:
     - condition: "true"
@@ -55,7 +55,68 @@ connectors:
     - condition: "true"
       pipelines:
       - logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3
-exporters: {}
+exporters:
+  fluentforwardexporter/collector_fluentforward-test-output:
+    endpoint:
+      tcp_addr: fluentd.example-tenant-b-ns.svc.cluster.local:24224
+      validate_tcp_resolution: false
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    sending_queue:
+      enabled: true
+      queue_size: 100
+      storage: file_storage/example-tenant-b
+    tls:
+      insecure: true
+  otlp/collector_otlp-test-output:
+    auth:
+      authenticator: bearertokenauth/collector_otlp-test-output
+    endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    sending_queue:
+      enabled: true
+      queue_size: 100
+      storage: file_storage/example-tenant-a
+    tls:
+      insecure: true
+  otlp/collector_otlp-test-output-2:
+    endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    sending_queue:
+      enabled: true
+      queue_size: 100
+      storage: file_storage/example-tenant-a
+    tls:
+      insecure: true
+  otlp/collector_otlp-test-output-3:
+    endpoint: "receiver-collector.example-tenant-b-ns.svc.cluster.local:4317"
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0.0
+    sending_queue:
+      enabled: true
+      queue_size: 100.0
+      storage: "file_storage/example-tenant-b"
+    tls:
+      insecure: true
+  otlphttp/collector_loki-test-output:
+    endpoint: loki.example-tenant-a-ns.svc.cluster.local:4317
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    sending_queue:
+      enabled: true
+      queue_size: 100
+      storage: file_storage/example-tenant-a
+    tls:
+      insecure: true
+  prometheus/message_metrics_exporter:
+    endpoint: :9999
 extensions:
   bearertokenauth/collector_otlp-test-output:
     token: testtoken
@@ -86,6 +147,11 @@ processors:
     - action: insert
       key: exporter
       value: otlp/collector_otlp-test-output-2
+  attributes/exporter_name_otlp-test-output-3:
+    actions:
+    - action: "insert"
+      key: "exporter"
+      value: "otlp/collector_otlp-test-output-3"
   attributes/metricattributes:
     actions:
     - action: insert
@@ -175,7 +241,127 @@ processors:
     check_interval: 1s
     limit_percentage: 75
     spike_limit_percentage: 25
-receivers: {}
+receivers:
+  filelog/example-tenant-a:
+    exclude:
+    - /var/log/pods/*/otc-container/*.log
+    include:
+    - /var/log/pods/example-tenant-a_*/*/*.log
+    include_file_name: false
+    include_file_path: true
+    operators:
+    - id: get-format
+      routes:
+      - expr: body matches "^\\{"
+        output: parser-docker
+      - expr: body matches "^[^ Z]+Z"
+        output: parser-containerd
+      type: router
+    - id: parser-containerd
+      output: extract_metadata_from_filepath
+      regex: ^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$
+      timestamp:
+        layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+        parse_from: attributes.time
+      type: regex_parser
+    - id: parser-docker
+      output: extract_metadata_from_filepath
+      timestamp:
+        layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+        parse_from: attributes.time
+      type: json_parser
+    - cache:
+        size: 128
+      id: extract_metadata_from_filepath
+      parse_from: attributes["log.file.path"]
+      regex: ^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9-]+)\/(?P<container_name>[^\/]+)\/(?P<restart_count>\d+)\.log$
+      type: regex_parser
+    - from: attributes.log
+      to: body
+      type: move
+    - from: attributes.stream
+      to: attributes["log.iostream"]
+      type: move
+    - from: attributes.container_name
+      to: resource["k8s.container.name"]
+      type: move
+    - from: attributes.namespace
+      to: resource["k8s.namespace.name"]
+      type: move
+    - from: attributes.pod_name
+      to: resource["k8s.pod.name"]
+      type: move
+    - from: attributes.restart_count
+      to: resource["k8s.container.restart_count"]
+      type: move
+    - from: attributes.uid
+      to: resource["k8s.pod.uid"]
+      type: move
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    start_at: end
+    storage: file_storage/example-tenant-a
+  filelog/example-tenant-b:
+    exclude:
+    - /var/log/pods/*/otc-container/*.log
+    include:
+    - /var/log/pods/example-tenant-b_*/*/*.log
+    include_file_name: false
+    include_file_path: true
+    operators:
+    - id: get-format
+      routes:
+      - expr: body matches "^\\{"
+        output: parser-docker
+      - expr: body matches "^[^ Z]+Z"
+        output: parser-containerd
+      type: router
+    - id: parser-containerd
+      output: extract_metadata_from_filepath
+      regex: ^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$
+      timestamp:
+        layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+        parse_from: attributes.time
+      type: regex_parser
+    - id: parser-docker
+      output: extract_metadata_from_filepath
+      timestamp:
+        layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+        parse_from: attributes.time
+      type: json_parser
+    - cache:
+        size: 128
+      id: extract_metadata_from_filepath
+      parse_from: attributes["log.file.path"]
+      regex: ^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9-]+)\/(?P<container_name>[^\/]+)\/(?P<restart_count>\d+)\.log$
+      type: regex_parser
+    - from: attributes.log
+      to: body
+      type: move
+    - from: attributes.stream
+      to: attributes["log.iostream"]
+      type: move
+    - from: attributes.container_name
+      to: resource["k8s.container.name"]
+      type: move
+    - from: attributes.namespace
+      to: resource["k8s.namespace.name"]
+      type: move
+    - from: attributes.pod_name
+      to: resource["k8s.pod.name"]
+      type: move
+    - from: attributes.restart_count
+      to: resource["k8s.container.restart_count"]
+      type: move
+    - from: attributes.uid
+      to: resource["k8s.pod.uid"]
+      type: move
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+    start_at: end
+    storage: file_storage/example-tenant-b
 service:
   extensions:
   - bearertokenauth/collector_otlp-test-output
@@ -219,13 +405,13 @@ service:
       - attributes/exporter_name_fluentforward-test-output
       receivers:
       - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
-    logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-2:
+    logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-3:
       exporters:
-      - otlp/collector_otlp-test-output-2
+      - otlp/collector_otlp-test-output-3
       - count/output_metrics
       processors:
       - memory_limiter
-      - attributes/exporter_name_otlp-test-output-2
+      - attributes/exporter_name_otlp-test-output-3
       receivers:
       - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
     logs/tenant_example-tenant-a:
