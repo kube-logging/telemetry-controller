@@ -16,7 +16,14 @@ spec:
     singular: output
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.tenant
+      name: Tenant
+      type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Output is the Schema for the outputs API
@@ -698,6 +705,11 @@ spec:
             type: object
           status:
             description: OutputStatus defines the observed state of Output
+            properties:
+              state:
+                type: string
+              tenant:
+                type: string
             type: object
         type: object
     served: true

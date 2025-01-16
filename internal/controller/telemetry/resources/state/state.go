@@ -1,4 +1,4 @@
-// Copyright © 2023 Kube logging authors
+// Copyright © 2025 Kube logging authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1alpha1
+package state
 
-type NamespacedName struct {
-	Namespace string `json:"namespace"`
-	Name      string `json:"name"`
-}
+type State string
 
 const (
-	Separator = '/'
+	StateReady  State = "ready"
+	StateFailed State = "failed"
 )
-
-// String returns the general purpose string representation
-func (n NamespacedName) String() string {
-	return n.Namespace + string(Separator) + n.Name
-}

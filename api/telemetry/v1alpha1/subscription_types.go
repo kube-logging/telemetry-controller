@@ -15,6 +15,8 @@
 package v1alpha1
 
 import (
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources/state"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -35,7 +37,23 @@ type SubscriptionSpec struct {
 type SubscriptionStatus struct {
 	Tenant  string           `json:"tenant,omitempty"`
 	Outputs []NamespacedName `json:"outputs,omitempty"`
-	State   State            `json:"state,omitempty"`
+	State   state.State      `json:"state,omitempty"`
+}
+
+func (s *Subscription) GetTenant() string {
+	return s.Status.Tenant
+}
+
+func (s *Subscription) SetTenant(tenant string) {
+	s.Status.Tenant = tenant
+}
+
+func (s *Subscription) GetState() state.State {
+	return s.Status.State
+}
+
+func (s *Subscription) SetState(state state.State) {
+	s.Status.State = state
 }
 
 // +kubebuilder:object:root=true
@@ -61,6 +79,14 @@ type SubscriptionList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Subscription `json:"items"`
+}
+
+func (l *SubscriptionList) GetItems() []resources.ResourceOwnedByTenant {
+	items := make([]resources.ResourceOwnedByTenant, len(l.Items))
+	for i := range l.Items {
+		items[i] = &l.Items[i]
+	}
+	return items
 }
 
 func init() {
