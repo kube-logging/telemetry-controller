@@ -59,7 +59,6 @@ exporters:
   fluentforwardexporter/collector_fluentforward-test-output:
     endpoint:
       tcp_addr: fluentd.example-tenant-b-ns.svc.cluster.local:24224
-      validate_tcp_resolution: false
     retry_on_failure:
       enabled: true
       max_elapsed_time: 0
@@ -94,14 +93,14 @@ exporters:
     tls:
       insecure: true
   otlp/collector_otlp-test-output-3:
-    endpoint: "receiver-collector.example-tenant-b-ns.svc.cluster.local:4317"
+    endpoint: receiver-collector.example-tenant-b-ns.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
-      max_elapsed_time: 0.0
+      max_elapsed_time: 0
     sending_queue:
       enabled: true
-      queue_size: 100.0
-      storage: "file_storage/example-tenant-b"
+      queue_size: 100
+      storage: file_storage/example-tenant-b
     tls:
       insecure: true
   otlphttp/collector_loki-test-output:
@@ -149,9 +148,9 @@ processors:
       value: otlp/collector_otlp-test-output-2
   attributes/exporter_name_otlp-test-output-3:
     actions:
-    - action: "insert"
-      key: "exporter"
-      value: "otlp/collector_otlp-test-output-3"
+    - action: insert
+      key: exporter
+      value: otlp/collector_otlp-test-output-3
   attributes/metricattributes:
     actions:
     - action: insert

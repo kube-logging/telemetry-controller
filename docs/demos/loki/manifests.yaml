@@ -31,8 +31,19 @@ spec:
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
-  name: loki
-  namespace: collector
+  name: loki-1
+  namespace: tenant-demo-1
+spec:
+  otlphttp:
+    endpoint: http://loki.loki.svc.cluster.local:3100/otlp/
+    tls:
+      insecure: true
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: loki-2
+  namespace: tenant-demo-2
 spec:
   otlphttp:
     endpoint: http://loki.loki.svc.cluster.local:3100/otlp/
@@ -62,9 +73,7 @@ spec:
   condition: "true"
   outputs:
     - name: loki
-      namespace: collector
-    - name: openobserve-1
-      namespace: collector
+      namespace: tenant-demo-1
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Tenant
@@ -88,7 +97,5 @@ metadata:
 spec:
   condition: "true"
   outputs:
-    - name: loki
-      namespace: collector
-    - name: openobserve-2
-      namespace: collector
+    - name: loki-2
+      namespace: tenant-demo-2

@@ -41,7 +41,8 @@ metadata:
   namespace: default
 spec:
   fluentforward:
-    endpoint: all-to-file-fluentd.default:24240
+    endpoint:
+      tcp_addr: all-to-file-fluentd.default:24240
     tag: otelcol
     kubernetes_metadata:
       key: kubernetes

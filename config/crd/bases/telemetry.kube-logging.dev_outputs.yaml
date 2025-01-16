@@ -171,7 +171,6 @@ spec:
                         type: boolean
                     required:
                     - tcp_addr
-                    - validate_tcp_resolution
                     type: object
                   kubernetes_metadata:
                     properties:

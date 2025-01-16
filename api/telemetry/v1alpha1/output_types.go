@@ -107,7 +107,7 @@ type Endpoint struct {
 	// Controls whether to validate the tcp address.
 	// Turning this ON may result in the collector failing to start if it came up faster then the endpoint.
 	// default is false.
-	ValidateTCPResolution bool `json:"validate_tcp_resolution"`
+	ValidateTCPResolution bool `json:"validate_tcp_resolution,omitempty"`
 }
 
 type KubernetesMetadata struct {

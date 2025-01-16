@@ -44,13 +44,13 @@ spec:
   condition: "true"
   outputs:
     - name: otlp-test-output-1
-      namespace: collector
+      namespace: example-tenant-ns
 ---
 apiVersion: v1
 kind: Secret
 metadata:
   name: otlp-test-output-1-basicauth-token-secret
-  namespace: collector
+  namespace: example-tenant-ns
 type: Opaque
 data:
   username: dXNlcg== # user
@@ -60,13 +60,13 @@ apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
   name: otlp-test-output-1
-  namespace: collector
+  namespace: example-tenant-ns
 spec:
   authentication:
     basicauth:
       secretRef:
         name: otlp-test-output-1-basicauth-token-secret
-        namespace: collector
+        namespace: example-tenant-ns
   otlp:
     endpoint: receiver-otelcol-collector.receiver.svc.cluster.local:4317
     tls:
