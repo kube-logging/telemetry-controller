@@ -30,6 +30,7 @@ type SubscriptionSpec struct {
 	// +kubebuilder:validation:Required
 
 	// The outputs to which the logs will be routed if the condition evaluates to true.
+	// Outputs must be in the same tenant as the subscription to be valid.
 	Outputs []NamespacedName `json:"outputs"`
 }
 

@@ -21,6 +21,7 @@ import (
 	"slices"
 	"strings"
 
+	"emperror.dev/errors"
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources/state"
@@ -28,12 +29,28 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // TenantResourceManager is a manager for resources owned by tenants: Subscriptions and Outputs
 type TenantResourceManager struct {
 	BaseManager
+}
+
+// GetLogsourceNamespaceNamesForTenant returns the namespaces that match the log source namespace selectors of the tenant
+func (t *TenantResourceManager) GetLogsourceNamespaceNamesForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]string, error) {
+	namespaces, err := t.getNamespacesForSelectorSlice(ctx, tentant.Spec.LogSourceNamespaceSelectors)
+	if err != nil {
+		return nil, err
+	}
+
+	namespaceNames := make([]string, len(namespaces))
+	for i, namespace := range namespaces {
+		namespaceNames[i] = namespace.Name
+	}
+
+	return namespaceNames, nil
 }
 
 // GetResourceOwnedByTenant returns a list of resources owned by the tenant and a list of resources that need to be updated
@@ -97,31 +114,6 @@ func (t *TenantResourceManager) GetResourceOwnedByTenant(ctx context.Context, re
 	}
 
 	return ownedList, updateList, nil
-}
-
-// getNamespacesForSelectorSlice returns a list of namespaces that match the given label selectors
-func (r *TenantResourceManager) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
-	var namespaces []apiv1.Namespace
-	for _, ls := range labelSelectors {
-		selector, err := metav1.LabelSelectorAsSelector(&ls)
-		if err != nil {
-			return nil, err
-		}
-
-		var namespacesForSelector apiv1.NamespaceList
-		listOpts := &client.ListOptions{
-			LabelSelector: selector,
-		}
-		if err := r.List(ctx, &namespacesForSelector, listOpts); client.IgnoreNotFound(err) != nil {
-			return nil, err
-		}
-
-		namespaces = append(namespaces, namespacesForSelector.Items...)
-	}
-
-	namespaces = normalizeNamespaceSlice(namespaces)
-
-	return namespaces, nil
 }
 
 // updateResourcesForTenant fails internally and logs failures individually
@@ -194,19 +186,65 @@ func (t *TenantResourceManager) DisownResources(ctx context.Context, resourceToD
 	}
 }
 
-// GetLogsourceNamespaceNamesForTenant returns the namespaces that match the log source namespace selectors of the tenant
-func (t *TenantResourceManager) GetLogsourceNamespaceNamesForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]string, error) {
-	namespaces, err := t.getNamespacesForSelectorSlice(ctx, tentant.Spec.LogSourceNamespaceSelectors)
-	if err != nil {
-		return nil, err
+// ValidateSubscriptionOutputs validates the output references of a subscription
+func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context, subscription *v1alpha1.Subscription) []v1alpha1.NamespacedName {
+	validOutputs := []v1alpha1.NamespacedName{}
+	invalidOutputs := []v1alpha1.NamespacedName{}
+
+	for _, outputRef := range subscription.Spec.Outputs {
+		checkedOutput := &v1alpha1.Output{}
+		if err := t.Get(ctx, types.NamespacedName(outputRef), checkedOutput); err != nil {
+			t.Logger.Error(err, "referred output invalid", "output", outputRef.String())
+
+			invalidOutputs = append(invalidOutputs, outputRef)
+			continue
+		}
+
+		// Ensure the output belongs to the same tenant
+		if checkedOutput.Status.Tenant != subscription.Status.Tenant {
+			t.Logger.Error(errors.New("output and subscription tenants mismatch"),
+				"output", checkedOutput.NamespacedName().String(),
+				"output's tenant", checkedOutput.Status.Tenant,
+				"subscription", subscription.NamespacedName().String(),
+				"subscription's tenant", subscription.Status.Tenant)
+
+			invalidOutputs = append(invalidOutputs, outputRef)
+			continue
+		}
+
+		validOutputs = append(validOutputs, outputRef)
 	}
 
-	namespaceNames := make([]string, len(namespaces))
-	for i, namespace := range namespaces {
-		namespaceNames[i] = namespace.Name
+	if len(invalidOutputs) > 0 {
+		t.Logger.Error(errors.New("some outputs are invalid"), "invalidOutputs", invalidOutputs, "subscription", subscription.NamespacedName().String())
 	}
 
-	return namespaceNames, nil
+	return validOutputs
+}
+
+// getNamespacesForSelectorSlice returns a list of namespaces that match the given label selectors
+func (r *TenantResourceManager) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
+	var namespaces []apiv1.Namespace
+	for _, ls := range labelSelectors {
+		selector, err := metav1.LabelSelectorAsSelector(&ls)
+		if err != nil {
+			return nil, err
+		}
+
+		var namespacesForSelector apiv1.NamespaceList
+		listOpts := &client.ListOptions{
+			LabelSelector: selector,
+		}
+		if err := r.List(ctx, &namespacesForSelector, listOpts); client.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+
+		namespaces = append(namespaces, namespacesForSelector.Items...)
+	}
+
+	namespaces = normalizeNamespaceSlice(namespaces)
+
+	return namespaces, nil
 }
 
 func GetResourceNamesFromResource(resources []resources.ResourceOwnedByTenant) []v1alpha1.NamespacedName {

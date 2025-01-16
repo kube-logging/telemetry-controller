@@ -294,32 +294,17 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 
 	// Check outputs for subscriptions
 	realSubscriptionsForTenant, err := utils.GetConcreteTypeFromList[*v1alpha1.Subscription](utils.ToObject(subscriptionsForTenant))
+	if err != nil {
+		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get concrete type from list", "tenant", tenant.Name)
+	}
+
 	for _, subscription := range realSubscriptionsForTenant {
 		originalSubscriptionStatus := subscription.Status.DeepCopy()
-		validOutputs := []v1alpha1.NamespacedName{}
-		for _, outputRef := range subscription.Spec.Outputs {
-			checkedOutput := &v1alpha1.Output{}
-			if err := tenantResManager.Get(ctx, types.NamespacedName(outputRef), checkedOutput); err != nil {
-				tenantResManager.Logger.Error(err, "referred output invalid", "output", outputRef.String())
-			} else {
-				validOutputs = append(validOutputs, outputRef)
-			}
-
-			// FIXME: put a check here
-
-		}
-		if len(validOutputs) == 0 {
-			subscription.Status.State = state.StateFailed
-			tenantResManager.Logger.Error(errors.WithStack(errors.New("no valid outputs for subscription")), "no valid outputs for subscription", "subscription", subscription.NamespacedName().String())
-		} else {
-			subscription.Status.State = state.StateReady
-		}
-		subscription.Status.Outputs = validOutputs
-
+		subscription.Status.Outputs = tenantResManager.ValidateSubscriptionOutputs(ctx, subscription)
 		if !reflect.DeepEqual(originalSubscriptionStatus, subscription.Status) {
 			if updateErr := tenantResManager.Status().Update(ctx, subscription); updateErr != nil {
 				tenantResManager.Logger.Error(errors.WithStack(updateErr), "failed updating subscription status", "subscription", subscription.NamespacedName().String())
-				return errors.Append(err, updateErr)
+				return updateErr
 			}
 		}
 	}

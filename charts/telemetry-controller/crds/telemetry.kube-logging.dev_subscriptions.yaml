@@ -56,8 +56,9 @@ spec:
                   telemetry to the outputs.
                 type: string
               outputs:
-                description: The outputs to which the logs will be routed if the condition
-                  evaluates to true.
+                description: |-
+                  The outputs to which the logs will be routed if the condition evaluates to true.
+                  Outputs must be in the same tenant as the subscription to be valid.
                 items:
                   properties:
                     name:
