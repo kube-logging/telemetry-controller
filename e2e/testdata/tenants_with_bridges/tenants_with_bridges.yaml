@@ -82,13 +82,13 @@ spec:
   condition: "true"
   outputs:
     - name: otlp-test-output-database
-      namespace: collector
+      namespace: database
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
   name: otlp-test-output-database
-  namespace: collector
+  namespace: database
 spec:
   batch:
     send_batch_size: 8192
@@ -128,13 +128,13 @@ spec:
   condition: "true"
   outputs:
     - name: otlp-test-output-web
-      namespace: collector
+      namespace: web
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
   name: otlp-test-output-web
-  namespace: collector
+  namespace: web
 spec:
   batch:
     send_batch_size: 8192

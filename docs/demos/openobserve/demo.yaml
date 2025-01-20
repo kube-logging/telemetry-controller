@@ -43,24 +43,13 @@ spec:
   condition: "true"
   outputs:
     - name: otlp-openobserve
-      namespace: collector
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Subscription
-metadata:
-  name: subscription-sample-2
-  namespace: example-tenant-ns
-spec:
-  condition: "true"
-  outputs:
-    - name: otlp-openobserve
-      namespace: collector
+      namespace: example-tenant-ns
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
   name: otlp-openobserve
-  namespace: collector
+  namespace: example-tenant-ns
 spec:
   otlp:
     endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081

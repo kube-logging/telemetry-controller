@@ -81,7 +81,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 						Outputs: []v1alpha1.NamespacedName{
 							{
 								Name:      "otlp-test-output-1",
-								Namespace: "collector",
+								Namespace: "tenant-1-ctrl",
 							},
 						},
 					},
@@ -96,7 +96,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 						Outputs: []v1alpha1.NamespacedName{
 							{
 								Name:      "otlp-test-output-2",
-								Namespace: "collector",
+								Namespace: "tenant-2-all",
 							},
 						},
 					},
@@ -173,7 +173,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "otlp-test-output-1",
-						Namespace: "collector",
+						Namespace: "tenant-1-ctrl",
 					},
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{
@@ -189,7 +189,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "otlp-test-output-2",
-						Namespace: "collector",
+						Namespace: "tenant-2-all",
 					},
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{

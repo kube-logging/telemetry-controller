@@ -43,6 +43,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/otel_conf_gen/validator"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components/extension/storage"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources/state"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 )
 
@@ -83,7 +84,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 	}
 
 	for _, tenant := range tenants {
-		if tenant.Status.State == v1alpha1.StateFailed {
+		if tenant.Status.State == state.StateFailed {
 			logger.Info(fmt.Sprintf("tenant %q is in failed state, retrying later", tenant.Name))
 			return otelcolconfgen.OtelColConfigInput{}, ErrTenantFailed
 		}
@@ -208,7 +209,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		logger.Error(errors.WithStack(err), "invalid otel config input")
 
-		collector.Status.State = v1alpha1.StateFailed
+		collector.Status.State = state.StateFailed
 		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
 			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
 			return ctrl.Result{}, errors.Append(err, updateErr)
@@ -221,7 +222,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err := validator.ValidateAssembledConfig(otelConfig); err != nil {
 		logger.Error(errors.WithStack(err), "invalid otel config")
 
-		collector.Status.State = v1alpha1.StateFailed
+		collector.Status.State = state.StateFailed
 		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
 			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
 			return ctrl.Result{}, errors.Append(err, updateErr)
@@ -235,18 +236,18 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("%+v", err)
 	}
 
-	otelCollector, state := r.otelCollector(collector, otelConfig, additionalArgs, otelConfigInput.Tenants, saName.Name)
+	otelCollector, collectorState := r.otelCollector(collector, otelConfig, additionalArgs, otelConfigInput.Tenants, saName.Name)
 
 	if err := ctrl.SetControllerReference(collector, otelCollector, r.Scheme); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
-	_, err = resourceReconciler.ReconcileResource(otelCollector, state)
+	_, err = resourceReconciler.ReconcileResource(otelCollector, collectorState)
 	if err != nil {
 		logger.Error(errors.WithStack(err), "failed reconciling collector")
 
-		collector.Status.State = v1alpha1.StateFailed
+		collector.Status.State = state.StateFailed
 		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
 			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
 			return ctrl.Result{}, errors.Append(err, updateErr)
@@ -261,7 +262,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	collector.Status.Tenants = normalizeStringSlice(tenantNames)
 
-	collector.Status.State = v1alpha1.StateReady
+	collector.Status.State = state.StateReady
 	if !reflect.DeepEqual(originalCollectorStatus, collector.Status) {
 		logger.Info("collector status changed")
 

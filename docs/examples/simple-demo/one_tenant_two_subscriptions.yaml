@@ -43,7 +43,7 @@ spec:
   condition: "true"
   outputs:
     - name: otlp-test-output-1
-      namespace: collector
+      namespace: example-tenant-ns
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Subscription
@@ -54,13 +54,13 @@ spec:
   condition: "true"
   outputs:
     - name: otlp-test-output-2
-      namespace: collector
+      namespace: example-tenant-ns
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
   name: otlp-test-output-1
-  namespace: collector
+  namespace: example-tenant-ns
 spec:
   otlp:
     endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081
@@ -75,7 +75,7 @@ apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
   name: otlp-test-output-2
-  namespace: collector
+  namespace: example-tenant-ns
 spec:
   otlp:
     endpoint: openobserve-otlp-grpc.openobserve.svc.cluster.local:5081

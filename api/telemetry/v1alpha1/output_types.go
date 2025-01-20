@@ -15,6 +15,8 @@
 package v1alpha1
 
 import (
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources/state"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -105,7 +107,7 @@ type Endpoint struct {
 	// Controls whether to validate the tcp address.
 	// Turning this ON may result in the collector failing to start if it came up faster then the endpoint.
 	// default is false.
-	ValidateTCPResolution bool `json:"validate_tcp_resolution"`
+	ValidateTCPResolution bool `json:"validate_tcp_resolution,omitempty"`
 }
 
 type KubernetesMetadata struct {
@@ -155,10 +157,30 @@ type Fluentforward struct {
 
 // OutputStatus defines the observed state of Output
 type OutputStatus struct {
+	Tenant string      `json:"tenant,omitempty"`
+	State  state.State `json:"state,omitempty"`
+}
+
+func (o *Output) GetTenant() string {
+	return o.Status.Tenant
+}
+
+func (o *Output) SetTenant(tenant string) {
+	o.Status.Tenant = tenant
+}
+
+func (o *Output) GetState() state.State {
+	return o.Status.State
+}
+
+func (o *Output) SetState(state state.State) {
+	o.Status.State = state
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.status.tenant`
+// +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 // +kubebuilder:resource:categories=telemetry-all
 
 // Output is the Schema for the outputs API
@@ -177,6 +199,14 @@ type OutputList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Output `json:"items"`
+}
+
+func (l *OutputList) GetItems() []resources.ResourceOwnedByTenant {
+	items := make([]resources.ResourceOwnedByTenant, len(l.Items))
+	for i := range l.Items {
+		items[i] = &l.Items[i]
+	}
+	return items
 }
 
 func init() {

@@ -20,12 +20,9 @@ import (
 	"reflect"
 	"slices"
 	"sort"
-	"strings"
 
 	"emperror.dev/errors"
 	apiv1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,14 +32,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/manager"
 	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/pipeline/components"
-)
-
-const (
-	subscriptionTenantReferenceField = ".status.tenant"
-	bridgeSourceTenantReferenceField = ".spec.sourceTenant"
-	bridgeTargetTenantReferenceField = ".spec.targetTenant"
-	tenantNameField                  = ".metadata.name"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources/state"
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/utils"
 )
 
 // RouteReconciler is responsible for reconciling Tenant resources
@@ -63,128 +57,54 @@ type RouteReconciler struct {
 // +kubebuilder:rbac:groups=opentelemetry.io,resources=opentelemetrycollectors,verbs=get;list;watch;create;update;patch;delete
 
 func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	baseManager := manager.NewBaseManager(r.Client, log.FromContext(ctx))
 
 	tenant := &v1alpha1.Tenant{}
-	logger.Info(fmt.Sprintf("getting tenant: %q", req.NamespacedName.Name))
+	baseManager.Logger.Info(fmt.Sprintf("getting tenant: %q", req.NamespacedName.Name))
 
 	if err := r.Get(ctx, req.NamespacedName, tenant); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	originalTenantStatus := tenant.Status
-	logger.Info(fmt.Sprintf("reconciling tenant: %q", tenant.Name))
+	baseManager.Logger.Info(fmt.Sprintf("reconciling tenant: %q", tenant.Name))
 
-	subscriptionsForTenant, updateList, err := r.getSubscriptionsForTenant(ctx, tenant)
-	if err != nil {
-		logger.Error(errors.WithStack(err), "failed to get subscriptions for tenant", "tenant", tenant.Name)
-
-		tenant.Status.State = v1alpha1.StateFailed
+	if err := handleOwnedResources(ctx, baseManager.GetTenantResourceManager(), tenant); err != nil {
+		tenant.Status.State = state.StateFailed
+		baseManager.Logger.Error(errors.WithStack(err), "failed to handle resources owned by tenant", "tenant", tenant.Name)
 		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
-			logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			baseManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return ctrl.Result{}, errors.Append(err, updateErr)
 		}
-
-		return ctrl.Result{}, err
 	}
 
-	// add all newly updated subscriptions here
-	subscriptionsForTenant = append(subscriptionsForTenant, r.updateSubscriptionsForTenant(ctx, tenant.Name, updateList)...)
-	subscriptionsToDisown := r.getSubscriptionsReferencingTenantButNotSelected(ctx, tenant, subscriptionsForTenant)
-	r.disownSubscriptions(ctx, subscriptionsToDisown)
-
-	subscriptionNames := getSubscriptionNamesFromSubscription(subscriptionsForTenant)
-	components.SortNamespacedNames(subscriptionNames)
-	tenant.Status.Subscriptions = subscriptionNames
-
-	for _, subscription := range subscriptionsForTenant {
-		originalSubscriptionStatus := subscription.Status.DeepCopy()
-		validOutputs := []v1alpha1.NamespacedName{}
-		for _, outputRef := range subscription.Spec.Outputs {
-			checkedOutput := &v1alpha1.Output{}
-			if err := r.Client.Get(ctx, types.NamespacedName(outputRef), checkedOutput); err != nil {
-				logger.Error(err, "referred output invalid", "output", outputRef.String())
-			} else {
-				validOutputs = append(validOutputs, outputRef)
-			}
-
-		}
-		if len(validOutputs) == 0 {
-			subscription.Status.State = v1alpha1.StateFailed
-			logger.Error(errors.WithStack(errors.New("no valid outputs for subscription")), "no valid outputs for subscription", "subscription", subscription.NamespacedName().String())
-		} else {
-			subscription.Status.State = v1alpha1.StateReady
-		}
-		subscription.Status.Outputs = validOutputs
-
-		if !reflect.DeepEqual(originalSubscriptionStatus, subscription.Status) {
-			if updateErr := r.updateStatus(ctx, &subscription); updateErr != nil {
-				logger.Error(errors.WithStack(updateErr), "failed updating subscription status", "subscription", subscription.NamespacedName().String())
-				return ctrl.Result{}, errors.Append(err, updateErr)
-			}
-		}
-	}
-
-	bridgesForTenant, err := r.getBridgesForTenant(ctx, tenant.Name)
-	if err != nil {
-		tenant.Status.State = v1alpha1.StateFailed
-		logger.Error(errors.WithStack(err), "failed to get bridges for tenant", "tenant", tenant.Name)
+	if err := handleBridgeResources(ctx, baseManager.GetBridgeManager(), tenant); err != nil {
+		tenant.Status.State = state.StateFailed
+		baseManager.Logger.Error(errors.WithStack(err), "failed to handle bridge resources", "tenant", tenant.Name)
 		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
-			logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			baseManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return ctrl.Result{}, errors.Append(err, updateErr)
 		}
-
-		return ctrl.Result{}, err
-	}
-	bridgesForTenantNames := getBridgeNamesFromBridges(bridgesForTenant)
-	sort.Strings(bridgesForTenantNames)
-	tenant.Status.ConnectedBridges = bridgesForTenantNames
-
-	for _, bridge := range bridgesForTenant {
-		if err := r.checkBridgeConnection(ctx, tenant.Name, &bridge); err != nil {
-			tenant.Status.State = v1alpha1.StateFailed
-			logger.Error(errors.WithStack(err), "failed to check bridge connection", "bridge", bridge.Name)
-			if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
-				logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-				return ctrl.Result{}, errors.Append(err, updateErr)
-			}
-
-			return ctrl.Result{}, err
-		}
 	}
 
-	logsourceNamespacesForTenant, err := r.getLogsourceNamespaceNamesForTenant(ctx, tenant)
-	if err != nil {
-		tenant.Status.State = v1alpha1.StateFailed
-		logger.Error(errors.WithStack(err), "failed to get logsource namespaces for tenant", "tenant", tenant.Name)
-		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
-			logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-			return ctrl.Result{}, errors.Append(err, updateErr)
-		}
-
-		return ctrl.Result{}, err
-	}
-	slices.Sort(logsourceNamespacesForTenant)
-	tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
-
-	tenant.Status.State = v1alpha1.StateReady
+	tenant.Status.State = state.StateReady
 	if !reflect.DeepEqual(originalTenantStatus, tenant.Status) {
-		logger.Info("tenant status changed")
+		baseManager.Logger.Info("tenant status changed")
 		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
-			logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-			return ctrl.Result{}, errors.Append(err, updateErr)
+			baseManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			return ctrl.Result{}, updateErr
 		}
 
 		return ctrl.Result{}, nil
 	}
 
-	logger.Info("tenant reconciliation complete", "tenant", tenant.Name)
+	baseManager.Logger.Info("tenant reconciliation complete", "tenant", tenant.Name)
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Subscription{}, subscriptionTenantReferenceField, func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Subscription{}, resources.StatusTenantReferenceField, func(rawObj client.Object) []string {
 		subscription := rawObj.(*v1alpha1.Subscription)
 		if subscription.Status.Tenant == "" {
 			return nil
@@ -194,7 +114,17 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}); err != nil {
 		return err
 	}
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Bridge{}, bridgeSourceTenantReferenceField, func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Output{}, resources.StatusTenantReferenceField, func(rawObj client.Object) []string {
+		output := rawObj.(*v1alpha1.Output)
+		if output.Status.Tenant == "" {
+			return nil
+		}
+
+		return []string{output.Status.Tenant}
+	}); err != nil {
+		return err
+	}
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Bridge{}, resources.BridgeSourceTenantReferenceField, func(rawObj client.Object) []string {
 		bridge := rawObj.(*v1alpha1.Bridge)
 		if bridge.Spec.SourceTenant == "" {
 			return nil
@@ -204,7 +134,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}); err != nil {
 		return err
 	}
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Bridge{}, bridgeTargetTenantReferenceField, func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Bridge{}, resources.BridgeTargetTenantReferenceField, func(rawObj client.Object) []string {
 		bridge := rawObj.(*v1alpha1.Bridge)
 		if bridge.Spec.TargetTenant == "" {
 			return nil
@@ -214,7 +144,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}); err != nil {
 		return err
 	}
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Tenant{}, tenantNameField, func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Tenant{}, resources.TenantNameField, func(rawObj client.Object) []string {
 		tenant := rawObj.(*v1alpha1.Tenant)
 		return []string{tenant.Name}
 	}); err != nil {
@@ -296,200 +226,85 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *RouteReconciler) getSubscriptionsForTenant(ctx context.Context, tenant *v1alpha1.Tenant) (ownedList []v1alpha1.Subscription, updateList []v1alpha1.Subscription, err error) {
-	logger := log.FromContext(ctx)
+func (r *RouteReconciler) updateStatus(ctx context.Context, obj client.Object) error {
+	return r.Status().Update(ctx, obj)
+}
 
-	namespaces, err := r.getNamespacesForSelectorSlice(ctx, tenant.Spec.SubscriptionNamespaceSelectors)
+func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantResourceManager, tenant *v1alpha1.Tenant) error {
+	logsourceNamespacesForTenant, err := tenantResManager.GetLogsourceNamespaceNamesForTenant(ctx, tenant)
 	if err != nil {
-		return nil, nil, err
+		tenant.Status.State = state.StateFailed
+		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get logsource namespaces for tenant", "tenant", tenant.Name)
+		if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
+			tenantResManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			return errors.Append(err, updateErr)
+		}
+
+		return err
 	}
+	slices.Sort(logsourceNamespacesForTenant)
+	tenant.Status.LogSourceNamespaces = logsourceNamespacesForTenant
 
-	var selectedSubscriptions []v1alpha1.Subscription
-	for _, ns := range namespaces {
-		var subscriptionsForNS v1alpha1.SubscriptionList
-		listOpts := &client.ListOptions{
-			Namespace: ns.Name,
-		}
-		if err := r.List(ctx, &subscriptionsForNS, listOpts); client.IgnoreNotFound(err) != nil {
-			return nil, nil, err
-		}
-
-		selectedSubscriptions = append(selectedSubscriptions, subscriptionsForNS.Items...)
-	}
-
-	for _, subscription := range selectedSubscriptions {
-		if subscription.Status.Tenant != "" && subscription.Status.Tenant != tenant.Name {
-			logger.Error(errors.Errorf("subscription (%s) is owned by another tenant (%s), skipping reconciliation for this tenant (%s)", subscription.Name, subscription.Status.Tenant, tenant.Name),
-				"make sure to remove subscription from the previous tenant before adopting to new tenant")
-			continue
-		}
-
-		if subscription.Status.Tenant == "" {
-			updateList = append(updateList, subscription)
-		} else {
-			ownedList = append(ownedList, subscription)
-		}
-	}
-
-	return
-}
-
-func (r *RouteReconciler) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
-	var namespaces []apiv1.Namespace
-	for _, ls := range labelSelectors {
-		selector, err := metav1.LabelSelectorAsSelector(&ls)
-		if err != nil {
-			return nil, err
-		}
-
-		var namespacesForSelector apiv1.NamespaceList
-		listOpts := &client.ListOptions{
-			LabelSelector: selector,
-		}
-		if err := r.List(ctx, &namespacesForSelector, listOpts); client.IgnoreNotFound(err) != nil {
-			return nil, err
-		}
-
-		namespaces = append(namespaces, namespacesForSelector.Items...)
-	}
-
-	namespaces = normalizeNamespaceSlice(namespaces)
-
-	return namespaces, nil
-}
-
-// disownSubscriptions fails internally by logging errors individually
-// this is by design so that we don't fail the whole reconciliation when a single subscription update fails
-func (r *RouteReconciler) disownSubscriptions(ctx context.Context, subscriptionsToDisown []v1alpha1.Subscription) {
-	logger := log.FromContext(ctx)
-
-	for _, subscription := range subscriptionsToDisown {
-		subscription.Status.Tenant = ""
-		if updateErr := r.Status().Update(ctx, &subscription); updateErr != nil {
-			subscription.Status.State = v1alpha1.StateFailed
-			logger.Error(updateErr, fmt.Sprintf("failed to detach subscription %s/%s from collector", subscription.Namespace, subscription.Name))
-		} else {
-			logger.Info("disowning subscription", "subscription", fmt.Sprintf("%s/%s", subscription.Namespace, subscription.Name))
-		}
-	}
-}
-
-// updateSubscriptionsForTenant fails internally and logs failures individually
-// this is by design in order to avoid blocking the whole reconciliation in case we cannot update a single subscription
-func (r *RouteReconciler) updateSubscriptionsForTenant(ctx context.Context, tenantName string, subscriptions []v1alpha1.Subscription) (updatedSubscriptions []v1alpha1.Subscription) {
-	logger := log.FromContext(ctx, "tenant", tenantName)
-
-	for _, subscription := range subscriptions {
-		subscription.Status.Tenant = tenantName
-		logger.Info("updating subscription status for tenant ownership")
-
-		if updateErr := r.Status().Update(ctx, &subscription); updateErr != nil {
-			subscription.Status.State = v1alpha1.StateFailed
-			logger.Error(updateErr, fmt.Sprintf("failed to set subscription (%s/%s) -> tenant (%s) reference", subscription.Namespace, subscription.Name, tenantName))
-		} else {
-			updatedSubscriptions = append(updatedSubscriptions, subscription)
-		}
-	}
-
-	return
-}
-
-func (r *RouteReconciler) getSubscriptionsReferencingTenantButNotSelected(ctx context.Context, tenant *v1alpha1.Tenant, selectedSubscriptions []v1alpha1.Subscription) []v1alpha1.Subscription {
-	logger := log.FromContext(ctx)
-
-	var subscriptionsReferencing v1alpha1.SubscriptionList
-	listOpts := &client.ListOptions{
-		FieldSelector: fields.OneTermEqualSelector(subscriptionTenantReferenceField, tenant.Name),
-	}
-	if err := r.Client.List(ctx, &subscriptionsReferencing, listOpts); client.IgnoreNotFound(err) != nil {
-		logger.Error(err, "failed to list subscriptions that need to be detached from tenant")
-		return nil
-	}
-
-	var subscriptionsToDisown []v1alpha1.Subscription
-	for _, subscriptionReferencing := range subscriptionsReferencing.Items {
-		idx := slices.IndexFunc(selectedSubscriptions, func(selected v1alpha1.Subscription) bool {
-			return reflect.DeepEqual(subscriptionReferencing.NamespacedName(), selected.NamespacedName())
-		})
-		if idx == -1 {
-			subscriptionsToDisown = append(subscriptionsToDisown, subscriptionReferencing)
-		}
-	}
-
-	return subscriptionsToDisown
-}
-
-func (r *RouteReconciler) getLogsourceNamespaceNamesForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]string, error) {
-	namespaces, err := r.getNamespacesForSelectorSlice(ctx, tentant.Spec.LogSourceNamespaceSelectors)
+	subscriptionsForTenant, subscriptionUpdateList, err := tenantResManager.GetResourceOwnedByTenant(ctx, &v1alpha1.Subscription{}, tenant)
 	if err != nil {
-		return nil, err
-	}
+		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get subscriptions for tenant", "tenant", tenant.Name)
 
-	namespaceNames := make([]string, len(namespaces))
-	for i, namespace := range namespaces {
-		namespaceNames[i] = namespace.Name
-	}
-
-	return namespaceNames, nil
-}
-
-func (r *RouteReconciler) getBridges(ctx context.Context, listOpts *client.ListOptions) ([]v1alpha1.Bridge, error) {
-	var bridges v1alpha1.BridgeList
-	if err := r.Client.List(ctx, &bridges, listOpts); client.IgnoreNotFound(err) != nil {
-		return nil, err
-	}
-
-	return bridges.Items, nil
-}
-
-func (r *RouteReconciler) getBridgesForTenant(ctx context.Context, tenantName string) (bridgesOwned []v1alpha1.Bridge, err error) {
-	listOpts := &client.ListOptions{
-		FieldSelector: fields.OneTermEqualSelector(bridgeSourceTenantReferenceField, tenantName),
-	}
-	sourceBridge, err := r.getBridges(ctx, listOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	listOpts = &client.ListOptions{
-		FieldSelector: fields.OneTermEqualSelector(bridgeTargetTenantReferenceField, tenantName),
-	}
-	targetBridge, err := r.getBridges(ctx, listOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	bridges := append(sourceBridge, targetBridge...)
-	for _, bridge := range bridges {
-		if bridge.Spec.SourceTenant == tenantName || bridge.Spec.TargetTenant == tenantName {
-			bridgesOwned = append(bridgesOwned, bridge)
+		tenant.Status.State = state.StateFailed
+		if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
+			tenantResManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			return errors.Append(err, updateErr)
 		}
+
+		return err
 	}
 
-	return
-}
+	// add all newly updated subscriptions here
+	subscriptionsForTenant = append(subscriptionsForTenant, tenantResManager.UpdateResourcesForTenant(ctx, tenant.Name, subscriptionUpdateList)...)
+	subscriptionsToDisown, err := tenantResManager.GetResourcesReferencingTenantButNotSelected(ctx, tenant, &v1alpha1.Subscription{}, subscriptionsForTenant)
+	if err != nil {
+		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get subscriptions to disown", "tenant", tenant.Name)
+	}
+	tenantResManager.DisownResources(ctx, subscriptionsToDisown)
 
-func (r *RouteReconciler) getTenants(ctx context.Context, listOpts *client.ListOptions) ([]v1alpha1.Tenant, error) {
-	var tenants v1alpha1.TenantList
-	if err := r.Client.List(ctx, &tenants, listOpts); client.IgnoreNotFound(err) != nil {
-		return nil, err
+	subscriptionNames := manager.GetResourceNamesFromResource(subscriptionsForTenant)
+	components.SortNamespacedNames(subscriptionNames)
+	tenant.Status.Subscriptions = subscriptionNames
+
+	// Check outputs for tenant
+	outputsForTenant, outputUpdateList, err := tenantResManager.GetResourceOwnedByTenant(ctx, &v1alpha1.Output{}, tenant)
+	if err != nil {
+		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get outputs for tenant", "tenant", tenant.Name)
+
+		tenant.Status.State = state.StateFailed
+		if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
+			tenantResManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			return errors.Append(err, updateErr)
+		}
+
+		return err
 	}
 
-	return tenants.Items, nil
-}
+	// add all newly updated outputs here
+	outputsForTenant = append(outputsForTenant, tenantResManager.UpdateResourcesForTenant(ctx, tenant.Name, outputUpdateList)...)
+	outputsToDisown, err := tenantResManager.GetResourcesReferencingTenantButNotSelected(ctx, tenant, &v1alpha1.Output{}, outputsForTenant)
+	if err != nil {
+		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get outputs to disown", "tenant", tenant.Name)
+	}
+	tenantResManager.DisownResources(ctx, outputsToDisown)
 
-func (r *RouteReconciler) checkBridgeConnection(ctx context.Context, tenantName string, bridge *v1alpha1.Bridge) error {
-	for _, tenantReference := range []string{bridge.Spec.SourceTenant, bridge.Spec.TargetTenant} {
-		if tenantReference != tenantName {
-			listOpts := &client.ListOptions{
-				FieldSelector: fields.OneTermEqualSelector(tenantNameField, tenantReference),
-			}
-			tenant, err := r.getTenants(ctx, listOpts)
-			if err != nil {
-				return err
-			}
-			if len(tenant) == 0 {
-				return errors.Errorf("bridge %s has a dangling tenant reference %s", bridge.Name, tenantReference)
+	// Check outputs for subscriptions
+	realSubscriptionsForTenant, err := utils.GetConcreteTypeFromList[*v1alpha1.Subscription](utils.ToObject(subscriptionsForTenant))
+	if err != nil {
+		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get concrete type from list", "tenant", tenant.Name)
+	}
+
+	for _, subscription := range realSubscriptionsForTenant {
+		originalSubscriptionStatus := subscription.Status.DeepCopy()
+		subscription.Status.Outputs = tenantResManager.ValidateSubscriptionOutputs(ctx, subscription)
+		if !reflect.DeepEqual(originalSubscriptionStatus, subscription.Status) {
+			if updateErr := tenantResManager.Status().Update(ctx, subscription); updateErr != nil {
+				tenantResManager.Logger.Error(errors.WithStack(updateErr), "failed updating subscription status", "subscription", subscription.NamespacedName().String())
+				return updateErr
 			}
 		}
 	}
@@ -497,42 +312,35 @@ func (r *RouteReconciler) checkBridgeConnection(ctx context.Context, tenantName 
 	return nil
 }
 
-func (r *RouteReconciler) updateStatus(ctx context.Context, obj client.Object) error {
-	return r.Client.Status().Update(ctx, obj)
-}
+func handleBridgeResources(ctx context.Context, bridgeManager *manager.BridgeManager, tenant *v1alpha1.Tenant) error {
+	bridgesForTenant, err := bridgeManager.GetBridgesForTenant(ctx, tenant.Name)
+	if err != nil {
+		tenant.Status.State = state.StateFailed
+		bridgeManager.Logger.Error(errors.WithStack(err), "failed to get bridges for tenant", "tenant", tenant.Name)
+		if updateErr := bridgeManager.Status().Update(ctx, tenant); updateErr != nil {
+			bridgeManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			return errors.Append(err, updateErr)
+		}
 
-func normalizeNamespaceSlice(inputList []apiv1.Namespace) []apiv1.Namespace {
-	allKeys := make(map[string]bool)
-	uniqueList := []apiv1.Namespace{}
-	for _, item := range inputList {
-		if _, value := allKeys[item.Name]; !value {
-			allKeys[item.Name] = true
-			uniqueList = append(uniqueList, item)
+		return err
+	}
+
+	bridgesForTenantNames := manager.GetBridgeNamesFromBridges(bridgesForTenant)
+	sort.Strings(bridgesForTenantNames)
+	tenant.Status.ConnectedBridges = bridgesForTenantNames
+
+	for _, bridge := range bridgesForTenant {
+		if err := bridgeManager.CheckBridgeConnection(ctx, tenant.Name, &bridge); err != nil {
+			tenant.Status.State = state.StateFailed
+			bridgeManager.Logger.Error(errors.WithStack(err), "failed to check bridge connection", "bridge", bridge.Name)
+			if updateErr := bridgeManager.Status().Update(ctx, tenant); updateErr != nil {
+				bridgeManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+				return errors.Append(err, updateErr)
+			}
+
+			return err
 		}
 	}
 
-	cmp := func(a, b apiv1.Namespace) int {
-		return strings.Compare(a.Name, b.Name)
-	}
-	slices.SortFunc(uniqueList, cmp)
-
-	return uniqueList
-}
-
-func getSubscriptionNamesFromSubscription(subscriptions []v1alpha1.Subscription) []v1alpha1.NamespacedName {
-	subscriptionNames := make([]v1alpha1.NamespacedName, len(subscriptions))
-	for i, subscription := range subscriptions {
-		subscriptionNames[i] = subscription.NamespacedName()
-	}
-
-	return subscriptionNames
-}
-
-func getBridgeNamesFromBridges(bridges []v1alpha1.Bridge) []string {
-	bridgeNames := make([]string, len(bridges))
-	for i, bridge := range bridges {
-		bridgeNames[i] = bridge.Name
-	}
-
-	return bridgeNames
+	return nil
 }

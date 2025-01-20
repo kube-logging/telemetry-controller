@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources/state"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -86,7 +87,7 @@ type PersistenceConfig struct {
 
 // TenantSpec defines the desired state of Tenant
 type TenantSpec struct {
-	// Determines the namespaces from which subscriptions are collected by this tenant.
+	// Determines the namespaces from which subscriptions and outputs are collected by this tenant.
 	SubscriptionNamespaceSelectors []metav1.LabelSelector `json:"subscriptionNamespaceSelectors,omitempty"`
 
 	// Determines the namespaces from which logs are collected by this tenant.
@@ -106,7 +107,7 @@ type TenantStatus struct {
 	Subscriptions       []NamespacedName `json:"subscriptions,omitempty"`
 	LogSourceNamespaces []string         `json:"logSourceNamespaces,omitempty"`
 	ConnectedBridges    []string         `json:"connectedBridges,omitempty"`
-	State               State            `json:"state,omitempty"`
+	State               state.State      `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true

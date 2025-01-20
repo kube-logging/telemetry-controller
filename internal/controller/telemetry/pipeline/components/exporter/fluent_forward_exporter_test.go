@@ -111,8 +111,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 			expectedResult: map[string]any{
 				"fluentforwardexporter/default_output1": map[string]any{
 					"endpoint": map[string]any{
-						"tcp_addr":                "http://example.com",
-						"validate_tcp_resolution": false,
+						"tcp_addr": "http://example.com",
 					},
 					"sending_queue": map[string]any{
 						"enabled":    true,
@@ -211,8 +210,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 			expectedResult: map[string]any{
 				"fluentforwardexporter/default_output2": map[string]any{
 					"endpoint": map[string]any{
-						"tcp_addr":                "http://example.com",
-						"validate_tcp_resolution": false,
+						"tcp_addr": "http://example.com",
 					},
 					"connection_timeout":     "30s",
 					"shared_key":             "shared-key",
