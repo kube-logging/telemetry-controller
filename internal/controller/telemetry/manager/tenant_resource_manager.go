@@ -203,6 +203,7 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 		// Ensure the output belongs to the same tenant
 		if checkedOutput.Status.Tenant != subscription.Status.Tenant {
 			t.Logger.Error(errors.New("output and subscription tenants mismatch"),
+				"output and subscription tenants mismatch",
 				"output", checkedOutput.NamespacedName().String(),
 				"output's tenant", checkedOutput.Status.Tenant,
 				"subscription", subscription.NamespacedName().String(),
@@ -216,7 +217,7 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 	}
 
 	if len(invalidOutputs) > 0 {
-		t.Logger.Error(errors.New("some outputs are invalid"), "invalidOutputs", invalidOutputs, "subscription", subscription.NamespacedName().String())
+		t.Logger.Error(errors.New("some outputs are invalid"), "some outputs are invalid", "invalidOutputs", invalidOutputs, "subscription", subscription.NamespacedName().String())
 	}
 
 	return validOutputs
