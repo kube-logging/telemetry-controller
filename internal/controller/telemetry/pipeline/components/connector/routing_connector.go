@@ -31,7 +31,6 @@ type RoutingConnector struct {
 	Name             string                      `json:"-"`
 	DefaultPipelines []string                    `json:"default_pipelines,omitempty"`
 	ErrorMode        components.ErrorMode        `json:"error_mode,omitempty"`
-	MatchOnce        bool                        `json:"match_once,omitempty"`
 	Table            []RoutingConnectorTableItem `json:"table"`
 }
 
@@ -50,7 +49,6 @@ func newRoutingConnector(name string, tenantRouteConfig v1alpha1.RouteConfig) Ro
 		Name:             name,
 		DefaultPipelines: tenantRouteConfig.DefaultPipelines,
 		ErrorMode:        components.ErrorMode(tenantRouteConfig.ErrorMode),
-		MatchOnce:        tenantRouteConfig.MatchOnce,
 	}
 }
 

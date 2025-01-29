@@ -146,12 +146,6 @@ spec:
                     - silent
                     - propagate
                     type: string
-                  matchOnce:
-                    description: |-
-                      Determines whether the connector matches multiple statements or not.
-                      If enabled, the payload will be routed to the first pipeline in the table whose routing condition is met.
-                      May only be false when used with resource context.
-                    type: boolean
                 type: object
               selectFromAllNamespaces:
                 description: |-
