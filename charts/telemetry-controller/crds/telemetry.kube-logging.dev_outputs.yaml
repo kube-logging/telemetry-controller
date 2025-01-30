@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.5
+    controller-gen.kubebuilder.io/version: v0.17.1
   name: outputs.telemetry.kube-logging.dev
 spec:
   group: telemetry.kube-logging.dev
@@ -530,9 +530,6 @@ spec:
                     type: string
                   headers:
                     additionalProperties:
-                      description: |-
-                        String alias that is marshaled and printed in an opaque way.
-                        To recover the original value, cast it to a string.
                       type: string
                     description: |-
                       Additional headers attached to each HTTP request sent by the client.

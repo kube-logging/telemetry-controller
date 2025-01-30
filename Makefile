@@ -12,7 +12,7 @@ KUSTOMIZE_VERSION := 5.5.0
 GOLANGCI_LINT_VERSION := 1.63.4
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
-KIND_VERSION ?= 0.25.0
+KIND_VERSION ?= 0.26.0
 
 # renovate: datasource=go depName=github.com/goph/licensei versioning=semver
 LICENSEI_VERSION = 0.9.0
