@@ -61,11 +61,6 @@ type RouteConfig struct {
 	// ErrorMode specifies how errors are handled while processing a statement
 	// vaid options are: ignore, silent, propagate; (default: propagate)
 	ErrorMode string `json:"errorMode,omitempty"`
-
-	// Determines whether the connector matches multiple statements or not.
-	// If enabled, the payload will be routed to the first pipeline in the table whose routing condition is met.
-	// May only be false when used with resource context.
-	MatchOnce bool `json:"matchOnce,omitempty"`
 }
 
 // Configuration for persistence, will be used to generate
