@@ -13,5 +13,5 @@ sources:
   - https://github.com/kube-logging/telemetry-controller
 dependencies:
   - name: opentelemetry-operator
-    version: 0.79.0
+    version: 0.80.2
     repository: https://open-telemetry.github.io/opentelemetry-helm-charts
