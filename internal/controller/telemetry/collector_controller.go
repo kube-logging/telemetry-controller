@@ -507,7 +507,7 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 			{
 				Verbs:     []string{"get", "watch", "list"},
 				APIGroups: []string{""},
-				Resources: []string{"pods", "namespaces"},
+				Resources: []string{"pods", "namespaces", "nodes"},
 			},
 			{
 				Verbs:     []string{"get", "watch", "list"},
