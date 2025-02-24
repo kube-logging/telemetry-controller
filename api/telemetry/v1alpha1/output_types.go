@@ -15,10 +15,11 @@
 package v1alpha1
 
 import (
-	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources"
-	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources/state"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kube-logging/telemetry-controller/pkg/sdk/model"
+	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 )
 
 // Batch processor configuration.
@@ -201,8 +202,8 @@ type OutputList struct {
 	Items           []Output `json:"items"`
 }
 
-func (l *OutputList) GetItems() []resources.ResourceOwnedByTenant {
-	items := make([]resources.ResourceOwnedByTenant, len(l.Items))
+func (l *OutputList) GetItems() []model.ResourceOwnedByTenant {
+	items := make([]model.ResourceOwnedByTenant, len(l.Items))
 	for i := range l.Items {
 		items[i] = &l.Items[i]
 	}
