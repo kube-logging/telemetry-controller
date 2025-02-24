@@ -15,9 +15,10 @@
 package v1alpha1
 
 import (
-	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources"
-	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources/state"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kube-logging/telemetry-controller/pkg/sdk/model"
+	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 )
 
 // SubscriptionSpec defines the desired state of Subscription
@@ -82,8 +83,8 @@ type SubscriptionList struct {
 	Items           []Subscription `json:"items"`
 }
 
-func (l *SubscriptionList) GetItems() []resources.ResourceOwnedByTenant {
-	items := make([]resources.ResourceOwnedByTenant, len(l.Items))
+func (l *SubscriptionList) GetItems() []model.ResourceOwnedByTenant {
+	items := make([]model.ResourceOwnedByTenant, len(l.Items))
 	for i := range l.Items {
 		items[i] = &l.Items[i]
 	}

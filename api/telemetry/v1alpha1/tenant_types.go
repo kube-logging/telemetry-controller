@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	"github.com/kube-logging/telemetry-controller/internal/controller/telemetry/resources/state"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 )
 
 // TransformStatement represents a single statement in a Transform processor.

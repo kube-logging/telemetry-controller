@@ -38,8 +38,7 @@ type BridgeSpec struct {
 }
 
 // BridgeStatus defines the observed state of Bridge
-type BridgeStatus struct {
-}
+type BridgeStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:scope=Cluster,categories=telemetry-all
