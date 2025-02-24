@@ -333,19 +333,39 @@ func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) (otelv1b
 
 func assembleAdditionalArgs(otelConfig *otelv1beta1.Config) map[string]string {
 	const (
-		featureGatesKey             = "feature-gates"
-		flattenLogsFeatureGateValue = "transform.flatten.logs"
-
+		featureGatesKey      = "feature-gates"
 		transformProcessorID = "transform"
 		flattenDataKey       = "flatten_data"
 	)
+	const (
+		flattenLogsFeatureGateValue                      = "transform.flatten.logs"
+		telemetryDisableAddressFieldForInternalTelemetry = "telemetry.disableAddressFieldForInternalTelemetry"
+	)
 
+	type enableConstraint func() bool
 	args := make(map[string]string)
-	for processorName, processorConfig := range otelConfig.Processors.Object {
-		if strings.Contains(processorName, transformProcessorID) && processorConfig.(processor.TransformProcessor).FlattenData {
-			args[featureGatesKey] = flattenLogsFeatureGateValue
-			break
+	availableFeatureGates := map[string]enableConstraint{
+		flattenLogsFeatureGateValue: func() bool {
+			for processorName, processorConfig := range otelConfig.Processors.Object {
+				if strings.Contains(processorName, transformProcessorID) && processorConfig.(processor.TransformProcessor).FlattenData {
+					return true
+				}
+			}
+			return false
+		},
+		telemetryDisableAddressFieldForInternalTelemetry: func() bool {
+			return true
+		},
+	}
+
+	var enabledFeatureGates []string
+	for featureGate, isFeatureGateEnabled := range availableFeatureGates {
+		if isFeatureGateEnabled() {
+			enabledFeatureGates = append(enabledFeatureGates, featureGate)
 		}
+	}
+	if len(enabledFeatureGates) > 0 {
+		args[featureGatesKey] = strings.Join(enabledFeatureGates, ",")
 	}
 
 	return args

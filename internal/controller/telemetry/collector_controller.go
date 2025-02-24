@@ -50,7 +50,7 @@ import (
 const (
 	otelCollectorKind            = "OpenTelemetryCollector"
 	requeueDelayOnFailedTenant   = 20 * time.Second
-	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.112.0-dev12"
+	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.120.0"
 )
 
 var (
@@ -507,7 +507,7 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 			{
 				Verbs:     []string{"get", "watch", "list"},
 				APIGroups: []string{""},
-				Resources: []string{"pods", "namespaces"},
+				Resources: []string{"pods", "namespaces", "nodes"},
 			},
 			{
 				Verbs:     []string{"get", "watch", "list"},
