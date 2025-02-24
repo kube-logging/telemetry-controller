@@ -62,8 +62,8 @@ var _ = BeforeSuite(func() {
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
-			filepath.Clean("../../../config/crd/bases"),
-			filepath.Clean("../../../crddir/github.com/open-telemetry/opentelemetry-operator/config/crd/bases"),
+			filepath.Clean("../../config/crd/bases"),
+			filepath.Clean("../../crddir/github.com/open-telemetry/opentelemetry-operator/config/crd/bases"),
 		},
 		ErrorIfCRDPathMissing: true,
 
@@ -72,7 +72,7 @@ var _ = BeforeSuite(func() {
 		// default path defined in controller-runtime which is /usr/local/kubebuilder/.
 		// Note that you must have the required binaries setup under the bin directory to perform
 		// the tests directly. When we run make test it will be setup and used automatically.
-		BinaryAssetsDirectory: filepath.Join("..", "..", "..", "bin", "k8s",
+		BinaryAssetsDirectory: filepath.Join("..", "..", "bin", "k8s",
 			fmt.Sprintf("1.28.3-%s-%s", runtime.GOOS, runtime.GOARCH)),
 	}
 
