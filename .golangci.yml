@@ -2,6 +2,20 @@ run:
   timeout: 5m
   allow-parallel-runners: true
 
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/kube-logging/telemetry-controller)
+  goimports:
+    local-prefixes: github.com/kube-logging/telemetry-controller
+  misspell:
+    locale: US
+  nolintlint:
+    allow-unused: false # report any unused nolint directives
+    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
 issues:
   # don't skip warning about doc comments
   # don't exclude the default set of lint
@@ -12,28 +26,42 @@ issues:
     - path: "api/*"
       linters:
         - lll
-    - path: "internal/*"
+    - path: "pkg/resources/*"
       linters:
         - dupl
         - lll
+    - path: "controllers/*"
+      linters:
+        - dupl
+        - lll
+        - gci
+    - path: "cmd/main.go"
+      linters:
+        - gci
+
 linters:
   disable-all: true
   enable:
+    - bodyclose
     - copyloopvar
     - dupl
     - errcheck
+    - gci
     - goconst
     - gocyclo
     - gofmt
+    - gofumpt
     - goimports
     - gosimple
     - govet
     - ineffassign
     - lll
     - misspell
+    - nolintlint
     - prealloc
     - staticcheck
     - typecheck
     - unconvert
-    - unparam
+    - unparam 
     - unused
+    - whitespace
