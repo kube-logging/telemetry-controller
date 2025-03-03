@@ -50,7 +50,7 @@ import (
 const (
 	otelCollectorKind            = "OpenTelemetryCollector"
 	requeueDelayOnFailedTenant   = 20 * time.Second
-	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.120.0"
+	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.120.0-dev1"
 )
 
 var ErrTenantFailed = errors.New("tenant failed")
