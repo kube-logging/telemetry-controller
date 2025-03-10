@@ -61,13 +61,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@4574d27a4764455b42196d70a065bc6853246a25 # v3.4.0
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Set up Cosign
-        uses: sigstore/cosign-installer@c56c2d3e59e4281cc41dea2217323ba5694b171e # v3.8.0
+        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
+        if: ${{ inputs.publish }}
 
       - name: Set image name
         id: image-name
@@ -75,7 +76,7 @@ jobs:
 
       - name: Gather build metadata
         id: meta
-        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
+        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         with:
           images: ${{ steps.image-name.outputs.value }}
           flavor: |
@@ -91,28 +92,17 @@ jobs:
             org.opencontainers.image.authors=Kube logging authors
             org.opencontainers.image.documentation=https://todo.docs
 
-
-      # Multiple exporters are not supported yet
-      # See https://github.com/moby/buildkit/pull/2760
-      - name: Determine build output
-        uses: haya14busa/action-cond@94f77f7a80cd666cb3155084e428254fea4281fd # v1.2.1
-        id: build-output
-        with:
-          cond: ${{ inputs.publish }}
-          if_true: type=image,push=true
-          if_false: type=oci,dest=image.tar
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-        if: inputs.publish
+        if: ${{ inputs.publish }}
 
       - name: Build and push image
         id: build
-        uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991 # v6.13.0
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -120,8 +110,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: ${{ steps.build-output.outputs.value }},name=target
-          # push: ${{ inputs.publish }}
+          outputs: |
+            type=image,push=${{ inputs.publish }},name=target,annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
+            type=oci,dest=image.tar,name=target,annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
 
       - name: Sign image with GitHub OIDC Token
         if: ${{ inputs.publish && github.repository_owner == 'kube-logging' }} # Check if the workflow is called by the same GitHub organization
@@ -153,10 +144,6 @@ jobs:
         id: image-ref
         run: echo "value=${{ steps.image-name.outputs.value }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
 
-      - name: Fetch image
-        run: skopeo --insecure-policy copy docker://${{ steps.image-name.outputs.value }}:${{ steps.meta.outputs.version }} oci-archive:image.tar
-        if: inputs.publish
-
       - name: Extract OCI tarball
         run: |
           mkdir -p image
@@ -173,14 +160,14 @@ jobs:
           output: trivy-results.sarif
 
       - name: Upload Trivy scan results as artifact
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: "[${{ github.job }}] Trivy scan results"
           path: trivy-results.sarif
           retention-days: 5
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@9e8d0789d4a0fa9ceb6b1738f7e269594bdd67f0 # v3.28.9
+        uses: github/codeql-action/upload-sarif@6bb031afdd8eb862ea3fc1848194185e076637e5 # v3.28.11
         with:
           sarif_file: trivy-results.sarif
 
@@ -207,7 +194,7 @@ jobs:
         uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
 
       - name: Set up Cosign
-        uses: sigstore/cosign-installer@c56c2d3e59e4281cc41dea2217323ba5694b171e # v3.8.0
+        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
 
       - name: Set chart name
         id: chart-name
@@ -242,7 +229,7 @@ jobs:
           echo "package=${{ steps.chart-name.outputs.value }}-${{ steps.version.outputs.value }}.tgz" >> "$GITHUB_OUTPUT"
 
       - name: Upload chart as artifact
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: "[${{ github.job }}] Helm chart"
           path: ${{ steps.build.outputs.package }}
@@ -292,13 +279,13 @@ jobs:
           output: trivy-results.sarif
 
       - name: Upload Trivy scan results as artifact
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: "[${{ github.job }}] Trivy scan results"
           path: trivy-results.sarif
           retention-days: 5
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@9e8d0789d4a0fa9ceb6b1738f7e269594bdd67f0 # v3.28.9
+        uses: github/codeql-action/upload-sarif@6bb031afdd8eb862ea3fc1848194185e076637e5 # v3.28.11
         with:
           sarif_file: trivy-results.sarif

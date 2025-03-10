@@ -9,7 +9,7 @@ CONTROLLER_TOOLS_VERSION := 0.17.2
 KUSTOMIZE_VERSION := 5.5.0
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-GOLANGCI_LINT_VERSION := 1.64.5
+GOLANGCI_LINT_VERSION := 1.64.6
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
 KIND_VERSION ?= 0.26.0
