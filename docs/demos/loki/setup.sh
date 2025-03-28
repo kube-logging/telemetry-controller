@@ -5,7 +5,6 @@ helm upgrade --install --namespace loki --repo https://grafana.github.io/helm-ch
 
 helm upgrade --install --wait --create-namespace --namespace telemetry-controller-system telemetry-controller oci://ghcr.io/kube-logging/helm-charts/telemetry-controller
 
-
 kubectl apply -f manifests.yaml
 
 helm upgrade --install --wait log-generator oci://ghcr.io/kube-logging/helm-charts/log-generator -n tenant-demo-1
@@ -13,4 +12,3 @@ helm upgrade --install --wait log-generator oci://ghcr.io/kube-logging/helm-char
 
 kubectl get secret -n loki loki-grafana -o jsonpath="{.data.admin-password}" | base64 --decode
 echo ""
-
