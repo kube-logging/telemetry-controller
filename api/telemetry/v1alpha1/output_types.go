@@ -100,6 +100,11 @@ type OTLPHTTP struct {
 	QueueConfig      *QueueSettings `json:"sending_queue,omitempty"`
 	RetryConfig      *BackOffConfig `json:"retry_on_failure,omitempty"`
 	HTTPClientConfig `json:",inline"`
+
+	// +kubebuilder:validation:Enum:=proto;json
+
+	// The encoding to export telemetry (default: "proto")
+	Encoding *string `json:"encoding,omitempty"`
 }
 
 type Endpoint struct {

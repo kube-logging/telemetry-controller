@@ -32,6 +32,10 @@ type queueWrapper struct {
 	// Default value is 100.
 	QueueSize *int `json:"queue_size,omitempty"`
 
+	// Blocking controls the queue behavior when full.
+	// If true it blocks until enough space to add the new request to the queue.
+	Blocking *bool `json:"blocking,omitempty"`
+
 	// If Storage is not empty, enables the persistent storage and uses the component specified
 	// as a storage extension for the persistent queue.
 	Storage *string `json:"storage,omitempty"`
@@ -47,6 +51,9 @@ func (q *queueWrapper) setDefaultQueueSettings(apiQueueSettings *v1alpha1.QueueS
 		}
 		if apiQueueSettings.QueueSize != nil {
 			q.QueueSize = apiQueueSettings.QueueSize
+		}
+		if apiQueueSettings.Blocking != nil {
+			q.Blocking = apiQueueSettings.Blocking
 		}
 	}
 }

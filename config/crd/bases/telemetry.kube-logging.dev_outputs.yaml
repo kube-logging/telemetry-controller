@@ -222,9 +222,16 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
+                      blocking:
+                        description: |-
+                          Blocking controls the queue behavior when full.
+                          If true it blocks until enough space to add the new request to the queue.
+                        type: boolean
                       num_consumers:
-                        description: NumConsumers is the number of consumers from
-                          the queue.
+                        description: |-
+                          NumConsumers is the number of consumers from the queue. Defaults to 10.
+                          If batching is enabled, a combined batch cannot contain more requests than the number of consumers.
+                          So it's recommended to set higher number of consumers if batching is enabled.
                         type: integer
                       queue_size:
                         description: |-
@@ -259,13 +266,32 @@ spec:
                         description: In memory PEM encoded TLS cert to use for TLS
                           required connections. (optional)
                         type: string
+                      cipher_suites:
+                        description: |-
+                          CipherSuites is a list of TLS cipher suites that the TLS transport can use.
+                          If left blank, a safe default list is used.
+                          See https://go.dev/src/crypto/tls/cipher_suites.go for a list of supported cipher suites.
+                        items:
+                          type: string
+                        type: array
+                      curve_preferences:
+                        description: |-
+                          contains the elliptic curves that will be used in
+                          an ECDHE handshake, in preference order
+                          Defaults to empty list and "crypto/tls" defaults are used, internally.
+                        items:
+                          type: string
+                        type: array
+                      include_system_ca_certs_pool:
+                        description: |-
+                          If true, load system CA certificates pool in addition to the certificates
+                          configured in this struct.
+                        type: boolean
                       insecure:
                         description: |-
-                          In gRPC when set to true, this is used to disable the client transport security.
-                          See https://godoc.org/google.golang.org/grpc#WithInsecure.
-                          In HTTP, this disables verifying the server's certificate chain and host name
-                          (InsecureSkipVerify in the tls Config). Please refer to
-                          https://godoc.org/crypto/tls#Config for more information.
+                          In gRPC and HTTP when set to true, this is used to disable the client transport security.
+                          See https://godoc.org/google.golang.org/grpc#WithInsecure for gRPC.
+                          Please refer to https://godoc.org/crypto/tls#Config for more information.
                           (optional, default false)
                         type: boolean
                       insecure_skip_verify:
@@ -408,9 +434,16 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
+                      blocking:
+                        description: |-
+                          Blocking controls the queue behavior when full.
+                          If true it blocks until enough space to add the new request to the queue.
+                        type: boolean
                       num_consumers:
-                        description: NumConsumers is the number of consumers from
-                          the queue.
+                        description: |-
+                          NumConsumers is the number of consumers from the queue. Defaults to 10.
+                          If batching is enabled, a combined batch cannot contain more requests than the number of consumers.
+                          So it's recommended to set higher number of consumers if batching is enabled.
                         type: integer
                       queue_size:
                         description: |-
@@ -444,13 +477,32 @@ spec:
                         description: In memory PEM encoded TLS cert to use for TLS
                           required connections. (optional)
                         type: string
+                      cipher_suites:
+                        description: |-
+                          CipherSuites is a list of TLS cipher suites that the TLS transport can use.
+                          If left blank, a safe default list is used.
+                          See https://go.dev/src/crypto/tls/cipher_suites.go for a list of supported cipher suites.
+                        items:
+                          type: string
+                        type: array
+                      curve_preferences:
+                        description: |-
+                          contains the elliptic curves that will be used in
+                          an ECDHE handshake, in preference order
+                          Defaults to empty list and "crypto/tls" defaults are used, internally.
+                        items:
+                          type: string
+                        type: array
+                      include_system_ca_certs_pool:
+                        description: |-
+                          If true, load system CA certificates pool in addition to the certificates
+                          configured in this struct.
+                        type: boolean
                       insecure:
                         description: |-
-                          In gRPC when set to true, this is used to disable the client transport security.
-                          See https://godoc.org/google.golang.org/grpc#WithInsecure.
-                          In HTTP, this disables verifying the server's certificate chain and host name
-                          (InsecureSkipVerify in the tls Config). Please refer to
-                          https://godoc.org/crypto/tls#Config for more information.
+                          In gRPC and HTTP when set to true, this is used to disable the client transport security.
+                          See https://godoc.org/google.golang.org/grpc#WithInsecure for gRPC.
+                          Please refer to https://godoc.org/crypto/tls#Config for more information.
                           (optional, default false)
                         type: boolean
                       insecure_skip_verify:
@@ -516,6 +568,21 @@ spec:
                     description: The compression key for supported compression types
                       within collector.
                     type: string
+                  compression_params:
+                    description: Advanced configuration options for the Compression
+                    properties:
+                      level:
+                        type: integer
+                    type: object
+                  cookies:
+                    description: Cookies configures the cookie management of the HTTP
+                      client.
+                    properties:
+                      enabled:
+                        description: Enabled if true, cookies from HTTP responses
+                          will be reused in further HTTP requests with the same server.
+                        type: boolean
+                    type: object
                   disable_keep_alives:
                     description: |-
                       DisableKeepAlives, if true, disables HTTP keep-alives and will only use the connection to the server
@@ -525,6 +592,12 @@ spec:
                       connection for every request. Before enabling this option please consider whether changes
                       to idle connection settings can achieve your goal.
                     type: boolean
+                  encoding:
+                    description: 'The encoding to export telemetry (default: "proto")'
+                    enum:
+                    - proto
+                    - json
+                    type: string
                   endpoint:
                     description: 'The target URL to send data to (e.g.: http://some.url:9411/v1/traces).'
                     type: string
@@ -554,30 +627,32 @@ spec:
                   idle_conn_timeout:
                     description: |-
                       IdleConnTimeout is the maximum amount of time a connection will remain open before closing itself.
-                      There's an already set value, and we want to override it only if an explicit value provided
+                      By default, it is set to [http.DefaultTransport.IdleConnTimeout]
                     format: int64
                     type: integer
                   max_conns_per_host:
                     description: |-
                       MaxConnsPerHost limits the total number of connections per host, including connections in the dialing,
                       active, and idle states.
-                      There's an already set value, and we want to override it only if an explicit value provided
+                      By default, it is set to [http.DefaultTransport.MaxConnsPerHost].
                     type: integer
                   max_idle_conns:
                     description: |-
                       MaxIdleConns is used to set a limit to the maximum idle HTTP connections the client can keep open.
-                      There's an already set value, and we want to override it only if an explicit value provided
+                      By default, it is set to 100.
                     type: integer
                   max_idle_conns_per_host:
                     description: |-
                       MaxIdleConnsPerHost is used to set a limit to the maximum idle HTTP connections the host can keep open.
-                      There's an already set value, and we want to override it only if an explicit value provided
+                      By default, it is set to [http.DefaultTransport.MaxIdleConnsPerHost].
                     type: integer
                   proxy_url:
                     description: ProxyURL setting for the collector
                     type: string
                   read_buffer_size:
-                    description: ReadBufferSize for HTTP client. See http.Transport.ReadBufferSize.
+                    description: |-
+                      ReadBufferSize for HTTP client. See http.Transport.ReadBufferSize.
+                      Default is 0.
                     type: integer
                   retry_on_failure:
                     description: |-
@@ -616,9 +691,16 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
+                      blocking:
+                        description: |-
+                          Blocking controls the queue behavior when full.
+                          If true it blocks until enough space to add the new request to the queue.
+                        type: boolean
                       num_consumers:
-                        description: NumConsumers is the number of consumers from
-                          the queue.
+                        description: |-
+                          NumConsumers is the number of consumers from the queue. Defaults to 10.
+                          If batching is enabled, a combined batch cannot contain more requests than the number of consumers.
+                          So it's recommended to set higher number of consumers if batching is enabled.
                         type: integer
                       queue_size:
                         description: |-
@@ -627,7 +709,9 @@ spec:
                         type: integer
                     type: object
                   timeout:
-                    description: Timeout parameter configures `http.Client.Timeout`.
+                    description: |-
+                      Timeout parameter configures `http.Client.Timeout`.
+                      Default is 0 (unlimited).
                     format: int64
                     type: integer
                   tls:
@@ -650,13 +734,32 @@ spec:
                         description: In memory PEM encoded TLS cert to use for TLS
                           required connections. (optional)
                         type: string
+                      cipher_suites:
+                        description: |-
+                          CipherSuites is a list of TLS cipher suites that the TLS transport can use.
+                          If left blank, a safe default list is used.
+                          See https://go.dev/src/crypto/tls/cipher_suites.go for a list of supported cipher suites.
+                        items:
+                          type: string
+                        type: array
+                      curve_preferences:
+                        description: |-
+                          contains the elliptic curves that will be used in
+                          an ECDHE handshake, in preference order
+                          Defaults to empty list and "crypto/tls" defaults are used, internally.
+                        items:
+                          type: string
+                        type: array
+                      include_system_ca_certs_pool:
+                        description: |-
+                          If true, load system CA certificates pool in addition to the certificates
+                          configured in this struct.
+                        type: boolean
                       insecure:
                         description: |-
-                          In gRPC when set to true, this is used to disable the client transport security.
-                          See https://godoc.org/google.golang.org/grpc#WithInsecure.
-                          In HTTP, this disables verifying the server's certificate chain and host name
-                          (InsecureSkipVerify in the tls Config). Please refer to
-                          https://godoc.org/crypto/tls#Config for more information.
+                          In gRPC and HTTP when set to true, this is used to disable the client transport security.
+                          See https://godoc.org/google.golang.org/grpc#WithInsecure for gRPC.
+                          Please refer to https://godoc.org/crypto/tls#Config for more information.
                           (optional, default false)
                         type: boolean
                       insecure_skip_verify:
@@ -695,7 +798,9 @@ spec:
                         type: string
                     type: object
                   write_buffer_size:
-                    description: WriteBufferSize for HTTP client. See http.Transport.WriteBufferSize.
+                    description: |-
+                      WriteBufferSize for HTTP client. See http.Transport.WriteBufferSize.
+                      Default is 0.
                     type: integer
                 type: object
             type: object
