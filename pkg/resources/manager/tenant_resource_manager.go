@@ -126,7 +126,7 @@ func (t *TenantResourceManager) UpdateResourcesForTenant(ctx context.Context, te
 
 		if updateErr := t.Status().Update(ctx, res); updateErr != nil {
 			res.SetState(state.StateFailed)
-			t.Logger.Error(updateErr, fmt.Sprintf("failed to set subscription (%s/%s) -> tenant (%s) reference", res.GetNamespace(), res.GetName(), tenantName))
+			t.Logger.Error(updateErr, fmt.Sprintf("failed to update resource (%s/%s) -> tenant (%s) reference", res.GetNamespace(), res.GetName(), tenantName))
 		} else {
 			updatedResources = append(updatedResources, res)
 		}
@@ -212,6 +212,13 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 
 			invalidOutputs = append(invalidOutputs, outputRef)
 			continue
+		}
+
+		// update the output state if validation was successful
+		checkedOutput.SetState(state.StateReady)
+		if updateErr := t.Status().Update(ctx, checkedOutput); updateErr != nil {
+			checkedOutput.SetState(state.StateFailed)
+			t.Logger.Error(updateErr, fmt.Sprintf("failed to update output (%s/%s) state", checkedOutput.GetNamespace(), checkedOutput.GetName()))
 		}
 
 		validOutputs = append(validOutputs, outputRef)
