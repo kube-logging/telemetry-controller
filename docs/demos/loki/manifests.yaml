@@ -29,6 +29,56 @@ spec:
       collectorLabel: kubernetes
 ---
 apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  labels:
+    collectorLabel: kubernetes
+  name: demo-1
+spec:
+  subscriptionNamespaceSelectors:
+    - matchLabels:
+        tenant: demo-1
+  logSourceNamespaceSelectors:
+    - matchLabels:
+        tenant: demo-1
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Tenant
+metadata:
+  labels:
+    collectorLabel: kubernetes
+  name: demo-2
+spec:
+  subscriptionNamespaceSelectors:
+    - matchLabels:
+        tenant: demo-2
+  logSourceNamespaceSelectors:
+    - matchLabels:
+        tenant: demo-2
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: all-logs
+  namespace: tenant-demo-1
+spec:
+  condition: "true"
+  outputs:
+    - name: loki-1
+      namespace: tenant-demo-1
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: all-logs
+  namespace: tenant-demo-2
+spec:
+  condition: "true"
+  outputs:
+    - name: loki-2
+      namespace: tenant-demo-2
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
 kind: Output
 metadata:
   name: loki-1
@@ -49,53 +99,3 @@ spec:
     endpoint: http://loki.loki.svc.cluster.local:3100/otlp/
     tls:
       insecure: true
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Tenant
-metadata:
-  labels:
-    collectorLabel: kubernetes
-  name: demo-1
-spec:
-  subscriptionNamespaceSelectors:
-    - matchLabels:
-        tenant: demo-1
-  logSourceNamespaceSelectors:
-    - matchLabels:
-        tenant: demo-1
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Subscription
-metadata:
-  name: all-logs
-  namespace: tenant-demo-1
-spec:
-  condition: "true"
-  outputs:
-    - name: loki
-      namespace: tenant-demo-1
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Tenant
-metadata:
-  labels:
-    collectorLabel: kubernetes
-  name: demo-2
-spec:
-  subscriptionNamespaceSelectors:
-    - matchLabels:
-        tenant: demo-2
-  logSourceNamespaceSelectors:
-    - matchLabels:
-        tenant: demo-2
----
-apiVersion: telemetry.kube-logging.dev/v1alpha1
-kind: Subscription
-metadata:
-  name: all-logs
-  namespace: tenant-demo-2
-spec:
-  condition: "true"
-  outputs:
-    - name: loki-2
-      namespace: tenant-demo-2
