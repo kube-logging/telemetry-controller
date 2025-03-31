@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 )
 
+// TimeoutSettings for timeout. The timeout applies to individual attempts to send data to the backend.
 type TimeoutSettings struct {
 	// Timeout is the timeout for every attempt to send data to the backend.
 	// A zero timeout means no timeout.
@@ -29,12 +30,18 @@ type TimeoutSettings struct {
 
 // QueueSettings defines configuration for queueing batches before sending to the consumerSender.
 type QueueSettings struct {
-	// NumConsumers is the number of consumers from the queue.
+	// NumConsumers is the number of consumers from the queue. Defaults to 10.
+	// If batching is enabled, a combined batch cannot contain more requests than the number of consumers.
+	// So it's recommended to set higher number of consumers if batching is enabled.
 	NumConsumers *int `json:"num_consumers,omitempty"`
 
 	// QueueSize is the maximum number of batches allowed in queue at a given time.
 	// Default value is 100.
 	QueueSize *int `json:"queue_size,omitempty"`
+
+	// Blocking controls the queue behavior when full.
+	// If true it blocks until enough space to add the new request to the queue.
+	Blocking *bool `json:"blocking,omitempty"`
 }
 
 // BackOffConfig defines configuration for retrying batches in case of export failure.
@@ -122,11 +129,9 @@ type TLSClientSetting struct {
 
 	// These are config options specific to client connections.
 
-	// In gRPC when set to true, this is used to disable the client transport security.
-	// See https://godoc.org/google.golang.org/grpc#WithInsecure.
-	// In HTTP, this disables verifying the server's certificate chain and host name
-	// (InsecureSkipVerify in the tls Config). Please refer to
-	// https://godoc.org/crypto/tls#Config for more information.
+	// In gRPC and HTTP when set to true, this is used to disable the client transport security.
+	// See https://godoc.org/google.golang.org/grpc#WithInsecure for gRPC.
+	// Please refer to https://godoc.org/crypto/tls#Config for more information.
 	// (optional, default false)
 	Insecure bool `json:"insecure,omitempty"`
 
@@ -151,6 +156,10 @@ type TLSSetting struct {
 	// In memory PEM encoded cert. (optional)
 	CAPem string `json:"ca_pem,omitempty"`
 
+	// If true, load system CA certificates pool in addition to the certificates
+	// configured in this struct.
+	IncludeSystemCACertsPool bool `json:"include_system_ca_certs_pool,omitempty"`
+
 	// Path to the TLS cert to use for TLS required connections. (optional)
 	CertFile string `json:"cert_file,omitempty"`
 
@@ -171,9 +180,19 @@ type TLSSetting struct {
 	// If not set, refer to crypto/tls for defaults. (optional)
 	MaxVersion string `json:"max_version,omitempty"`
 
+	// CipherSuites is a list of TLS cipher suites that the TLS transport can use.
+	// If left blank, a safe default list is used.
+	// See https://go.dev/src/crypto/tls/cipher_suites.go for a list of supported cipher suites.
+	CipherSuites []string `json:"cipher_suites,omitempty"`
+
 	// ReloadInterval specifies the duration after which the certificate will be reloaded
 	// If not set, it will never be reloaded (optional)
 	ReloadInterval time.Duration `json:"reload_interval,omitempty"`
+
+	// contains the elliptic curves that will be used in
+	// an ECDHE handshake, in preference order
+	// Defaults to empty list and "crypto/tls" defaults are used, internally.
+	CurvePreferences []string `json:"curve_preferences,omitempty"`
 }
 
 type Authentication struct {
@@ -181,7 +200,17 @@ type Authentication struct {
 	AuthenticatorID *string `json:"authenticator,omitempty"`
 }
 
-// ClientConfig defines settings for creating an HTTP client.
+type CompressionParams struct {
+	Level *int `json:"level,omitempty"`
+}
+
+// CookiesConfig defines the configuration of the HTTP client regarding cookies served by the server.
+type CookiesConfig struct {
+	// Enabled if true, cookies from HTTP responses will be reused in further HTTP requests with the same server.
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+// HTTPClientConfig defines settings for creating an HTTP client.
 type HTTPClientConfig struct {
 	// The target URL to send data to (e.g.: http://some.url:9411/v1/traces).
 	Endpoint *string `json:"endpoint,omitempty"`
@@ -193,12 +222,15 @@ type HTTPClientConfig struct {
 	TLSSetting *TLSClientSetting `json:"tls,omitempty"`
 
 	// ReadBufferSize for HTTP client. See http.Transport.ReadBufferSize.
+	// Default is 0.
 	ReadBufferSize *int `json:"read_buffer_size,omitempty"`
 
 	// WriteBufferSize for HTTP client. See http.Transport.WriteBufferSize.
+	// Default is 0.
 	WriteBufferSize *int `json:"write_buffer_size,omitempty"`
 
 	// Timeout parameter configures `http.Client.Timeout`.
+	// Default is 0 (unlimited).
 	Timeout *time.Duration `json:"timeout,omitempty"`
 
 	// Additional headers attached to each HTTP request sent by the client.
@@ -212,21 +244,24 @@ type HTTPClientConfig struct {
 	// The compression key for supported compression types within collector.
 	Compression *configcompression.Type `json:"compression,omitempty"`
 
+	// Advanced configuration options for the Compression
+	CompressionParams *CompressionParams `json:"compression_params,omitempty"`
+
 	// MaxIdleConns is used to set a limit to the maximum idle HTTP connections the client can keep open.
-	// There's an already set value, and we want to override it only if an explicit value provided
+	// By default, it is set to 100.
 	MaxIdleConns *int `json:"max_idle_conns,omitempty"`
 
 	// MaxIdleConnsPerHost is used to set a limit to the maximum idle HTTP connections the host can keep open.
-	// There's an already set value, and we want to override it only if an explicit value provided
+	// By default, it is set to [http.DefaultTransport.MaxIdleConnsPerHost].
 	MaxIdleConnsPerHost *int `json:"max_idle_conns_per_host,omitempty"`
 
 	// MaxConnsPerHost limits the total number of connections per host, including connections in the dialing,
 	// active, and idle states.
-	// There's an already set value, and we want to override it only if an explicit value provided
+	// By default, it is set to [http.DefaultTransport.MaxConnsPerHost].
 	MaxConnsPerHost *int `json:"max_conns_per_host,omitempty"`
 
 	// IdleConnTimeout is the maximum amount of time a connection will remain open before closing itself.
-	// There's an already set value, and we want to override it only if an explicit value provided
+	// By default, it is set to [http.DefaultTransport.IdleConnTimeout]
 	IdleConnTimeout *time.Duration `json:"idle_conn_timeout,omitempty"`
 
 	// DisableKeepAlives, if true, disables HTTP keep-alives and will only use the connection to the server
@@ -247,4 +282,7 @@ type HTTPClientConfig struct {
 	// HTTP2PingTimeout if there's no response to the ping within the configured value, the connection will be closed.
 	// If not set or set to 0, it defaults to 15s.
 	HTTP2PingTimeout *time.Duration `json:"http2_ping_timeout,omitempty"`
+
+	// Cookies configures the cookie management of the HTTP client.
+	Cookies *CookiesConfig `json:"cookies,omitempty"`
 }

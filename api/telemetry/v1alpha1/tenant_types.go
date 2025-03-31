@@ -28,6 +28,12 @@ type TransformStatement struct {
 	Context    string   `json:"context,omitempty"`
 	Conditions []string `json:"conditions,omitempty"`
 	Statements []string `json:"statements,omitempty"`
+
+	// +kubebuilder:validation:Enum:=ignore;silent;propagate
+
+	// ErrorMode determines how the processor reacts to errors that occur while processing
+	// this group of statements. When provided, it overrides the default Config ErrorMode.
+	ErrorMode string `json:"errorMode,omitempty"`
 }
 
 // Transform represents the Transform processor, which modifies telemetry based on its configuration.
@@ -42,8 +48,11 @@ type Transform struct {
 
 	// +kubebuilder:validation:Enum:=ignore;silent;propagate
 
-	// ErrorMode specifies how errors are handled while processing a statement
-	// vaid options are: ignore, silent, propagate; (default: propagate)
+	// ErrorMode determines how the processor reacts to errors that occur while processing a statement.
+	// Valid values are `ignore` and `propagate`.
+	// `ignore` means the processor ignores errors returned by statements and continues on to the next statement. This is the recommended mode.
+	// `propagate` means the processor returns the error up the pipeline.  This will result in the payload being dropped from the collector.
+	// The default value is `propagate`.
 	ErrorMode string `json:"errorMode,omitempty"`
 
 	TraceStatements  []TransformStatement `json:"traceStatements,omitempty"`
@@ -54,13 +63,22 @@ type Transform struct {
 // RouteConfig defines the routing configuration for a tenant
 // it will be used to generate routing connectors.
 type RouteConfig struct {
-	// Contains the list of pipelines to use when a record does not meet any of specified conditions.
+	// DefaultPipelines contains the list of pipelines to use when a more specific record can't be
+	// found in the routing table.
+	// Optional.
 	DefaultPipelines []string `json:"defaultPipelines,omitempty"` // TODO: Provide users with a guide to determine generated pipeline names
 
 	// +kubebuilder:validation:Enum:=ignore;silent;propagate
 
-	// ErrorMode specifies how errors are handled while processing a statement
-	// vaid options are: ignore, silent, propagate; (default: propagate)
+	// ErrorMode determines how the processor reacts to errors that occur while processing an OTTL
+	// condition.
+	// Valid values are `ignore` and `propagate`.
+	// `ignore` means the processor ignores errors returned by conditions and continues on to the
+	// next condition. This is the recommended mode. If `ignore` is used and a statement's
+	// condition has an error then the payload will be routed to the default exporter. `propagate`
+	// means the processor returns the error up the pipeline.  This will result in the payload being
+	// dropped from the collector.
+	// The default value is `propagate`.
 	ErrorMode string `json:"errorMode,omitempty"`
 }
 

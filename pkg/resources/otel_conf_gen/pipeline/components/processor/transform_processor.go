@@ -24,9 +24,10 @@ import (
 )
 
 type TransformProcessorStatement struct {
-	Context    string   `json:"context"`
-	Conditions []string `json:"conditions"`
-	Statements []string `json:"statements"`
+	Context    string               `json:"context"`
+	Conditions []string             `json:"conditions"`
+	Statements []string             `json:"statements"`
+	ErrorMde   components.ErrorMode `json:"error_mode,omitempty"`
 }
 
 type TransformProcessor struct {
@@ -62,6 +63,7 @@ func convertAPIStatements(APIStatements []v1alpha1.TransformStatement) []Transfo
 			Context:    statement.Context,
 			Conditions: statement.Conditions,
 			Statements: statement.Statements,
+			ErrorMde:   components.ErrorMode(statement.ErrorMode),
 		}
 	}
 
