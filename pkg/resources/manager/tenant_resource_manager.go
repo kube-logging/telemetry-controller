@@ -97,7 +97,7 @@ func (t *TenantResourceManager) GetResourceOwnedByTenant(ctx context.Context, re
 	for _, res := range allResources {
 		currentTenant := res.GetTenant()
 		if currentTenant != "" && currentTenant != tenant.Name {
-			t.Logger.Error(
+			t.Error(
 				fmt.Errorf("resource is owned by another tenant"),
 				"skipping reconciliation",
 				"current_tenant", currentTenant,
@@ -122,11 +122,11 @@ func (t *TenantResourceManager) GetResourceOwnedByTenant(ctx context.Context, re
 func (t *TenantResourceManager) UpdateResourcesForTenant(ctx context.Context, tenantName string, resources []model.ResourceOwnedByTenant) (updatedResources []model.ResourceOwnedByTenant) {
 	for _, res := range resources {
 		res.SetTenant(tenantName)
-		t.Logger.Info(fmt.Sprintf("updating resource (%s/%s) -> tenant (%s) reference", res.GetNamespace(), res.GetName(), tenantName))
+		t.Info(fmt.Sprintf("updating resource (%s/%s) -> tenant (%s) reference", res.GetNamespace(), res.GetName(), tenantName))
 
 		if updateErr := t.Status().Update(ctx, res); updateErr != nil {
 			res.SetState(state.StateFailed)
-			t.Logger.Error(updateErr, fmt.Sprintf("failed to update resource (%s/%s) -> tenant (%s) reference", res.GetNamespace(), res.GetName(), tenantName))
+			t.Error(updateErr, fmt.Sprintf("failed to update resource (%s/%s) -> tenant (%s) reference", res.GetNamespace(), res.GetName(), tenantName))
 		} else {
 			updatedResources = append(updatedResources, res)
 		}
@@ -155,7 +155,7 @@ func (t *TenantResourceManager) GetResourcesReferencingTenantButNotSelected(ctx 
 		FieldSelector: fields.OneTermEqualSelector(model.StatusTenantReferenceField, tenant.Name),
 	}
 	if err := t.List(ctx, resourceList, listOpts); client.IgnoreNotFound(err) != nil {
-		t.Logger.Error(err, "failed to list resources that need to be detached from tenant")
+		t.Error(err, "failed to list resources that need to be detached from tenant")
 		return nil, err
 	}
 
@@ -180,9 +180,9 @@ func (t *TenantResourceManager) DisownResources(ctx context.Context, resourceToD
 		res.SetTenant("")
 		if updateErr := t.Status().Update(ctx, res); updateErr != nil {
 			res.SetState(state.StateFailed)
-			t.Logger.Error(updateErr, fmt.Sprintf("failed to detach subscription %s/%s from tenant: %s", res.GetNamespace(), res.GetName(), tenantName))
+			t.Error(updateErr, fmt.Sprintf("failed to detach subscription %s/%s from tenant: %s", res.GetNamespace(), res.GetName(), tenantName))
 		} else {
-			t.Logger.Info(fmt.Sprintf("disowning resource (%s/%s)", res.GetNamespace(), res.GetName()))
+			t.Info(fmt.Sprintf("disowning resource (%s/%s)", res.GetNamespace(), res.GetName()))
 		}
 	}
 }
@@ -195,7 +195,7 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 	for _, outputRef := range subscription.Spec.Outputs {
 		checkedOutput := &v1alpha1.Output{}
 		if err := t.Get(ctx, types.NamespacedName(outputRef), checkedOutput); err != nil {
-			t.Logger.Error(err, "referred output invalid", "output", outputRef.String())
+			t.Error(err, "referred output invalid", "output", outputRef.String())
 
 			invalidOutputs = append(invalidOutputs, outputRef)
 			continue
@@ -203,7 +203,7 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 
 		// Ensure the output belongs to the same tenant
 		if checkedOutput.Status.Tenant != subscription.Status.Tenant {
-			t.Logger.Error(errors.New("output and subscription tenants mismatch"),
+			t.Error(errors.New("output and subscription tenants mismatch"),
 				"output and subscription tenants mismatch",
 				"output", checkedOutput.NamespacedName().String(),
 				"output's tenant", checkedOutput.Status.Tenant,
@@ -218,21 +218,21 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 		checkedOutput.SetState(state.StateReady)
 		if updateErr := t.Status().Update(ctx, checkedOutput); updateErr != nil {
 			checkedOutput.SetState(state.StateFailed)
-			t.Logger.Error(updateErr, fmt.Sprintf("failed to update output (%s/%s) state", checkedOutput.GetNamespace(), checkedOutput.GetName()))
+			t.Error(updateErr, fmt.Sprintf("failed to update output (%s/%s) state", checkedOutput.GetNamespace(), checkedOutput.GetName()))
 		}
 
 		validOutputs = append(validOutputs, outputRef)
 	}
 
 	if len(invalidOutputs) > 0 {
-		t.Logger.Error(errors.New("some outputs are invalid"), "some outputs are invalid", "invalidOutputs", invalidOutputs, "subscription", subscription.NamespacedName().String())
+		t.Error(errors.New("some outputs are invalid"), "some outputs are invalid", "invalidOutputs", invalidOutputs, "subscription", subscription.NamespacedName().String())
 	}
 
 	return validOutputs
 }
 
 // getNamespacesForSelectorSlice returns a list of namespaces that match the given label selectors
-func (r *TenantResourceManager) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
+func (t *TenantResourceManager) getNamespacesForSelectorSlice(ctx context.Context, labelSelectors []metav1.LabelSelector) ([]apiv1.Namespace, error) {
 	var namespaces []apiv1.Namespace
 	for _, ls := range labelSelectors {
 		selector, err := metav1.LabelSelectorAsSelector(&ls)
@@ -244,7 +244,7 @@ func (r *TenantResourceManager) getNamespacesForSelectorSlice(ctx context.Contex
 		listOpts := &client.ListOptions{
 			LabelSelector: selector,
 		}
-		if err := r.List(ctx, &namespacesForSelector, listOpts); client.IgnoreNotFound(err) != nil {
+		if err := t.List(ctx, &namespacesForSelector, listOpts); client.IgnoreNotFound(err) != nil {
 			return nil, err
 		}
 

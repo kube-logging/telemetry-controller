@@ -40,8 +40,8 @@ func (w *OTLPGRPCWrapper) mapToOTLPGRPCWrapper(apiConfig *v1alpha1.OTLPGRPC) {
 	w.QueueConfig.setDefaultQueueSettings(apiConfig.QueueConfig)
 	w.RetryConfig.setDefaultBackOffConfig(apiConfig.RetryConfig)
 
-	if apiConfig.TimeoutSettings.Timeout != nil {
-		w.TimeoutSettings.Timeout = apiConfig.TimeoutSettings.Timeout
+	if apiConfig.Timeout != nil {
+		w.Timeout = apiConfig.Timeout
 	}
 	w.GRPCClientConfig = apiConfig.GRPCClientConfig
 }

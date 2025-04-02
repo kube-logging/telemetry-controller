@@ -110,10 +110,10 @@ type TenantSpec struct {
 
 	// If true, logs are collected from all namespaces.
 	// Cannot be used together with LogSourceNamespaceSelectors.
-	SelectFromAllNamespaces bool `json:"selectFromAllNamespaces,omitempty"`
-	Transform               `json:"transform,omitempty"`
-	RouteConfig             `json:"routeConfig,omitempty"`
-	PersistenceConfig       `json:"persistenceConfig,omitempty"`
+	SelectFromAllNamespaces bool              `json:"selectFromAllNamespaces,omitempty"`
+	Transform               Transform         `json:"transform,omitempty"`
+	RouteConfig             RouteConfig       `json:"routeConfig,omitempty"`
+	PersistenceConfig       PersistenceConfig `json:"persistenceConfig,omitempty"`
 }
 
 // TenantStatus defines the observed state of Tenant
