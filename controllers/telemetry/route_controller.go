@@ -60,45 +60,45 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	baseManager := manager.NewBaseManager(r.Client, log.FromContext(ctx))
 
 	tenant := &v1alpha1.Tenant{}
-	baseManager.Logger.Info(fmt.Sprintf("getting tenant: %q", req.NamespacedName.Name))
+	baseManager.Info(fmt.Sprintf("getting tenant: %q", req.Name))
 
 	if err := r.Get(ctx, req.NamespacedName, tenant); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	originalTenantStatus := tenant.Status
-	baseManager.Logger.Info(fmt.Sprintf("reconciling tenant: %q", tenant.Name))
+	baseManager.Info(fmt.Sprintf("reconciling tenant: %q", tenant.Name))
 
 	if err := handleOwnedResources(ctx, baseManager.GetTenantResourceManager(), tenant); err != nil {
 		tenant.Status.State = state.StateFailed
-		baseManager.Logger.Error(errors.WithStack(err), "failed to handle resources owned by tenant", "tenant", tenant.Name)
+		baseManager.Error(errors.WithStack(err), "failed to handle resources owned by tenant", "tenant", tenant.Name)
 		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
-			baseManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			baseManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return ctrl.Result{}, errors.Append(err, updateErr)
 		}
 	}
 
 	if err := handleBridgeResources(ctx, baseManager.GetBridgeManager(), tenant); err != nil {
 		tenant.Status.State = state.StateFailed
-		baseManager.Logger.Error(errors.WithStack(err), "failed to handle bridge resources", "tenant", tenant.Name)
+		baseManager.Error(errors.WithStack(err), "failed to handle bridge resources", "tenant", tenant.Name)
 		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
-			baseManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			baseManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return ctrl.Result{}, errors.Append(err, updateErr)
 		}
 	}
 
 	tenant.Status.State = state.StateReady
 	if !reflect.DeepEqual(originalTenantStatus, tenant.Status) {
-		baseManager.Logger.Info("tenant status changed")
+		baseManager.Info("tenant status changed")
 		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
-			baseManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			baseManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return ctrl.Result{}, updateErr
 		}
 
 		return ctrl.Result{}, nil
 	}
 
-	baseManager.Logger.Info("tenant reconciliation complete", "tenant", tenant.Name)
+	baseManager.Info("tenant reconciliation complete", "tenant", tenant.Name)
 	return ctrl.Result{}, nil
 }
 
@@ -163,7 +163,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Tenant{}).
-		Watches(&v1alpha1.Subscription{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&v1alpha1.Subscription{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			tenants := &v1alpha1.TenantList{}
@@ -178,7 +178,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&v1alpha1.Output{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&v1alpha1.Output{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			tenants := &v1alpha1.TenantList{}
@@ -193,7 +193,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&v1alpha1.Bridge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&v1alpha1.Bridge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			tenants := &v1alpha1.TenantList{}
@@ -208,7 +208,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&apiv1.Namespace{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&apiv1.Namespace{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			tenants := &v1alpha1.TenantList{}
@@ -234,9 +234,9 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 	logsourceNamespacesForTenant, err := tenantResManager.GetLogsourceNamespaceNamesForTenant(ctx, tenant)
 	if err != nil {
 		tenant.Status.State = state.StateFailed
-		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get logsource namespaces for tenant", "tenant", tenant.Name)
+		tenantResManager.Error(errors.WithStack(err), "failed to get logsource namespaces for tenant", "tenant", tenant.Name)
 		if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
-			tenantResManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			tenantResManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return errors.Append(err, updateErr)
 		}
 
@@ -247,11 +247,11 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 
 	subscriptionsForTenant, subscriptionUpdateList, err := tenantResManager.GetResourceOwnedByTenant(ctx, &v1alpha1.Subscription{}, tenant)
 	if err != nil {
-		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get subscriptions for tenant", "tenant", tenant.Name)
+		tenantResManager.Error(errors.WithStack(err), "failed to get subscriptions for tenant", "tenant", tenant.Name)
 
 		tenant.Status.State = state.StateFailed
 		if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
-			tenantResManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			tenantResManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return errors.Append(err, updateErr)
 		}
 
@@ -262,7 +262,7 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 	subscriptionsForTenant = append(subscriptionsForTenant, tenantResManager.UpdateResourcesForTenant(ctx, tenant.Name, subscriptionUpdateList)...)
 	subscriptionsToDisown, err := tenantResManager.GetResourcesReferencingTenantButNotSelected(ctx, tenant, &v1alpha1.Subscription{}, subscriptionsForTenant)
 	if err != nil {
-		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get subscriptions to disown", "tenant", tenant.Name)
+		tenantResManager.Error(errors.WithStack(err), "failed to get subscriptions to disown", "tenant", tenant.Name)
 	}
 	tenantResManager.DisownResources(ctx, subscriptionsToDisown)
 
@@ -273,11 +273,11 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 	// Check outputs for tenant
 	outputsForTenant, outputUpdateList, err := tenantResManager.GetResourceOwnedByTenant(ctx, &v1alpha1.Output{}, tenant)
 	if err != nil {
-		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get outputs for tenant", "tenant", tenant.Name)
+		tenantResManager.Error(errors.WithStack(err), "failed to get outputs for tenant", "tenant", tenant.Name)
 
 		tenant.Status.State = state.StateFailed
 		if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
-			tenantResManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			tenantResManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return errors.Append(err, updateErr)
 		}
 
@@ -288,14 +288,14 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 	outputsForTenant = append(outputsForTenant, tenantResManager.UpdateResourcesForTenant(ctx, tenant.Name, outputUpdateList)...)
 	outputsToDisown, err := tenantResManager.GetResourcesReferencingTenantButNotSelected(ctx, tenant, &v1alpha1.Output{}, outputsForTenant)
 	if err != nil {
-		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get outputs to disown", "tenant", tenant.Name)
+		tenantResManager.Error(errors.WithStack(err), "failed to get outputs to disown", "tenant", tenant.Name)
 	}
 	tenantResManager.DisownResources(ctx, outputsToDisown)
 
 	// Check outputs for subscriptions
 	realSubscriptionsForTenant, err := utils.GetConcreteTypeFromList[*v1alpha1.Subscription](utils.ToObject(subscriptionsForTenant))
 	if err != nil {
-		tenantResManager.Logger.Error(errors.WithStack(err), "failed to get concrete type from list", "tenant", tenant.Name)
+		tenantResManager.Error(errors.WithStack(err), "failed to get concrete type from list", "tenant", tenant.Name)
 	}
 
 	for _, subscription := range realSubscriptionsForTenant {
@@ -303,7 +303,7 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 		subscription.Status.Outputs = tenantResManager.ValidateSubscriptionOutputs(ctx, subscription)
 		if !reflect.DeepEqual(originalSubscriptionStatus, subscription.Status) {
 			if updateErr := tenantResManager.Status().Update(ctx, subscription); updateErr != nil {
-				tenantResManager.Logger.Error(errors.WithStack(updateErr), "failed updating subscription status", "subscription", subscription.NamespacedName().String())
+				tenantResManager.Error(errors.WithStack(updateErr), "failed updating subscription status", "subscription", subscription.NamespacedName().String())
 				return updateErr
 			}
 		}
@@ -316,9 +316,9 @@ func handleBridgeResources(ctx context.Context, bridgeManager *manager.BridgeMan
 	bridgesForTenant, err := bridgeManager.GetBridgesForTenant(ctx, tenant.Name)
 	if err != nil {
 		tenant.Status.State = state.StateFailed
-		bridgeManager.Logger.Error(errors.WithStack(err), "failed to get bridges for tenant", "tenant", tenant.Name)
+		bridgeManager.Error(errors.WithStack(err), "failed to get bridges for tenant", "tenant", tenant.Name)
 		if updateErr := bridgeManager.Status().Update(ctx, tenant); updateErr != nil {
-			bridgeManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			bridgeManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return errors.Append(err, updateErr)
 		}
 
@@ -332,9 +332,9 @@ func handleBridgeResources(ctx context.Context, bridgeManager *manager.BridgeMan
 	for _, bridge := range bridgesForTenant {
 		if err := bridgeManager.CheckBridgeConnection(ctx, tenant.Name, &bridge); err != nil {
 			tenant.Status.State = state.StateFailed
-			bridgeManager.Logger.Error(errors.WithStack(err), "failed to check bridge connection", "bridge", bridge.Name)
+			bridgeManager.Error(errors.WithStack(err), "failed to check bridge connection", "bridge", bridge.Name)
 			if updateErr := bridgeManager.Status().Update(ctx, tenant); updateErr != nil {
-				bridgeManager.Logger.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+				bridgeManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 				return errors.Append(err, updateErr)
 			}
 

@@ -91,7 +91,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		tenantSubscriptionMap[tenant.Name] = subscriptionNames
 		for _, subsName := range subscriptionNames {
 			queriedSubs := &v1alpha1.Subscription{}
-			if err = r.Client.Get(ctx, types.NamespacedName(subsName), queriedSubs); err != nil {
+			if err = r.Get(ctx, types.NamespacedName(subsName), queriedSubs); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting subscriptions for tenant", "tenant", tenant.Name)
 				return otelcolconfgen.OtelColConfigInput{}, err
 			}
@@ -101,7 +101,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		bridgeNames := tenant.Status.ConnectedBridges
 		for _, bridgeName := range bridgeNames {
 			queriedBridge := &v1alpha1.Bridge{}
-			if err = r.Client.Get(ctx, types.NamespacedName{Name: bridgeName}, queriedBridge); err != nil {
+			if err = r.Get(ctx, types.NamespacedName{Name: bridgeName}, queriedBridge); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting bridges for tenant", "tenant", tenant.Name)
 				return otelcolconfgen.OtelColConfigInput{}, err
 			}
@@ -117,7 +117,7 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 			outputWithSecretData := components.OutputWithSecretData{}
 
 			queriedOutput := &v1alpha1.Output{}
-			if err = r.Client.Get(ctx, types.NamespacedName(outputName), queriedOutput); err != nil {
+			if err = r.Get(ctx, types.NamespacedName(outputName), queriedOutput); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting outputs for subscription", "subscription", subscription.NamespacedName().String())
 				return otelcolconfgen.OtelColConfigInput{}, err
 			}
@@ -150,7 +150,7 @@ func (r *CollectorReconciler) populateSecretForOutput(ctx context.Context, queri
 	if queriedOutput.Spec.Authentication != nil {
 		if queriedOutput.Spec.Authentication.BasicAuth != nil && queriedOutput.Spec.Authentication.BasicAuth.SecretRef != nil {
 			queriedSecret := &corev1.Secret{}
-			if err := r.Client.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Name}, queriedSecret); err != nil {
+			if err := r.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Name}, queriedSecret); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
 				return err
 			}
@@ -158,7 +158,7 @@ func (r *CollectorReconciler) populateSecretForOutput(ctx context.Context, queri
 		}
 		if queriedOutput.Spec.Authentication.BearerAuth != nil && queriedOutput.Spec.Authentication.BearerAuth.SecretRef != nil {
 			queriedSecret := &corev1.Secret{}
-			if err := r.Client.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Name}, queriedSecret); err != nil {
+			if err := r.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Name}, queriedSecret); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
 				return err
 			}
@@ -285,7 +285,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Collector{}).
-		Watches(&v1alpha1.Tenant{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&v1alpha1.Tenant{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			collectors := &v1alpha1.CollectorList{}
@@ -301,7 +301,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&v1alpha1.Subscription{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&v1alpha1.Subscription{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			collectors := &v1alpha1.CollectorList{}
@@ -317,7 +317,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&v1alpha1.Bridge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&v1alpha1.Bridge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			collectors := &v1alpha1.CollectorList{}
@@ -333,7 +333,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&v1alpha1.Output{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&v1alpha1.Output{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			collectors := &v1alpha1.CollectorList{}
@@ -349,7 +349,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			collectors := &v1alpha1.CollectorList{}
@@ -365,7 +365,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return
 		})).
-		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) (requests []reconcile.Request) {
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
 			logger := log.FromContext(ctx)
 
 			collectors := &v1alpha1.CollectorList{}
@@ -537,7 +537,7 @@ func (r *CollectorReconciler) getTenantsMatchingSelectors(ctx context.Context, l
 		LabelSelector: selector,
 	}
 
-	if err := r.Client.List(ctx, &tenantsForSelector, listOpts); client.IgnoreNotFound(err) != nil {
+	if err := r.List(ctx, &tenantsForSelector, listOpts); client.IgnoreNotFound(err) != nil {
 		return nil, err
 	}
 

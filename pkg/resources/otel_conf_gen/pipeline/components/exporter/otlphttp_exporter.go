@@ -69,16 +69,16 @@ func GenerateOTLPHTTPExporters(ctx context.Context, resourceRelations components
 					}
 				}
 			}
-			otlpHttpValuesMarshaled, err := json.Marshal(internalConfig)
+			otlpHTTPValuesMarshaled, err := json.Marshal(internalConfig)
 			if err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
-			var otlpHttpValues map[string]any
-			if err := json.Unmarshal(otlpHttpValuesMarshaled, &otlpHttpValues); err != nil {
+			var otlpHTTPValues map[string]any
+			if err := json.Unmarshal(otlpHTTPValuesMarshaled, &otlpHTTPValues); err != nil {
 				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
 			}
 
-			result[components.GetExporterNameForOutput(output.Output)] = otlpHttpValues
+			result[components.GetExporterNameForOutput(output.Output)] = otlpHTTPValues
 		}
 	}
 

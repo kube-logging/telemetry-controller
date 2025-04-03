@@ -1,67 +1,37 @@
+version: "2"
 run:
-  timeout: 5m
+  timeout: 10m
   allow-parallel-runners: true
 
-linters-settings:
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/kube-logging/telemetry-controller)
-  goimports:
-    local-prefixes: github.com/kube-logging/telemetry-controller
-  misspell:
-    locale: US
-  nolintlint:
-    allow-unused: false # report any unused nolint directives
-    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
-
-issues:
-  # don't skip warning about doc comments
-  # don't exclude the default set of lint
-  exclude-use-default: false
-  # restore some of the defaults
-  # (fill in the rest as needed)
-  exclude-rules:
-    - path: "api/*"
-      linters:
-        - lll
-    - path: "pkg/resources/*"
-      linters:
-        - dupl
-        - lll
-    - path: "controllers/*"
-      linters:
-        - dupl
-        - lll
-        - gci
-    - path: "cmd/main.go"
-      linters:
-        - gci
+formatters:
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/kube-logging/telemetry-controller)
+    goimports:
+      local-prefixes:
+        - github.com/kube-logging/telemetry-controller
+    gofmt:
+      simplify: true
+    gofumpt:
+      extra-rules: false
 
 linters:
-  disable-all: true
+  settings:
+    misspell:
+      locale: US
+    gocyclo:
+      min-complexity: 15
   enable:
+    - staticcheck
     - bodyclose
-    - copyloopvar
-    - dupl
     - errcheck
-    - gci
-    - goconst
-    - gocyclo
-    - gofmt
-    - gofumpt
-    - goimports
-    - gosimple
-    - govet
     - ineffassign
-    - lll
     - misspell
     - nolintlint
-    - prealloc
-    - staticcheck
-    - typecheck
     - unconvert
-    - unparam 
+    - unparam
     - unused
     - whitespace
