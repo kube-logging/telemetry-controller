@@ -40,8 +40,8 @@ type TenantResourceManager struct {
 }
 
 // GetLogsourceNamespaceNamesForTenant returns the namespaces that match the log source namespace selectors of the tenant
-func (t *TenantResourceManager) GetLogsourceNamespaceNamesForTenant(ctx context.Context, tentant *v1alpha1.Tenant) ([]string, error) {
-	namespaces, err := t.getNamespacesForSelectorSlice(ctx, tentant.Spec.LogSourceNamespaceSelectors)
+func (t *TenantResourceManager) GetLogsourceNamespaceNamesForTenant(ctx context.Context, tenant *v1alpha1.Tenant) ([]string, error) {
+	namespaces, err := t.getNamespacesForSelectorSlice(ctx, tenant.Spec.LogSourceNamespaceSelectors)
 	if err != nil {
 		return nil, err
 	}
