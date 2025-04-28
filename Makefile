@@ -6,20 +6,20 @@
 CONTROLLER_TOOLS_VERSION := 0.17.3
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver
-KUSTOMIZE_VERSION := 5.5.0
+KUSTOMIZE_VERSION := 5.6.0
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
 GOLANGCI_LINT_VERSION := 2.1.5
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
-KIND_VERSION ?= 0.26.0
+KIND_VERSION ?= 0.27.0
 
 # renovate: datasource=go depName=github.com/goph/licensei versioning=semver
 LICENSEI_VERSION = 0.9.0
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.31.0
-ENVTEST_OTEL_OPERATOR_VERSION=v0.112.0
+ENVTEST_K8S_VERSION = 1.32.0
+ENVTEST_OTEL_OPERATOR_VERSION=v0.120.0
 
 BIN := ${PWD}/bin
 
@@ -28,7 +28,7 @@ export PATH := $(BIN):$(PATH)
 GOVERSION := $(shell go env GOVERSION)
 
 KIND := ${BIN}/kind
-KIND_IMAGE ?= kindest/node:v1.31.2@sha256:18fbefc20a7113353c7b75b5c869d7145a6abd6269154825872dc59c1329912e
+KIND_IMAGE ?= kindest/node:v1.33.0@sha256:02f73d6ae3f11ad5d543f16736a2cb2a63a300ad60e81dac22099b0b04784a4e
 KIND_CLUSTER := kind
 
 # Image URL to use all building/pushing image targets
