@@ -61,7 +61,11 @@ func decodeID(from reflect.Type, to reflect.Type, data interface{}) (interface{}
 			if len(parts) != 2 {
 				return nil, fmt.Errorf("invalid pipeline ID format: %s", data.(string))
 			}
-			return pipeline.MustNewIDWithName(parts[0], parts[1]), nil
+			signal := pipeline.Signal{}
+			if err := signal.UnmarshalText([]byte(parts[0])); err != nil {
+				return nil, fmt.Errorf("invalid pipeline signal: %s", parts[0])
+			}
+			return pipeline.NewIDWithName(signal, parts[1]), nil
 		}
 	}
 
