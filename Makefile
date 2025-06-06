@@ -3,16 +3,16 @@
 ####
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
-CONTROLLER_TOOLS_VERSION := 0.17.3
+CONTROLLER_TOOLS_VERSION := 0.18.0
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver
 KUSTOMIZE_VERSION := 5.6.0
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-GOLANGCI_LINT_VERSION := 2.1.5
+GOLANGCI_LINT_VERSION := 2.1.6
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
-KIND_VERSION ?= 0.27.0
+KIND_VERSION ?= 0.29.0
 
 # renovate: datasource=go depName=github.com/goph/licensei versioning=semver
 LICENSEI_VERSION = 0.9.0
