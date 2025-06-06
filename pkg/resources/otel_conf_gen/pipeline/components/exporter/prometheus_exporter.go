@@ -73,7 +73,7 @@ type HTTPServerConfig struct {
 	CORS *CORSConfig `json:"cors,omitempty"`
 
 	// Auth for this receiver
-	Auth *configauth.Authentication `json:"auth,omitempty"`
+	Auth *configauth.Config `json:"auth,omitempty"`
 
 	// MaxRequestBodySize sets the maximum request body size in bytes
 	MaxRequestBodySize int64 `json:"max_request_body_size,omitempty"`
