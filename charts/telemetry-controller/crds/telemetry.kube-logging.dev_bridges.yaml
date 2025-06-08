@@ -66,6 +66,15 @@ spec:
             type: object
           status:
             description: BridgeStatus defines the observed state of Bridge
+            properties:
+              problems:
+                items:
+                  type: string
+                type: array
+              problemsCount:
+                type: integer
+              state:
+                type: string
             type: object
         type: object
     served: true

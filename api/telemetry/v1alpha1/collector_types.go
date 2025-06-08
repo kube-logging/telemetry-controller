@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/kube-logging/telemetry-controller/pkg/resources/problem"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 )
 
@@ -95,8 +96,27 @@ func (c CollectorSpec) GetMemoryLimit() *resource.Quantity {
 
 // CollectorStatus defines the observed state of Collector
 type CollectorStatus struct {
-	Tenants []string    `json:"tenants,omitempty"`
-	State   state.State `json:"state,omitempty"`
+	Tenants       []string    `json:"tenants,omitempty"`
+	State         state.State `json:"state,omitempty"`
+	Problems      []string    `json:"problems,omitempty"`
+	ProblemsCount int         `json:"problemsCount,omitempty"`
+}
+
+func (c *Collector) GetProblems() []string {
+	return c.Status.Problems
+}
+
+func (c *Collector) SetProblems(problems []string) {
+	c.Status.Problems = problems
+	c.Status.ProblemsCount = len(problems)
+}
+
+func (c *Collector) AddProblem(probs ...string) {
+	problem.Add(c, probs...)
+}
+
+func (c *Collector) ClearProblems() {
+	c.SetProblems([]string{})
 }
 
 //+kubebuilder:object:root=true
