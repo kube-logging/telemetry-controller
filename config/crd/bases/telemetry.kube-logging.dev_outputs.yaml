@@ -811,6 +811,12 @@ spec:
           status:
             description: OutputStatus defines the observed state of Output
             properties:
+              problems:
+                items:
+                  type: string
+                type: array
+              problemsCount:
+                type: integer
               state:
                 type: string
               tenant:

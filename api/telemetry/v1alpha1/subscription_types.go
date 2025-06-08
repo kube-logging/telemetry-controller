@@ -37,9 +37,11 @@ type SubscriptionSpec struct {
 
 // SubscriptionStatus defines the observed state of Subscription
 type SubscriptionStatus struct {
-	Tenant  string           `json:"tenant,omitempty"`
-	Outputs []NamespacedName `json:"outputs,omitempty"`
-	State   state.State      `json:"state,omitempty"`
+	Tenant        string           `json:"tenant,omitempty"`
+	Outputs       []NamespacedName `json:"outputs,omitempty"`
+	State         state.State      `json:"state,omitempty"`
+	Problems      []string         `json:"problems,omitempty"`
+	ProblemsCount int              `json:"problemsCount,omitempty"`
 }
 
 func (s *Subscription) GetTenant() string {

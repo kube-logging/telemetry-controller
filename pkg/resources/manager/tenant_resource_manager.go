@@ -192,7 +192,6 @@ func (t *TenantResourceManager) DisownResources(ctx context.Context, resourceToD
 func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context, subscription *v1alpha1.Subscription) []v1alpha1.NamespacedName {
 	validOutputs := []v1alpha1.NamespacedName{}
 	invalidOutputs := []v1alpha1.NamespacedName{}
-
 	for _, outputRef := range subscription.Spec.Outputs {
 		checkedOutput := &v1alpha1.Output{}
 		if err := t.Get(ctx, types.NamespacedName(outputRef), checkedOutput); err != nil {
