@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"slices"
 	"sort"
+	"strings"
 
 	"emperror.dev/errors"
 	apiv1 "k8s.io/api/core/v1"
@@ -71,6 +72,7 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	if err := handleOwnedResources(ctx, baseManager.GetTenantResourceManager(), tenant); err != nil {
 		tenant.Status.State = state.StateFailed
+		tenant.Status.ProblemsCount = len(tenant.Status.Problems)
 		baseManager.Error(errors.WithStack(err), "failed to handle resources owned by tenant", "tenant", tenant.Name)
 		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
 			baseManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
@@ -80,6 +82,7 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	if err := handleBridgeResources(ctx, baseManager.GetBridgeManager(), tenant); err != nil {
 		tenant.Status.State = state.StateFailed
+		tenant.Status.ProblemsCount = len(tenant.Status.Problems)
 		baseManager.Error(errors.WithStack(err), "failed to handle bridge resources", "tenant", tenant.Name)
 		if updateErr := r.updateStatus(ctx, tenant); updateErr != nil {
 			baseManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
@@ -98,7 +101,6 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	baseManager.Info("tenant reconciliation complete", "tenant", tenant.Name)
 	return ctrl.Result{}, nil
 }
 
@@ -234,12 +236,8 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 	logsourceNamespacesForTenant, err := tenantResManager.GetLogsourceNamespaceNamesForTenant(ctx, tenant)
 	if err != nil {
 		tenant.Status.State = state.StateFailed
-		tenantResManager.Error(errors.WithStack(err), "failed to get logsource namespaces for tenant", "tenant", tenant.Name)
-		if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
-			tenantResManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-			return errors.Append(err, updateErr)
-		}
-
+		tenant.Status.Problems = append(tenant.Status.Problems,
+			fmt.Sprintf("failed to get logsource namespaces for tenant %s: %v", tenant.Name, err))
 		return err
 	}
 	slices.Sort(logsourceNamespacesForTenant)
@@ -247,13 +245,9 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 
 	subscriptionsForTenant, subscriptionUpdateList, err := tenantResManager.GetResourceOwnedByTenant(ctx, &v1alpha1.Subscription{}, tenant)
 	if err != nil {
-		tenantResManager.Error(errors.WithStack(err), "failed to get subscriptions for tenant", "tenant", tenant.Name)
-
 		tenant.Status.State = state.StateFailed
-		if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
-			tenantResManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-			return errors.Append(err, updateErr)
-		}
+		tenant.Status.Problems = append(tenant.Status.Problems,
+			fmt.Sprintf("failed to get subscriptions for tenant %s: %v", tenant.Name, err))
 
 		return err
 	}
@@ -262,7 +256,8 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 	subscriptionsForTenant = append(subscriptionsForTenant, tenantResManager.UpdateResourcesForTenant(ctx, tenant.Name, subscriptionUpdateList)...)
 	subscriptionsToDisown, err := tenantResManager.GetResourcesReferencingTenantButNotSelected(ctx, tenant, &v1alpha1.Subscription{}, subscriptionsForTenant)
 	if err != nil {
-		tenantResManager.Error(errors.WithStack(err), "failed to get subscriptions to disown", "tenant", tenant.Name)
+		tenant.Status.Problems = append(tenant.Status.Problems,
+			fmt.Sprintf("failed to get subscriptions to disown for tenant %s: %v", tenant.Name, err))
 	}
 	tenantResManager.DisownResources(ctx, subscriptionsToDisown)
 
@@ -273,13 +268,9 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 	// Check outputs for tenant
 	outputsForTenant, outputUpdateList, err := tenantResManager.GetResourceOwnedByTenant(ctx, &v1alpha1.Output{}, tenant)
 	if err != nil {
-		tenantResManager.Error(errors.WithStack(err), "failed to get outputs for tenant", "tenant", tenant.Name)
-
 		tenant.Status.State = state.StateFailed
-		if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
-			tenantResManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-			return errors.Append(err, updateErr)
-		}
+		tenant.Status.Problems = append(tenant.Status.Problems,
+			fmt.Sprintf("failed to get outputs for tenant %s: %v", tenant.Name, err))
 
 		return err
 	}
@@ -288,7 +279,8 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 	outputsForTenant = append(outputsForTenant, tenantResManager.UpdateResourcesForTenant(ctx, tenant.Name, outputUpdateList)...)
 	outputsToDisown, err := tenantResManager.GetResourcesReferencingTenantButNotSelected(ctx, tenant, &v1alpha1.Output{}, outputsForTenant)
 	if err != nil {
-		tenantResManager.Error(errors.WithStack(err), "failed to get outputs to disown", "tenant", tenant.Name)
+		tenant.Status.Problems = append(tenant.Status.Problems,
+			fmt.Sprintf("failed to get outputs to disown for tenant %s: %v", tenant.Name, err))
 	}
 	tenantResManager.DisownResources(ctx, outputsToDisown)
 
@@ -316,11 +308,8 @@ func handleBridgeResources(ctx context.Context, bridgeManager *manager.BridgeMan
 	bridgesForTenant, err := bridgeManager.GetBridgesForTenant(ctx, tenant.Name)
 	if err != nil {
 		tenant.Status.State = state.StateFailed
-		bridgeManager.Error(errors.WithStack(err), "failed to get bridges for tenant", "tenant", tenant.Name)
-		if updateErr := bridgeManager.Status().Update(ctx, tenant); updateErr != nil {
-			bridgeManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-			return errors.Append(err, updateErr)
-		}
+		tenant.Status.Problems = append(tenant.Status.Problems,
+			fmt.Sprintf("failed to get bridges for tenant %s: %v", tenant.Name, err))
 
 		return err
 	}
@@ -330,15 +319,28 @@ func handleBridgeResources(ctx context.Context, bridgeManager *manager.BridgeMan
 	tenant.Status.ConnectedBridges = bridgesForTenantNames
 
 	for _, bridge := range bridgesForTenant {
-		if err := bridgeManager.CheckBridgeConnection(ctx, tenant.Name, &bridge); err != nil {
-			tenant.Status.State = state.StateFailed
-			bridgeManager.Error(errors.WithStack(err), "failed to check bridge connection", "bridge", bridge.Name)
-			if updateErr := bridgeManager.Status().Update(ctx, tenant); updateErr != nil {
-				bridgeManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-				return errors.Append(err, updateErr)
-			}
+		originalBridgeStatus := bridge.Status.DeepCopy()
+		bridge.Status.State = state.StateReady
 
-			return err
+		err := bridgeManager.ValidateBridgeConnection(ctx, tenant.Name, &bridge)
+		if err != nil {
+			errorMsg := fmt.Sprintf("validation failed for bridge %s: %v", bridge.Name, err)
+			tenant.Status.State = state.StateFailed
+			tenant.Status.Problems = append(tenant.Status.Problems, errorMsg)
+			bridge.Status.State = state.StateFailed
+			bridge.Status.Problems = append(bridge.Status.Problems, errorMsg)
+			bridge.Status.ProblemsCount = len(bridge.Status.Problems)
+		}
+
+		if !reflect.DeepEqual(originalBridgeStatus, bridge.Status) {
+			if updateErr := bridgeManager.Status().Update(ctx, &bridge); updateErr != nil {
+				bridgeManager.Error(errors.WithStack(updateErr), "failed updating bridge status", "bridge", bridge.Name)
+				return updateErr
+			}
+		}
+
+		if bridge.Status.ProblemsCount > 0 {
+			return fmt.Errorf("bridge %s has problems: %v", bridge.Name, strings.Join(bridge.Status.Problems, ", "))
 		}
 	}
 
