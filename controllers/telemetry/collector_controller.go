@@ -273,114 +273,44 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
+// SetupWithManager sets up the controller with the Manager
 func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	addCollectorRequest := func(requests []reconcile.Request, collector string) []reconcile.Request {
-		requests = append(requests, reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name: collector,
-			},
-		})
+	enqueueAllCollectors := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) []reconcile.Request {
+		logger := log.FromContext(ctx)
+
+		collectors := &v1alpha1.CollectorList{}
+		if err := r.List(ctx, collectors); err != nil {
+			logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
+			return nil
+		}
+
+		requests := make([]reconcile.Request, 0, len(collectors.Items))
+		for _, collector := range collectors.Items {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name: collector.Name,
+				},
+			})
+		}
+
 		return requests
+	})
+
+	builder := ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha1.Collector{})
+	watchedResources := []client.Object{
+		&v1alpha1.Tenant{},
+		&v1alpha1.Subscription{},
+		&v1alpha1.Bridge{},
+		&v1alpha1.Output{},
+		&corev1.Namespace{},
+		&corev1.Secret{},
 	}
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.Collector{}).
-		Watches(&v1alpha1.Tenant{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
+	for _, resource := range watchedResources {
+		builder = builder.Watches(resource, enqueueAllCollectors)
+	}
 
-			collectors := &v1alpha1.CollectorList{}
-			err := r.List(ctx, collectors)
-			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, collector := range collectors.Items {
-				requests = addCollectorRequest(requests, collector.Name)
-			}
-
-			return
-		})).
-		Watches(&v1alpha1.Subscription{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
-
-			collectors := &v1alpha1.CollectorList{}
-			err := r.List(ctx, collectors)
-			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, collector := range collectors.Items {
-				requests = addCollectorRequest(requests, collector.Name)
-			}
-
-			return
-		})).
-		Watches(&v1alpha1.Bridge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
-
-			collectors := &v1alpha1.CollectorList{}
-			err := r.List(ctx, collectors)
-			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, collector := range collectors.Items {
-				requests = addCollectorRequest(requests, collector.Name)
-			}
-
-			return
-		})).
-		Watches(&v1alpha1.Output{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
-
-			collectors := &v1alpha1.CollectorList{}
-			err := r.List(ctx, collectors)
-			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, collector := range collectors.Items {
-				requests = addCollectorRequest(requests, collector.Name)
-			}
-
-			return
-		})).
-		Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
-
-			collectors := &v1alpha1.CollectorList{}
-			err := r.List(ctx, collectors)
-			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, collector := range collectors.Items {
-				requests = addCollectorRequest(requests, collector.Name)
-			}
-
-			return
-		})).
-		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
-
-			collectors := &v1alpha1.CollectorList{}
-			err := r.List(ctx, collectors)
-			if err != nil {
-				logger.Error(errors.WithStack(err), "failed listing collectors for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, collector := range collectors.Items {
-				requests = addCollectorRequest(requests, collector.Name)
-			}
-
-			return
-		})).
+	return builder.
 		Owns(&otelv1beta1.OpenTelemetryCollector{}).
 		Complete(r)
 }
