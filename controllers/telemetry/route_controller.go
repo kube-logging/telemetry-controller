@@ -102,128 +102,107 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	return ctrl.Result{}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
+// SetupWithManager sets up the controller with the Manager
 func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Subscription{}, model.StatusTenantReferenceField, func(rawObj client.Object) []string {
-		subscription := rawObj.(*v1alpha1.Subscription)
-		if subscription.Status.Tenant == "" {
+	enqueueAllTenants := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) []reconcile.Request {
+		logger := log.FromContext(ctx)
+
+		tenants := &v1alpha1.TenantList{}
+		if err := r.List(ctx, tenants); err != nil {
+			logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
 			return nil
 		}
 
-		return []string{subscription.Status.Tenant}
-	}); err != nil {
-		return err
-	}
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Output{}, model.StatusTenantReferenceField, func(rawObj client.Object) []string {
-		output := rawObj.(*v1alpha1.Output)
-		if output.Status.Tenant == "" {
-			return nil
+		requests := make([]reconcile.Request, 0, len(tenants.Items))
+		for _, tenant := range tenants.Items {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name: tenant.Name,
+				},
+			})
 		}
-
-		return []string{output.Status.Tenant}
-	}); err != nil {
-		return err
-	}
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Bridge{}, model.BridgeSourceTenantReferenceField, func(rawObj client.Object) []string {
-		bridge := rawObj.(*v1alpha1.Bridge)
-		if bridge.Spec.SourceTenant == "" {
-			return nil
-		}
-
-		return []string{bridge.Spec.SourceTenant}
-	}); err != nil {
-		return err
-	}
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Bridge{}, model.BridgeTargetTenantReferenceField, func(rawObj client.Object) []string {
-		bridge := rawObj.(*v1alpha1.Bridge)
-		if bridge.Spec.TargetTenant == "" {
-			return nil
-		}
-
-		return []string{bridge.Spec.TargetTenant}
-	}); err != nil {
-		return err
-	}
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha1.Tenant{}, model.TenantNameField, func(rawObj client.Object) []string {
-		tenant := rawObj.(*v1alpha1.Tenant)
-		return []string{tenant.Name}
-	}); err != nil {
-		return err
-	}
-
-	addTenantRequest := func(requests []reconcile.Request, tenant string) []reconcile.Request {
-		requests = append(requests, reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name: tenant,
-			},
-		})
 
 		return requests
+	})
+
+	fieldIndexes := []struct {
+		obj       client.Object
+		field     string
+		extractor func(client.Object) []string
+	}{
+		{
+			obj:   &v1alpha1.Subscription{},
+			field: model.StatusTenantReferenceField,
+			extractor: func(rawObj client.Object) []string {
+				subscription := rawObj.(*v1alpha1.Subscription)
+				if subscription.Status.Tenant == "" {
+					return nil
+				}
+				return []string{subscription.Status.Tenant}
+			},
+		},
+		{
+			obj:   &v1alpha1.Output{},
+			field: model.StatusTenantReferenceField,
+			extractor: func(rawObj client.Object) []string {
+				output := rawObj.(*v1alpha1.Output)
+				if output.Status.Tenant == "" {
+					return nil
+				}
+				return []string{output.Status.Tenant}
+			},
+		},
+		{
+			obj:   &v1alpha1.Bridge{},
+			field: model.BridgeSourceTenantReferenceField,
+			extractor: func(rawObj client.Object) []string {
+				bridge := rawObj.(*v1alpha1.Bridge)
+				if bridge.Spec.SourceTenant == "" {
+					return nil
+				}
+				return []string{bridge.Spec.SourceTenant}
+			},
+		},
+		{
+			obj:   &v1alpha1.Bridge{},
+			field: model.BridgeTargetTenantReferenceField,
+			extractor: func(rawObj client.Object) []string {
+				bridge := rawObj.(*v1alpha1.Bridge)
+				if bridge.Spec.TargetTenant == "" {
+					return nil
+				}
+				return []string{bridge.Spec.TargetTenant}
+			},
+		},
+		{
+			obj:   &v1alpha1.Tenant{},
+			field: model.TenantNameField,
+			extractor: func(rawObj client.Object) []string {
+				tenant := rawObj.(*v1alpha1.Tenant)
+				return []string{tenant.Name}
+			},
+		},
+	}
+	indexer := mgr.GetFieldIndexer()
+	for _, idx := range fieldIndexes {
+		if err := indexer.IndexField(context.Background(), idx.obj, idx.field, idx.extractor); err != nil {
+			return err
+		}
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.Tenant{}).
-		Watches(&v1alpha1.Subscription{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
+	builder := ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha1.Tenant{})
+	watchedResources := []client.Object{
+		&v1alpha1.Subscription{},
+		&v1alpha1.Output{},
+		&v1alpha1.Bridge{},
+		&apiv1.Namespace{},
+	}
+	for _, resource := range watchedResources {
+		builder = builder.Watches(resource, enqueueAllTenants)
+	}
 
-			tenants := &v1alpha1.TenantList{}
-			if err := r.List(ctx, tenants); err != nil {
-				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, tenant := range tenants.Items {
-				requests = addTenantRequest(requests, tenant.Name)
-			}
-
-			return
-		})).
-		Watches(&v1alpha1.Output{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
-
-			tenants := &v1alpha1.TenantList{}
-			if err := r.List(ctx, tenants); err != nil {
-				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, tenant := range tenants.Items {
-				requests = addTenantRequest(requests, tenant.Name)
-			}
-
-			return
-		})).
-		Watches(&v1alpha1.Bridge{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
-
-			tenants := &v1alpha1.TenantList{}
-			if err := r.List(ctx, tenants); err != nil {
-				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, tenant := range tenants.Items {
-				requests = addTenantRequest(requests, tenant.Name)
-			}
-
-			return
-		})).
-		Watches(&apiv1.Namespace{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) (requests []reconcile.Request) {
-			logger := log.FromContext(ctx)
-
-			tenants := &v1alpha1.TenantList{}
-			if err := r.List(ctx, tenants); err != nil {
-				logger.Error(errors.WithStack(err), "failed listing tenants for mapping requests, unable to send requests")
-				return
-			}
-
-			for _, tenant := range tenants.Items {
-				requests = addTenantRequest(requests, tenant.Name)
-			}
-
-			return
-		})).
-		Complete(r)
+	return builder.Complete(r)
 }
 
 func (r *RouteReconciler) updateStatus(ctx context.Context, obj client.Object) error {
