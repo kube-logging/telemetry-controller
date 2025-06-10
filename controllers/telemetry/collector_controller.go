@@ -145,24 +145,38 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 }
 
 func (r *CollectorReconciler) populateSecretForOutput(ctx context.Context, queriedOutput *v1alpha1.Output, outputWithSecret *components.OutputWithSecretData) error {
-	logger := log.FromContext(ctx)
-
 	if queriedOutput.Spec.Authentication != nil {
+		originalOutputStatus := queriedOutput.Status.DeepCopy()
+
 		if queriedOutput.Spec.Authentication.BasicAuth != nil && queriedOutput.Spec.Authentication.BasicAuth.SecretRef != nil {
 			queriedSecret := &corev1.Secret{}
 			if err := r.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Name}, queriedSecret); err != nil {
-				logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
-				return err
+				queriedOutput.Status.Problems = append(queriedOutput.Status.Problems, fmt.Sprintf("failed getting secrets for output %s: %v", queriedOutput.Name, err))
 			}
 			outputWithSecret.Secret = *queriedSecret
 		}
 		if queriedOutput.Spec.Authentication.BearerAuth != nil && queriedOutput.Spec.Authentication.BearerAuth.SecretRef != nil {
 			queriedSecret := &corev1.Secret{}
 			if err := r.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Name}, queriedSecret); err != nil {
-				logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
-				return err
+				queriedOutput.Status.Problems = append(queriedOutput.Status.Problems, fmt.Sprintf("failed getting secrets for output %s: %v", queriedOutput.Name, err))
 			}
 			outputWithSecret.Secret = *queriedSecret
+		}
+
+		if !reflect.DeepEqual(originalOutputStatus, queriedOutput.Status) {
+			if len(queriedOutput.Status.Problems) > 0 {
+				queriedOutput.Status.State = state.StateFailed
+				queriedOutput.Status.ProblemsCount = len(queriedOutput.Status.Problems)
+			}
+			if updateErr := r.updateStatus(ctx, queriedOutput); updateErr != nil {
+				log.FromContext(ctx).Error(errors.WithStack(updateErr), "failed updating output status", "output", queriedOutput.Name)
+				return updateErr
+			}
+		}
+
+		// the built-in config validation will not catch issues related to missing secrets
+		if queriedOutput.Status.ProblemsCount > 0 {
+			return fmt.Errorf("output %s has problems: %v", queriedOutput.Name, strings.Join(queriedOutput.Status.Problems, ", "))
 		}
 	}
 
@@ -206,8 +220,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 		logger.Error(errors.WithStack(err), "invalid otel config input")
-
+		collector.Status.Problems = append(collector.Status.Problems, fmt.Sprintf("invalid otel config input: %s", err.Error()))
+		collector.Status.ProblemsCount = len(collector.Status.Problems)
 		collector.Status.State = state.StateFailed
+
 		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
 			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
 			return ctrl.Result{}, errors.Append(err, updateErr)
@@ -219,8 +235,10 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	otelConfig, additionalArgs := otelConfigInput.AssembleConfig(ctx)
 	if err := validator.ValidateAssembledConfig(otelConfig); err != nil {
 		logger.Error(errors.WithStack(err), "invalid otel config")
-
+		collector.Status.Problems = append(collector.Status.Problems, fmt.Sprintf("invalid otel config: %s", err.Error()))
+		collector.Status.ProblemsCount = len(collector.Status.Problems)
 		collector.Status.State = state.StateFailed
+
 		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
 			logger.Error(errors.WithStack(updateErr), "failed updating collector status")
 			return ctrl.Result{}, errors.Append(err, updateErr)
@@ -357,11 +375,8 @@ func (r *CollectorReconciler) otelCollector(collector *v1alpha1.Collector, otelC
 
 func (r *CollectorReconciler) reconcileRBAC(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
 	errCR := r.reconcileClusterRole(ctx, collector)
-
 	sa, errSA := r.reconcileServiceAccount(ctx, collector)
-
 	errCRB := r.reconcileClusterRoleBinding(ctx, collector)
-
 	if allErr := errors.Combine(errCR, errSA, errCRB); allErr != nil {
 		return v1alpha1.NamespacedName{}, allErr
 	}
@@ -370,8 +385,6 @@ func (r *CollectorReconciler) reconcileRBAC(ctx context.Context, collector *v1al
 }
 
 func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, collector *v1alpha1.Collector) (v1alpha1.NamespacedName, error) {
-	logger := log.FromContext(ctx)
-
 	serviceAccount := corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -379,13 +392,11 @@ func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, colle
 			Namespace: collector.Spec.ControlNamespace,
 		},
 	}
-
 	if err := ctrl.SetControllerReference(collector, &serviceAccount, r.Scheme); err != nil {
 		return v1alpha1.NamespacedName{}, err
 	}
 
-	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
-
+	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(log.FromContext(ctx)))
 	_, err := resourceReconciler.ReconcileResource(&serviceAccount, reconciler.StatePresent)
 	if err != nil {
 		return v1alpha1.NamespacedName{}, err
@@ -395,8 +406,6 @@ func (r *CollectorReconciler) reconcileServiceAccount(ctx context.Context, colle
 }
 
 func (r *CollectorReconciler) reconcileClusterRoleBinding(ctx context.Context, collector *v1alpha1.Collector) error {
-	logger := log.FromContext(ctx)
-
 	clusterRoleBinding := rbacv1.ClusterRoleBinding{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -412,20 +421,17 @@ func (r *CollectorReconciler) reconcileClusterRoleBinding(ctx context.Context, c
 			Name: fmt.Sprintf("%s-pod-association-reader", collector.Name),
 		},
 	}
-
 	if err := ctrl.SetControllerReference(collector, &clusterRoleBinding, r.Scheme); err != nil {
 		return err
 	}
 
-	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
-
+	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(log.FromContext(ctx)))
 	_, err := resourceReconciler.ReconcileResource(&clusterRoleBinding, reconciler.StatePresent)
+
 	return err
 }
 
 func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collector *v1alpha1.Collector) error {
-	logger := log.FromContext(ctx)
-
 	clusterRole := rbacv1.ClusterRole{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -444,13 +450,11 @@ func (r *CollectorReconciler) reconcileClusterRole(ctx context.Context, collecto
 			},
 		},
 	}
-
 	if err := ctrl.SetControllerReference(collector, &clusterRole, r.Scheme); err != nil {
 		return err
 	}
 
-	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(logger))
-
+	resourceReconciler := reconciler.NewReconcilerWith(r.Client, reconciler.WithLog(log.FromContext(ctx)))
 	_, err := resourceReconciler.ReconcileResource(&clusterRole, reconciler.StatePresent)
 
 	return err

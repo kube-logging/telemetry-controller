@@ -163,8 +163,10 @@ type Fluentforward struct {
 
 // OutputStatus defines the observed state of Output
 type OutputStatus struct {
-	Tenant string      `json:"tenant,omitempty"`
-	State  state.State `json:"state,omitempty"`
+	Tenant        string      `json:"tenant,omitempty"`
+	State         state.State `json:"state,omitempty"`
+	Problems      []string    `json:"problems,omitempty"`
+	ProblemsCount int         `json:"problemsCount,omitempty"`
 }
 
 func (o *Output) GetTenant() string {

@@ -21,7 +21,6 @@ import (
 	"slices"
 	"strings"
 
-	"emperror.dev/errors"
 	apiv1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -190,31 +189,25 @@ func (t *TenantResourceManager) DisownResources(ctx context.Context, resourceToD
 // ValidateSubscriptionOutputs validates the output references of a subscription
 func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context, subscription *v1alpha1.Subscription) []v1alpha1.NamespacedName {
 	validOutputs := []v1alpha1.NamespacedName{}
-	invalidOutputs := []v1alpha1.NamespacedName{}
 
 	for _, outputRef := range subscription.Spec.Outputs {
 		checkedOutput := &v1alpha1.Output{}
 		if err := t.Get(ctx, types.NamespacedName(outputRef), checkedOutput); err != nil {
-			t.Error(err, "referred output invalid", "output", outputRef.String())
-
-			invalidOutputs = append(invalidOutputs, outputRef)
+			subscription.Status.Problems = append(subscription.Status.Problems,
+				fmt.Sprintf("failed to get output (%s/%s): %v", outputRef.Namespace, outputRef.Name, err))
 			continue
 		}
 
-		// Ensure the output belongs to the same tenant
 		if checkedOutput.Status.Tenant != subscription.Status.Tenant {
-			t.Error(errors.New("output and subscription tenants mismatch"),
-				"output and subscription tenants mismatch",
-				"output", checkedOutput.NamespacedName().String(),
-				"output's tenant", checkedOutput.Status.Tenant,
-				"subscription", subscription.NamespacedName().String(),
-				"subscription's tenant", subscription.Status.Tenant)
-
-			invalidOutputs = append(invalidOutputs, outputRef)
+			subscription.Status.Problems = append(subscription.Status.Problems,
+				fmt.Sprintf("output (%s/%s) belongs to different tenant", outputRef.Namespace, outputRef.Name))
+			checkedOutput.Status.Problems = append(checkedOutput.Status.Problems,
+				fmt.Sprintf("output (%s/%s) belongs to different tenant", outputRef.Namespace, outputRef.Name))
+			checkedOutput.Status.ProblemsCount = len(checkedOutput.Status.Problems)
 			continue
 		}
 
-		// update the output state if validation was successful
+		// update output state
 		checkedOutput.SetState(state.StateReady)
 		if updateErr := t.Status().Update(ctx, checkedOutput); updateErr != nil {
 			checkedOutput.SetState(state.StateFailed)
@@ -223,9 +216,8 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 
 		validOutputs = append(validOutputs, outputRef)
 	}
-
-	if len(invalidOutputs) > 0 {
-		t.Error(errors.New("some outputs are invalid"), "some outputs are invalid", "invalidOutputs", invalidOutputs, "subscription", subscription.NamespacedName().String())
+	if len(subscription.Status.Problems) > 0 {
+		subscription.Status.ProblemsCount = len(subscription.Status.Problems)
 	}
 
 	return validOutputs
