@@ -15,11 +15,15 @@
 package components
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
@@ -104,6 +108,60 @@ func (r *ResourceRelations) GetTenantByName(tenantName string) (*v1alpha1.Tenant
 	}
 
 	return nil, fmt.Errorf("tenant %s not found", tenantName)
+}
+
+// QueryOutputSecret retrieves the secret associated with the output's authentication configuration.
+// It returns an error if the output is nil, if no authentication is configured,
+// if multiple authentication methods are configured, or if the secret cannot be found.
+func QueryOutputSecret(ctx context.Context, client client.Client, output *v1alpha1.Output) error {
+	_, err := QueryOutputSecretWithData(ctx, client, output)
+	return err
+}
+
+// QueryOutputSecretWithData retrieves the secret associated with the output's authentication configuration.
+// It returns the secret and an error if the output is nil, if no authentication is configured,
+// if multiple authentication methods are configured, or if the secret cannot be found.
+func QueryOutputSecretWithData(ctx context.Context, client client.Client, output *v1alpha1.Output) (*corev1.Secret, error) {
+	auth := output.Spec.Authentication
+	authCount := 0
+	if auth.BasicAuth != nil && auth.BasicAuth.SecretRef != nil {
+		authCount++
+	}
+	if auth.BearerAuth != nil && auth.BearerAuth.SecretRef != nil {
+		authCount++
+	}
+	switch authCount {
+	case 0:
+		return nil, errors.New("no valid authentication method configured")
+	case 1:
+		// Proceed with the single authentication method
+	default:
+		return nil, errors.New("multiple authentication methods configured; only one is allowed")
+	}
+
+	var namespacedName types.NamespacedName
+	var authType string
+	if auth.BasicAuth != nil && auth.BasicAuth.SecretRef != nil {
+		namespacedName = types.NamespacedName{
+			Namespace: auth.BasicAuth.SecretRef.Namespace,
+			Name:      auth.BasicAuth.SecretRef.Name,
+		}
+		authType = "BasicAuth"
+	} else if auth.BearerAuth != nil && auth.BearerAuth.SecretRef != nil {
+		namespacedName = types.NamespacedName{
+			Namespace: auth.BearerAuth.SecretRef.Namespace,
+			Name:      auth.BearerAuth.SecretRef.Name,
+		}
+		authType = "BearerAuth"
+	}
+
+	var secret *corev1.Secret
+	if err := client.Get(ctx, namespacedName, secret); err != nil {
+		return nil, fmt.Errorf("failed to retrieve %s secret %s/%s: %w",
+			authType, namespacedName.Namespace, namespacedName.Name, err)
+	}
+
+	return secret, nil
 }
 
 func SortNamespacedNames(names []v1alpha1.NamespacedName) {

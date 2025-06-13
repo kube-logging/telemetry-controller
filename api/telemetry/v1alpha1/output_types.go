@@ -69,10 +69,12 @@ type OutputSpec struct {
 	Batch          *Batch         `json:"batch,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="(has(self.basicAuth) && has(self.bearerAuth)) == false",message="Only one authentication method can be specified: either basicAuth or bearerAuth, not both"
+
 // Output Authentication configuration.
 type OutputAuth struct {
-	BasicAuth  *BasicAuthConfig  `json:"basicauth,omitempty"`
-	BearerAuth *BearerAuthConfig `json:"bearerauth,omitempty"`
+	BasicAuth  *BasicAuthConfig  `json:"basicAuth,omitempty"`
+	BearerAuth *BearerAuthConfig `json:"bearerAuth,omitempty"`
 }
 
 type BasicAuthConfig struct {

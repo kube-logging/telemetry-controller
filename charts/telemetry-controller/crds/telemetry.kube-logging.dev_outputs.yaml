@@ -51,7 +51,7 @@ spec:
               authentication:
                 description: Output Authentication configuration.
                 properties:
-                  basicauth:
+                  basicAuth:
                     properties:
                       passwordField:
                         type: string
@@ -73,7 +73,7 @@ spec:
                       usernameField:
                         type: string
                     type: object
-                  bearerauth:
+                  bearerAuth:
                     properties:
                       secretRef:
                         description: |-
@@ -94,6 +94,10 @@ spec:
                         type: string
                     type: object
                 type: object
+                x-kubernetes-validations:
+                - message: 'Only one authentication method can be specified: either
+                    basicAuth or bearerAuth, not both'
+                  rule: (has(self.basicAuth) && has(self.bearerAuth)) == false
               batch:
                 description: Batch processor configuration.
                 properties:

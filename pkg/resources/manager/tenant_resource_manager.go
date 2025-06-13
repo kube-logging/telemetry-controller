@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/model"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 )
@@ -201,7 +202,7 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 			continue
 		}
 
-		// Ensure the output belongs to the same tenant
+		// ensure the output belongs to the same tenant
 		if checkedOutput.Status.Tenant != subscription.Status.Tenant {
 			t.Error(errors.New("output and subscription tenants mismatch"),
 				"output and subscription tenants mismatch",
@@ -212,6 +213,16 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 
 			invalidOutputs = append(invalidOutputs, outputRef)
 			continue
+		}
+
+		// validate output secret
+		if checkedOutput.Spec.Authentication != nil {
+			if err := components.QueryOutputSecret(ctx, t.Client, checkedOutput); err != nil {
+				t.Error(err, "failed to query output secret", "output", checkedOutput.NamespacedName().String())
+
+				invalidOutputs = append(invalidOutputs, outputRef)
+				continue
+			}
 		}
 
 		// update the output state if validation was successful

@@ -61,11 +61,6 @@ type CollectorReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-type BasicAuthClientAuthConfig struct {
-	Username string
-	Password string
-}
-
 func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, collector *v1alpha1.Collector) (otelcolconfgen.OtelColConfigInput, error) {
 	logger := log.FromContext(ctx)
 	tenantSubscriptionMap := make(map[string][]v1alpha1.NamespacedName)
@@ -114,18 +109,23 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		outputNames := subscription.Status.Outputs
 		subscriptionOutputMap[subscription.NamespacedName()] = outputNames
 		for _, outputName := range outputNames {
-			outputWithSecretData := components.OutputWithSecretData{}
-
 			queriedOutput := &v1alpha1.Output{}
 			if err = r.Get(ctx, types.NamespacedName(outputName), queriedOutput); err != nil {
 				logger.Error(errors.WithStack(err), "failed getting outputs for subscription", "subscription", subscription.NamespacedName().String())
 				return otelcolconfgen.OtelColConfigInput{}, err
 			}
-			outputWithSecretData.Output = *queriedOutput
-
-			if err := r.populateSecretForOutput(ctx, queriedOutput, &outputWithSecretData); err != nil {
-				return otelcolconfgen.OtelColConfigInput{}, err
+			outputWithSecretData := components.OutputWithSecretData{
+				Output: *queriedOutput,
 			}
+			if queriedOutput.Spec.Authentication != nil {
+				outputSecret, err := components.QueryOutputSecretWithData(ctx, r.Client, queriedOutput)
+				if err != nil {
+					logger.Error(errors.WithStack(err), "failed querying output secret for output", "output", queriedOutput.NamespacedName().String())
+				} else {
+					outputWithSecretData.Secret = *outputSecret
+				}
+			}
+
 			outputs = append(outputs, outputWithSecretData)
 		}
 	}
@@ -142,31 +142,6 @@ func (r *CollectorReconciler) buildConfigInputForCollector(ctx context.Context, 
 		Debug:         collector.Spec.Debug,
 		MemoryLimiter: *collector.Spec.MemoryLimiter,
 	}, nil
-}
-
-func (r *CollectorReconciler) populateSecretForOutput(ctx context.Context, queriedOutput *v1alpha1.Output, outputWithSecret *components.OutputWithSecretData) error {
-	logger := log.FromContext(ctx)
-
-	if queriedOutput.Spec.Authentication != nil {
-		if queriedOutput.Spec.Authentication.BasicAuth != nil && queriedOutput.Spec.Authentication.BasicAuth.SecretRef != nil {
-			queriedSecret := &corev1.Secret{}
-			if err := r.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BasicAuth.SecretRef.Name}, queriedSecret); err != nil {
-				logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
-				return err
-			}
-			outputWithSecret.Secret = *queriedSecret
-		}
-		if queriedOutput.Spec.Authentication.BearerAuth != nil && queriedOutput.Spec.Authentication.BearerAuth.SecretRef != nil {
-			queriedSecret := &corev1.Secret{}
-			if err := r.Get(ctx, types.NamespacedName{Namespace: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Namespace, Name: queriedOutput.Spec.Authentication.BearerAuth.SecretRef.Name}, queriedSecret); err != nil {
-				logger.Error(errors.WithStack(err), "failed getting secrets for output", "output", queriedOutput.NamespacedName().String())
-				return err
-			}
-			outputWithSecret.Secret = *queriedSecret
-		}
-	}
-
-	return nil
 }
 
 // +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;outputs;bridges;,verbs=get;list;watch;create;update;patch;delete
