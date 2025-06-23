@@ -57,12 +57,12 @@ type RouteReconciler struct {
 // +kubebuilder:rbac:groups=opentelemetry.io,resources=opentelemetrycollectors,verbs=get;list;watch;create;update;patch;delete
 
 func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	baseManager := manager.NewBaseManager(r.Client, log.FromContext(ctx))
+	baseManager := manager.NewBaseManager(r.Client, log.FromContext(ctx, "tenant", req.Name))
 
 	tenant := &v1alpha1.Tenant{}
 	baseManager.Info(fmt.Sprintf("getting tenant: %q", req.Name))
 
-	if err := r.Get(ctx, req.NamespacedName, tenant); err != nil {
+	if err := baseManager.Get(ctx, req.NamespacedName, tenant); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -94,11 +94,8 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			baseManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
 			return ctrl.Result{}, updateErr
 		}
-
-		return ctrl.Result{}, nil
 	}
 
-	baseManager.Info("tenant reconciliation complete", "tenant", tenant.Name)
 	return ctrl.Result{}, nil
 }
 

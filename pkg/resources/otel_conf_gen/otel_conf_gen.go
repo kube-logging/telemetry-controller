@@ -16,7 +16,6 @@ package otel_conf_gen
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"reflect"
@@ -24,7 +23,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
@@ -37,8 +35,6 @@ import (
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/processor"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/receiver"
 )
-
-var ErrNoResources = errors.New("there are no resources deployed that the collector(s) can use")
 
 type OtelColConfigInput struct {
 	components.ResourceRelations
@@ -369,72 +365,4 @@ func assembleAdditionalArgs(otelConfig *otelv1beta1.Config) map[string]string {
 	}
 
 	return args
-}
-
-func validateTenants(tenants *[]v1alpha1.Tenant) error {
-	var result *multierror.Error
-
-	if len(*tenants) == 0 {
-		return errors.New("no tenants provided, at least one tenant must be provided")
-	}
-
-	for _, tenant := range *tenants {
-		if tenant.Status.LogSourceNamespaces != nil && tenant.Spec.SelectFromAllNamespaces {
-			result = multierror.Append(result, fmt.Errorf("tenant %s has both log source namespace selectors and select from all namespaces enabled", tenant.Name))
-		}
-	}
-
-	return result.ErrorOrNil()
-}
-
-func validateSubscriptionsAndBridges(tenants *[]v1alpha1.Tenant, subscriptions *map[v1alpha1.NamespacedName]v1alpha1.Subscription, bridges *[]v1alpha1.Bridge) error {
-	var result *multierror.Error
-
-	hasSubs := len(*subscriptions) > 0
-	hasBridges := len(*bridges) > 0
-	if !hasSubs && !hasBridges {
-		return errors.New("no subscriptions or bridges provided, at least one subscription or bridge must be provided")
-	}
-
-	if hasSubs {
-		for _, subscription := range *subscriptions {
-			if len(subscription.Spec.Outputs) == 0 {
-				result = multierror.Append(result, fmt.Errorf("subscription %s has no outputs", subscription.Name))
-			}
-		}
-	}
-
-	if hasBridges {
-		tenantMap := make(map[string]struct{})
-		for _, tenant := range *tenants {
-			tenantMap[tenant.Name] = struct{}{}
-		}
-
-		for _, bridge := range *bridges {
-			if _, sourceFound := tenantMap[bridge.Spec.SourceTenant]; !sourceFound {
-				result = multierror.Append(result, fmt.Errorf("bridge: %s has a source tenant: %s that does not exist", bridge.Name, bridge.Spec.SourceTenant))
-			}
-			if _, targetFound := tenantMap[bridge.Spec.TargetTenant]; !targetFound {
-				result = multierror.Append(result, fmt.Errorf("bridge: %s has a target tenant: %s that does not exist", bridge.Name, bridge.Spec.TargetTenant))
-			}
-		}
-	}
-
-	return result.ErrorOrNil()
-}
-
-func (cfgInput *OtelColConfigInput) ValidateConfig() error {
-	if cfgInput.IsEmpty() {
-		return ErrNoResources
-	}
-
-	var result *multierror.Error
-	if err := validateTenants(&cfgInput.Tenants); err != nil {
-		result = multierror.Append(result, err)
-	}
-	if err := validateSubscriptionsAndBridges(&cfgInput.Tenants, &cfgInput.Subscriptions, &cfgInput.Bridges); err != nil {
-		result = multierror.Append(result, err)
-	}
-
-	return result.ErrorOrNil()
 }

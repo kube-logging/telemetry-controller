@@ -16,6 +16,7 @@ package utils
 
 import (
 	"fmt"
+	"slices"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -72,4 +73,19 @@ func ToObject[T client.Object](items []T) []client.Object {
 		objects[i] = item
 	}
 	return objects
+}
+
+// NormalizeStringSlice takes a slice of strings, removes duplicates, sorts it, and returns the unique sorted slice.
+func NormalizeStringSlice(inputList []string) []string {
+	allKeys := make(map[string]bool)
+	uniqueList := []string{}
+	for _, item := range inputList {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			uniqueList = append(uniqueList, item)
+		}
+	}
+	slices.Sort(uniqueList)
+
+	return uniqueList
 }
