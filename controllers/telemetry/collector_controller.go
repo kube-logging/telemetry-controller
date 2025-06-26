@@ -73,26 +73,15 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	collectorManager.Info(fmt.Sprintf("reconciling collector: %q", collector.Name))
 
 	err := handleCollectorCreation(ctx, collectorManager, collector, r.Scheme)
-	switch {
-	case errors.Is(err, manager.ErrTenantFailed):
-		return ctrl.Result{RequeueAfter: requeueDelayOnFailedTenant}, err
-
-	case errors.Is(err, manager.ErrNoResources):
-		return ctrl.Result{}, nil
-
-	case err != nil:
-		collector.Status.State = state.StateFailed
-		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
-			collectorManager.Error(errors.WithStack(updateErr), "failed updating collector status")
-			return ctrl.Result{}, errors.Append(err, updateErr)
-		}
-		return ctrl.Result{}, err
+	if err != nil {
+		return r.handleCollectorReconcileError(ctx, &collectorManager.BaseManager, collector, err)
 	}
 
+	collector.Status.State = state.StateReady
+	collector.ClearProblems()
 	if !reflect.DeepEqual(originalCollectorStatus, collector.Status) {
 		collectorManager.Info("collector status changed")
-
-		if updateErr := r.updateStatus(ctx, collector); updateErr != nil {
+		if updateErr := r.Status().Update(ctx, collector); updateErr != nil {
 			collectorManager.Error(errors.WithStack(updateErr), "failed updating collector status")
 			return ctrl.Result{}, updateErr
 		}
@@ -143,19 +132,37 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *CollectorReconciler) updateStatus(ctx context.Context, obj client.Object) error {
-	return r.Status().Update(ctx, obj)
+// handleTenantReconcileError handles errors that occur during reconciliation steps
+func (r *CollectorReconciler) handleCollectorReconcileError(ctx context.Context, baseManager *manager.BaseManager, collector *v1alpha1.Collector, err error) (ctrl.Result, error) {
+	switch {
+	case errors.Is(err, manager.ErrTenantFailed): // This error indicates that the tenant is in a failed state, and we should requeue after a delay.
+		return ctrl.Result{RequeueAfter: requeueDelayOnFailedTenant}, nil
+
+	case errors.Is(err, manager.ErrNoResources): // This error indicates that there are no resources to reconcile, which is not a failure state.
+		return ctrl.Result{}, nil
+	}
+
+	collector.AddProblem(err.Error())
+	collector.Status.State = state.StateFailed
+
+	baseManager.Error(errors.WithStack(err), "failed reconciling collector", "collector", collector.Name)
+	if updateErr := r.Status().Update(ctx, collector); updateErr != nil {
+		baseManager.Error(errors.WithStack(updateErr), "failed updating collector status", "collector", collector.Name)
+		return ctrl.Result{}, errors.Append(err, updateErr)
+	}
+
+	return ctrl.Result{}, err
 }
 
 func handleCollectorCreation(ctx context.Context, collectorManager *manager.CollectorManager, collector *v1alpha1.Collector, scheme *runtime.Scheme) error {
 	collectorConfigInput, err := collectorManager.BuildConfigInputForCollector(ctx, collector)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to build config input for collector %s: %w", collector.Name, err)
 	}
 
 	if err := collectorManager.ValidateConfigInput(collectorConfigInput); err != nil {
 		if errors.Is(err, manager.ErrNoResources) {
-			collectorManager.Info(err.Error())
+			collectorManager.Info("no resources to reconcile for collector, skipping creation")
 		}
 		collectorManager.Error(errors.WithStack(err), "invalid otel config input")
 
@@ -192,7 +199,6 @@ func handleCollectorCreation(ctx context.Context, collectorManager *manager.Coll
 		tenantNames = append(tenantNames, tenant.Name)
 	}
 	collector.Status.Tenants = utils.NormalizeStringSlice(tenantNames)
-	collector.Status.State = state.StateReady
 
 	return nil
 }

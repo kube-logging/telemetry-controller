@@ -65,7 +65,6 @@ func (t *TenantResourceManager) GetResourceOwnedByTenant(ctx context.Context, re
 		return nil, nil, fmt.Errorf("failed to get namespaces: %w", err)
 	}
 
-	// Create the appropriate list type based on the resource type
 	var resourceList model.ResourceList
 	switch resource.(type) {
 	case *v1alpha1.Subscription:
@@ -76,7 +75,6 @@ func (t *TenantResourceManager) GetResourceOwnedByTenant(ctx context.Context, re
 		return nil, nil, fmt.Errorf("unsupported resource type: %T", resource)
 	}
 
-	// Collect resources from all namespaces
 	var allResources []model.ResourceOwnedByTenant
 	for _, ns := range namespaces {
 		listOpts := &client.ListOptions{
@@ -93,7 +91,6 @@ func (t *TenantResourceManager) GetResourceOwnedByTenant(ctx context.Context, re
 		allResources = append(allResources, resourceList.GetItems()...)
 	}
 
-	// Categorize resources
 	for _, res := range allResources {
 		currentTenant := res.GetTenant()
 		if currentTenant != "" && currentTenant != tenant.Name {
@@ -139,8 +136,6 @@ func (t *TenantResourceManager) UpdateResourcesForTenant(ctx context.Context, te
 		} else {
 			updatedResources = append(updatedResources, res)
 		}
-
-		res.SetState(state.StateReady)
 	}
 
 	return
