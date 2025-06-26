@@ -34,6 +34,10 @@ type ResourceOwnedByTenant interface {
 	SetTenant(tenant string)
 	GetState() state.State
 	SetState(state state.State)
+	GetProblems() []string
+	SetProblems(problems []string)
+	GetProblemsCount() int
+	SetProblemsCount(count int)
 }
 
 // ResourceList is an interface for Kubernetes list types

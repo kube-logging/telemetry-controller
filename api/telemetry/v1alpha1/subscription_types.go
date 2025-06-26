@@ -60,6 +60,22 @@ func (s *Subscription) SetState(state state.State) {
 	s.Status.State = state
 }
 
+func (s *Subscription) GetProblems() []string {
+	return s.Status.Problems
+}
+
+func (s *Subscription) SetProblems(problems []string) {
+	s.Status.Problems = problems
+}
+
+func (s *Subscription) GetProblemsCount() int {
+	return s.Status.ProblemsCount
+}
+
+func (s *Subscription) SetProblemsCount(count int) {
+	s.Status.ProblemsCount = count
+}
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.status.tenant`

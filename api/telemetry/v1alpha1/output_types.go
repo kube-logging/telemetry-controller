@@ -187,6 +187,21 @@ func (o *Output) SetState(state state.State) {
 	o.Status.State = state
 }
 
+func (o *Output) GetProblems() []string {
+	return o.Status.Problems
+}
+
+func (o *Output) SetProblems(problems []string) {
+	o.Status.Problems = problems
+}
+func (o *Output) GetProblemsCount() int {
+	return o.Status.ProblemsCount
+}
+
+func (o *Output) SetProblemsCount(count int) {
+	o.Status.ProblemsCount = count
+}
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Tenant",type=string,JSONPath=`.status.tenant`
