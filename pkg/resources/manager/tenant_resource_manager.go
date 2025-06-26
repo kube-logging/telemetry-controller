@@ -99,12 +99,21 @@ func (t *TenantResourceManager) GetResourceOwnedByTenant(ctx context.Context, re
 		currentTenant := res.GetTenant()
 		if currentTenant != "" && currentTenant != tenant.Name {
 			t.Error(
-				fmt.Errorf("resource is owned by another tenant"),
+				fmt.Errorf("resource: %s of kind: %s is owned by another tenant", res.GetName(), res.GetObjectKind().GroupVersionKind().Kind),
 				"skipping reconciliation",
 				"current_tenant", currentTenant,
 				"desired_tenant", tenant.Name,
 				"action_required", "remove resource from previous tenant before adopting to new tenant",
 			)
+
+			res.SetProblems([]string{
+				fmt.Sprintf("resource %s/%s is already owned by tenant %s", res.GetNamespace(), res.GetName(), currentTenant),
+			})
+			res.SetProblemsCount(len(res.GetProblems()))
+			res.SetState(state.StateFailed)
+			if err := t.Status().Update(ctx, res); err != nil {
+				t.Error(err, fmt.Sprintf("failed to update resource (%s/%s) state", res.GetNamespace(), res.GetName()))
+			}
 			continue
 		}
 
@@ -188,40 +197,45 @@ func (t *TenantResourceManager) DisownResources(ctx context.Context, resourceToD
 	}
 }
 
-// ValidateSubscriptionOutputs validates the output references of a subscription
-func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context, subscription *v1alpha1.Subscription) []v1alpha1.NamespacedName {
-	validOutputs := []v1alpha1.NamespacedName{}
-	invalidOutputs := []v1alpha1.NamespacedName{}
+// ValidateSubscriptionReferencedOutputs validates the output references of a subscription
+func (t *TenantResourceManager) ValidateSubscriptionReferencedOutputs(ctx context.Context, subscription *v1alpha1.Subscription) ([]v1alpha1.NamespacedName, []string) {
+	var validOutputs []v1alpha1.NamespacedName
+	var invalidOutputs []string
 	for _, outputRef := range subscription.Spec.Outputs {
+		invalid := false
 		checkedOutput := &v1alpha1.Output{}
 		if err := t.Get(ctx, types.NamespacedName(outputRef), checkedOutput); err != nil {
 			t.Error(err, "referred output invalid", "output", outputRef.String())
-
-			invalidOutputs = append(invalidOutputs, outputRef)
+			checkedOutput.Status.Problems = append(checkedOutput.Status.Problems, fmt.Sprintf("referred output %s could not be queried", outputRef.String()))
+			t.updateInvalidOutput(ctx, checkedOutput)
 			continue
 		}
 
 		// ensure the output belongs to the same tenant
 		if checkedOutput.Status.Tenant != subscription.Status.Tenant {
+			invalid = true
 			t.Error(errors.New("output and subscription tenants mismatch"),
 				"output and subscription tenants mismatch",
 				"output", checkedOutput.NamespacedName().String(),
 				"output's tenant", checkedOutput.Status.Tenant,
 				"subscription", subscription.NamespacedName().String(),
 				"subscription's tenant", subscription.Status.Tenant)
-
-			invalidOutputs = append(invalidOutputs, outputRef)
-			continue
+			checkedOutput.Status.Problems = append(checkedOutput.Status.Problems, fmt.Sprintf("output %s does not belong to the same tenant as subscription %s", outputRef.String(), subscription.NamespacedName().String()))
 		}
 
 		// validate output secret
 		if checkedOutput.Spec.Authentication != nil {
 			if err := components.QueryOutputSecret(ctx, t.Client, checkedOutput); err != nil {
+				invalid = true
 				t.Error(err, "failed to query output secret", "output", checkedOutput.NamespacedName().String())
-
-				invalidOutputs = append(invalidOutputs, outputRef)
-				continue
+				checkedOutput.Status.Problems = append(checkedOutput.Status.Problems, fmt.Sprintf("output %s secret could not be queried: %v", outputRef.String(), err))
 			}
+		}
+
+		if invalid {
+			t.updateInvalidOutput(ctx, checkedOutput)
+			invalidOutputs = append(invalidOutputs, checkedOutput.NamespacedName().String())
+			continue
 		}
 
 		// update the output state if validation was successful
@@ -234,11 +248,7 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 		validOutputs = append(validOutputs, outputRef)
 	}
 
-	if len(invalidOutputs) > 0 {
-		t.Error(errors.New("some outputs are invalid"), "some outputs are invalid", "invalidOutputs", invalidOutputs, "subscription", subscription.NamespacedName().String())
-	}
-
-	return validOutputs
+	return validOutputs, invalidOutputs
 }
 
 // getNamespacesForSelectorSlice returns a list of namespaces that match the given label selectors
@@ -264,6 +274,19 @@ func (t *TenantResourceManager) getNamespacesForSelectorSlice(ctx context.Contex
 	namespaces = normalizeNamespaceSlice(namespaces)
 
 	return namespaces, nil
+}
+
+func (t *TenantResourceManager) updateInvalidOutput(ctx context.Context, output *v1alpha1.Output) {
+	if output == nil {
+		t.Error(errors.New("output cannot be nil"), "failed to update invalid output")
+		return
+	}
+
+	output.Status.State = state.StateFailed
+	output.Status.ProblemsCount = len(output.Status.Problems)
+	if err := t.Status().Update(ctx, output); err != nil {
+		t.Error(err, fmt.Sprintf("failed to update output (%s/%s) state", output.GetNamespace(), output.GetName()))
+	}
 }
 
 func GetResourceNamesFromResource(resources []model.ResourceOwnedByTenant) []v1alpha1.NamespacedName {
