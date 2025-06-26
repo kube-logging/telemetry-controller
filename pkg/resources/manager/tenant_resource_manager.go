@@ -26,7 +26,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
@@ -99,12 +98,21 @@ func (t *TenantResourceManager) GetResourceOwnedByTenant(ctx context.Context, re
 		currentTenant := res.GetTenant()
 		if currentTenant != "" && currentTenant != tenant.Name {
 			t.Error(
-				fmt.Errorf("resource is owned by another tenant"),
+				fmt.Errorf("resource: %s of kind: %s is owned by another tenant", res.GetName(), res.GetObjectKind().GroupVersionKind().Kind),
 				"skipping reconciliation",
 				"current_tenant", currentTenant,
 				"desired_tenant", tenant.Name,
 				"action_required", "remove resource from previous tenant before adopting to new tenant",
 			)
+
+			// Clear any previous problems and add the ownership conflict
+			res.SetProblems([]string{
+				fmt.Sprintf("resource %s/%s is already owned by tenant %s", res.GetNamespace(), res.GetName(), currentTenant),
+			})
+			res.SetState(state.StateFailed)
+			if err := t.Status().Update(ctx, res); err != nil {
+				t.Error(err, fmt.Sprintf("failed to update resource (%s/%s) state", res.GetNamespace(), res.GetName()))
+			}
 			continue
 		}
 
@@ -188,43 +196,52 @@ func (t *TenantResourceManager) DisownResources(ctx context.Context, resourceToD
 	}
 }
 
-// ValidateSubscriptionOutputs validates the output references of a subscription
-func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context, subscription *v1alpha1.Subscription) []v1alpha1.NamespacedName {
-	validOutputs := []v1alpha1.NamespacedName{}
-	invalidOutputs := []v1alpha1.NamespacedName{}
+// ValidateSubscriptionReferencedOutputsWithCache validates outputs referenced by the subscription using a provided cache of outputs
+func (t *TenantResourceManager) ValidateSubscriptionReferencedOutputsWithCache(ctx context.Context, subscription *v1alpha1.Subscription, outputMap map[v1alpha1.NamespacedName]*v1alpha1.Output) ([]v1alpha1.NamespacedName, []string) {
+	var validOutputs []v1alpha1.NamespacedName
+	var invalidOutputs []string
 	for _, outputRef := range subscription.Spec.Outputs {
-		checkedOutput := &v1alpha1.Output{}
-		if err := t.Get(ctx, types.NamespacedName(outputRef), checkedOutput); err != nil {
-			t.Error(err, "referred output invalid", "output", outputRef.String())
-
-			invalidOutputs = append(invalidOutputs, outputRef)
+		invalid := false
+		checkedOutput, exists := outputMap[outputRef]
+		if !exists {
+			// Output doesn't exist or isn't owned by this tenant
+			t.Error(errors.New("output not found"), "referred output invalid", "output", outputRef.String())
+			invalidOutputs = append(invalidOutputs, outputRef.String())
 			continue
 		}
 
 		// ensure the output belongs to the same tenant
 		if checkedOutput.Status.Tenant != subscription.Status.Tenant {
+			invalid = true
 			t.Error(errors.New("output and subscription tenants mismatch"),
 				"output and subscription tenants mismatch",
 				"output", checkedOutput.NamespacedName().String(),
 				"output's tenant", checkedOutput.Status.Tenant,
 				"subscription", subscription.NamespacedName().String(),
 				"subscription's tenant", subscription.Status.Tenant)
-
-			invalidOutputs = append(invalidOutputs, outputRef)
-			continue
+			checkedOutput.AddProblem(fmt.Sprintf("output %s does not belong to the same tenant as subscription %s", outputRef.String(), subscription.NamespacedName().String()))
 		}
 
 		// validate output secret
 		if checkedOutput.Spec.Authentication != nil {
 			if err := components.QueryOutputSecret(ctx, t.Client, checkedOutput); err != nil {
+				invalid = true
 				t.Error(err, "failed to query output secret", "output", checkedOutput.NamespacedName().String())
-
-				invalidOutputs = append(invalidOutputs, outputRef)
-				continue
+				checkedOutput.AddProblem(fmt.Sprintf("output %s secret could not be queried: %v", outputRef.String(), err))
 			}
 		}
 
+		if invalid {
+			checkedOutput.Status.State = state.StateFailed
+			if updateErr := t.Status().Update(ctx, checkedOutput); updateErr != nil {
+				t.Error(updateErr, fmt.Sprintf("failed to update output (%s/%s) state", checkedOutput.GetNamespace(), checkedOutput.GetName()))
+			}
+			invalidOutputs = append(invalidOutputs, checkedOutput.NamespacedName().String())
+			continue
+		}
+
 		// update the output state if validation was successful
+		checkedOutput.ClearProblems()
 		checkedOutput.SetState(state.StateReady)
 		if updateErr := t.Status().Update(ctx, checkedOutput); updateErr != nil {
 			checkedOutput.SetState(state.StateFailed)
@@ -234,11 +251,7 @@ func (t *TenantResourceManager) ValidateSubscriptionOutputs(ctx context.Context,
 		validOutputs = append(validOutputs, outputRef)
 	}
 
-	if len(invalidOutputs) > 0 {
-		t.Error(errors.New("some outputs are invalid"), "some outputs are invalid", "invalidOutputs", invalidOutputs, "subscription", subscription.NamespacedName().String())
-	}
-
-	return validOutputs
+	return validOutputs, invalidOutputs
 }
 
 // getNamespacesForSelectorSlice returns a list of namespaces that match the given label selectors

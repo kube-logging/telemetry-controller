@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"sort"
+	"strings"
 
 	"emperror.dev/errors"
 	apiv1 "k8s.io/api/core/v1"
@@ -98,11 +98,12 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 	for _, step := range steps {
 		if err := step.fn(); err != nil {
-			return r.handleReconcileError(ctx, baseManager, tenant, step.name, err)
+			return r.handleTenantReconcileError(ctx, &baseManager, tenant, step.name, err)
 		}
 	}
 
 	tenant.Status.State = state.StateReady
+	tenant.ClearProblems()
 	if !reflect.DeepEqual(originalTenantStatus, tenant.Status) {
 		baseManager.Info("tenant status changed")
 		if updateErr := r.Status().Update(ctx, tenant); updateErr != nil {
@@ -217,12 +218,11 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return builder.Complete(r)
 }
 
-// handleReconcileError handles errors that occur during reconciliation steps
-func (r *RouteReconciler) handleReconcileError(ctx context.Context, baseManager manager.BaseManager, tenant *v1alpha1.Tenant, stepName string, err error) (ctrl.Result, error) {
+// handleTenantReconcileError handles errors that occur during reconciliation steps
+func (r *RouteReconciler) handleTenantReconcileError(ctx context.Context, baseManager *manager.BaseManager, tenant *v1alpha1.Tenant, stepName string, err error) (ctrl.Result, error) {
 	wrappedErr := errors.Wrapf(err, "failed to %s for tenant %s", stepName, tenant.Name)
 
-	tenant.Status.Problems = append(tenant.Status.Problems, wrappedErr.Error())
-	tenant.Status.ProblemsCount = len(tenant.Status.Problems)
+	tenant.AddProblem(wrappedErr.Error())
 	tenant.Status.State = state.StateFailed
 
 	baseManager.Error(errors.WithStack(err), fmt.Sprintf("failed to %s", stepName), "tenant", tenant.Name)
@@ -247,6 +247,10 @@ func handleLogSourceNamespaces(ctx context.Context, tenantResManager *manager.Te
 }
 
 func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantResourceManager, tenant *v1alpha1.Tenant) error {
+	// Caching all outputs for the tenant to validate subscriptions against
+	var allOutputsForTenant []model.ResourceOwnedByTenant
+
+	// Process outputs first to ensure they have their tenant set before validating subscriptions
 	tenantOwnedResources := []model.ResourceOwnedByTenant{
 		&v1alpha1.Output{},
 		&v1alpha1.Subscription{},
@@ -255,11 +259,7 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 		resourcesForTenant, resourceUpdateList, err := tenantResManager.GetResourceOwnedByTenant(ctx, resource, tenant)
 		if err != nil {
 			tenantResManager.Error(errors.WithStack(err), fmt.Sprintf("failed to get %T for tenant", resource), "tenant", tenant.Name)
-			if updateErr := tenantResManager.Status().Update(ctx, tenant); updateErr != nil {
-				tenantResManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-				return errors.Append(err, updateErr)
-			}
-			return err
+			return fmt.Errorf("failed to get %T for tenant %s: %w", resource, tenant.Name, err)
 		}
 
 		// Add all newly updated resources here
@@ -271,13 +271,24 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 		}
 		tenantResManager.DisownResources(ctx, resourcesToDisown)
 
+		if _, ok := resource.(*v1alpha1.Output); ok {
+			allOutputsForTenant = resourcesForTenant
+		}
+
 		if _, ok := resource.(*v1alpha1.Subscription); ok {
 			subscriptionNames := manager.GetResourceNamesFromResource(resourcesForTenant)
 			components.SortNamespacedNames(subscriptionNames)
 			tenant.Status.Subscriptions = subscriptionNames
 
-			if err := validateSubscriptionOutputs(ctx, tenantResManager, tenant, resourcesForTenant); err != nil {
+			if err := validateSubscriptionOutputs(ctx, tenantResManager, tenant, resourcesForTenant, allOutputsForTenant); err != nil {
 				return err
+			}
+		}
+
+		for _, res := range resourcesForTenant {
+			if res.GetState() == state.StateFailed {
+				tenantResManager.Error(errors.New("resource failed"), "failed resource", "resource", res.GetName())
+				return fmt.Errorf("resource %s is in a failed state", res.GetName())
 			}
 		}
 	}
@@ -285,24 +296,35 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 	return nil
 }
 
-func validateSubscriptionOutputs(ctx context.Context, tenantResManager *manager.TenantResourceManager, tenant *v1alpha1.Tenant, subscriptionsForTenant []model.ResourceOwnedByTenant) error {
+func validateSubscriptionOutputs(ctx context.Context, tenantResManager *manager.TenantResourceManager, tenant *v1alpha1.Tenant, subscriptionsForTenant []model.ResourceOwnedByTenant, outputsForTenant []model.ResourceOwnedByTenant) error {
 	realSubscriptionsForTenant, err := utils.GetConcreteTypeFromList[*v1alpha1.Subscription](utils.ToObject(subscriptionsForTenant))
 	if err != nil {
 		tenantResManager.Error(errors.WithStack(err), "failed to get concrete type from list", "tenant", tenant.Name)
 		return err
 	}
 
+	realOutputsForTenant, err := utils.GetConcreteTypeFromList[*v1alpha1.Output](utils.ToObject(outputsForTenant))
+	if err != nil {
+		tenantResManager.Error(errors.WithStack(err), "failed to get concrete type from list for outputs", "tenant", tenant.Name)
+		return err
+	}
+
+	outputMap := make(map[v1alpha1.NamespacedName]*v1alpha1.Output)
+	for _, output := range realOutputsForTenant {
+		outputMap[output.NamespacedName()] = output
+	}
+
 	for _, subscription := range realSubscriptionsForTenant {
 		originalSubscriptionStatus := subscription.Status.DeepCopy()
-		validOutputs, invalidOutputs := tenantResManager.ValidateSubscriptionOutputs(ctx, subscription)
-
-		if len(invalidOutputs) > 0 {
-			subscription.Status.Problems = append(subscription.Status.Problems, fmt.Sprintf("invalid outputs for subscription %s: %v", subscription.Name, invalidOutputs))
-			subscription.Status.ProblemsCount = len(subscription.Status.Problems)
+		validOutputs, invalidOutputs := tenantResManager.ValidateSubscriptionReferencedOutputsWithCache(ctx, subscription, outputMap)
+		switch len(invalidOutputs) {
+		case 0:
+			subscription.Status.State = state.StateReady
+			subscription.ClearProblems()
+		default:
 			subscription.Status.State = state.StateFailed
-			tenantResManager.UpdateOutputs(ctx, tenant, invalidOutputs)
+			subscription.AddProblem(fmt.Sprintf("invalid outputs referenced by subscription %s: %s", subscription.Name, strings.Join(invalidOutputs, ", ")))
 		}
-
 		components.SortNamespacedNames(validOutputs)
 		subscription.Status.Outputs = validOutputs
 
@@ -320,33 +342,39 @@ func validateSubscriptionOutputs(ctx context.Context, tenantResManager *manager.
 func handleBridgeResources(ctx context.Context, bridgeManager *manager.BridgeManager, tenant *v1alpha1.Tenant) error {
 	bridgesForTenant, err := bridgeManager.GetBridgesForTenant(ctx, tenant.Name)
 	if err != nil {
-		tenant.Status.State = state.StateFailed
 		bridgeManager.Error(errors.WithStack(err), "failed to get bridges for tenant", "tenant", tenant.Name)
-		if updateErr := bridgeManager.Status().Update(ctx, tenant); updateErr != nil {
-			bridgeManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
-			return errors.Append(err, updateErr)
-		}
-
-		return err
+		return fmt.Errorf("failed to get bridges for tenant %s: %w", tenant.Name, err)
 	}
 
 	bridgesForTenantNames := manager.GetBridgeNamesFromBridges(bridgesForTenant)
-	sort.Strings(bridgesForTenantNames)
+	slices.Sort(bridgesForTenantNames)
 	tenant.Status.ConnectedBridges = bridgesForTenantNames
 
-	for _, bridge := range bridgesForTenant {
-		if err := bridgeManager.ValidateBridgeConnection(ctx, tenant.Name, &bridge); err != nil {
-			bridge.Status.Problems = append(bridge.Status.Problems, errors.Wrapf(err, "bridge %s validation failed", bridge.Name).Error())
-			bridge.Status.ProblemsCount = len(bridge.Status.Problems)
+	for i := range bridgesForTenant {
+		bridge := &bridgesForTenant[i]
+		originalBridgeStatus := bridge.Status.DeepCopy()
+
+		if err := bridgeManager.ValidateBridgeConnection(ctx, tenant.Name, bridge); err != nil {
+			bridge.AddProblem(errors.Wrapf(err, "bridge %s validation failed", bridge.Name).Error())
 			bridge.Status.State = state.StateFailed
 
 			bridgeManager.Error(errors.WithStack(err), "failed to check bridge connection", "bridge", bridge.Name)
-			if updateErr := bridgeManager.Status().Update(ctx, tenant); updateErr != nil {
-				bridgeManager.Error(errors.WithStack(updateErr), "failed updating tenant status", "tenant", tenant.Name)
+			if updateErr := bridgeManager.Status().Update(ctx, bridge); updateErr != nil {
+				bridgeManager.Error(errors.WithStack(updateErr), "failed updating bridge status", "bridge", bridge.Name)
 				return errors.Append(err, updateErr)
 			}
 
 			return err
+		}
+
+		bridge.Status.State = state.StateReady
+		bridge.ClearProblems()
+
+		if !reflect.DeepEqual(originalBridgeStatus, &bridge.Status) {
+			if updateErr := bridgeManager.Status().Update(ctx, bridge); updateErr != nil {
+				bridgeManager.Error(errors.WithStack(updateErr), "failed updating bridge status", "bridge", bridge.Name)
+				return updateErr
+			}
 		}
 	}
 
