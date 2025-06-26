@@ -89,6 +89,12 @@ spec:
                   - namespace
                   type: object
                 type: array
+              problems:
+                items:
+                  type: string
+                type: array
+              problemsCount:
+                type: integer
               state:
                 type: string
               tenant:

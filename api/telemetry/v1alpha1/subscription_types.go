@@ -37,9 +37,11 @@ type SubscriptionSpec struct {
 
 // SubscriptionStatus defines the observed state of Subscription
 type SubscriptionStatus struct {
-	Tenant  string           `json:"tenant,omitempty"`
-	Outputs []NamespacedName `json:"outputs,omitempty"`
-	State   state.State      `json:"state,omitempty"`
+	Tenant        string           `json:"tenant,omitempty"`
+	Outputs       []NamespacedName `json:"outputs,omitempty"`
+	State         state.State      `json:"state,omitempty"`
+	Problems      []string         `json:"problems,omitempty"`
+	ProblemsCount int              `json:"problemsCount,omitempty"`
 }
 
 func (s *Subscription) GetTenant() string {
@@ -56,6 +58,22 @@ func (s *Subscription) GetState() state.State {
 
 func (s *Subscription) SetState(state state.State) {
 	s.Status.State = state
+}
+
+func (s *Subscription) GetProblems() []string {
+	return s.Status.Problems
+}
+
+func (s *Subscription) SetProblems(problems []string) {
+	s.Status.Problems = problems
+}
+
+func (s *Subscription) GetProblemsCount() int {
+	return s.Status.ProblemsCount
+}
+
+func (s *Subscription) SetProblemsCount(count int) {
+	s.Status.ProblemsCount = count
 }
 
 // +kubebuilder:object:root=true

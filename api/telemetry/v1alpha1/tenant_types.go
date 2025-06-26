@@ -122,6 +122,8 @@ type TenantStatus struct {
 	LogSourceNamespaces []string         `json:"logSourceNamespaces,omitempty"`
 	ConnectedBridges    []string         `json:"connectedBridges,omitempty"`
 	State               state.State      `json:"state,omitempty"`
+	Problems            []string         `json:"problems,omitempty"`
+	ProblemsCount       int              `json:"problemsCount,omitempty"`
 }
 
 //+kubebuilder:object:root=true

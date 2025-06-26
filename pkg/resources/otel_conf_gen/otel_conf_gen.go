@@ -287,17 +287,11 @@ func (cfgInput *OtelColConfigInput) generateTelemetry() map[string]any {
 
 func (cfgInput *OtelColConfigInput) AssembleConfig(ctx context.Context) (otelv1beta1.Config, map[string]string) {
 	exporters := cfgInput.generateExporters(ctx)
-
 	processors := cfgInput.generateProcessors()
-
 	extensions, extensionNames := cfgInput.generateExtensions()
-
 	receivers := cfgInput.generateReceivers()
-
 	connectors := cfgInput.generateConnectors()
-
 	pipelines := cfgInput.generateNamedPipelines()
-
 	telemetry := cfgInput.generateTelemetry()
 
 	if _, ok := processors["memory_limiter"]; ok {
