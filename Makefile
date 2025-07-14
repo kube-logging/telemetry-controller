@@ -6,10 +6,10 @@
 CONTROLLER_TOOLS_VERSION := 0.18.0
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver
-KUSTOMIZE_VERSION := 5.6.0
+KUSTOMIZE_VERSION := 5.7.0
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-GOLANGCI_LINT_VERSION := 2.1.6
+GOLANGCI_LINT_VERSION := 2.2.2
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
 KIND_VERSION ?= 0.29.0
@@ -249,8 +249,6 @@ stern: | ${BIN}
 .PHONY: kind-cluster
 kind-cluster: ${KIND}
 	kind create cluster --name $(KIND_CLUSTER) --image $(KIND_IMAGE)
-
-## target: ci-run
 
 ${KIND}: ${KIND}_${KIND_VERSION}_${GOVERSION} | ${BIN}
 	ln -sf $(notdir $<) $@
