@@ -7120,8 +7120,6 @@ spec:
                       type: object
                     type: array
                     x-kubernetes-list-type: atomic
-                required:
-                - managementState
                 type: object
               tenantSelector:
                 description: TenantSelector is used to select tenants for which the
