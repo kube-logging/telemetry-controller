@@ -19,7 +19,8 @@ LICENSEI_VERSION = 0.9.0
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.32.0
-ENVTEST_OTEL_OPERATOR_VERSION=v0.120.0
+ENVTEST_OTEL_OPERATOR_VERSION=0.129.1
+CERT_MANAGER_VERSION = 1.18.2
 
 BIN := ${PWD}/bin
 
@@ -186,8 +187,8 @@ endif
 
 .PHONY: install-deps
 install-deps: ## Install dependencies into the actual K8s cluster
-	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
-	kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.112.0/opentelemetry-operator.yaml
+	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v$(CERT_MANAGER_VERSION)/cert-manager.yaml
+	kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v$(ENVTEST_OTEL_OPERATOR_VERSION)/opentelemetry-operator.yaml
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
@@ -236,7 +237,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 
 # Download CRDs for envtest
 crddir/github.com/open-telemetry/opentelemetry-operator:
-	git clone --depth 1 --branch ${ENVTEST_OTEL_OPERATOR_VERSION} https://github.com/open-telemetry/opentelemetry-operator.git crddir/github.com/open-telemetry/opentelemetry-operator
+	git clone --depth 1 --branch v${ENVTEST_OTEL_OPERATOR_VERSION} https://github.com/open-telemetry/opentelemetry-operator.git crddir/github.com/open-telemetry/opentelemetry-operator
 
 .PHONY: envtest
 envtest: $(ENVTEST) crddir/github.com/open-telemetry/opentelemetry-operator ## Download envtest-setup locally if necessary.

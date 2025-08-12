@@ -334,8 +334,7 @@ func assembleAdditionalArgs(otelConfig *otelv1beta1.Config) map[string]string {
 		flattenDataKey       = "flatten_data"
 	)
 	const (
-		flattenLogsFeatureGateValue                      = "transform.flatten.logs"
-		telemetryDisableAddressFieldForInternalTelemetry = "telemetry.disableAddressFieldForInternalTelemetry"
+		flattenLogsFeatureGateValue = "transform.flatten.logs"
 	)
 
 	type enableConstraint func() bool
@@ -348,9 +347,6 @@ func assembleAdditionalArgs(otelConfig *otelv1beta1.Config) map[string]string {
 				}
 			}
 			return false
-		},
-		telemetryDisableAddressFieldForInternalTelemetry: func() bool {
-			return true
 		},
 	}
 
