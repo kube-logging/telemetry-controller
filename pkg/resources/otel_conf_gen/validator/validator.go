@@ -26,7 +26,7 @@ import (
 	"go.opentelemetry.io/collector/service"
 	"go.opentelemetry.io/collector/service/extensions"
 	"go.opentelemetry.io/collector/service/pipelines"
-	"go.opentelemetry.io/collector/service/telemetry"
+	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 )
 
 // ValidateAssembledConfig validates the assembled OpenTelemetry Collector configuration
@@ -107,8 +107,8 @@ func decodeServiceConfig(serviceConfig otelv1beta1.Service) (service.Config, err
 	return result, nil
 }
 
-func decodeTelemetryConfig(anyConfig otelv1beta1.AnyConfig) (telemetry.Config, error) {
-	var result telemetry.Config
+func decodeTelemetryConfig(anyConfig otelv1beta1.AnyConfig) (otelconftelemetry.Config, error) {
+	var result otelconftelemetry.Config
 	decoder, err := mapstructure.NewDecoder(createDecoderConfig(&result, decodeID, decodeLevel, mapstructure.StringToTimeDurationHookFunc(), mapstructure.StringToSliceHookFunc(",")))
 	if err != nil {
 		return result, fmt.Errorf("failed to create telemetry decoder: %w", err)
