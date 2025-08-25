@@ -1,6 +1,6 @@
 module github.com/kube-logging/telemetry-controller
 
-go 1.24.0
+go 1.24.1
 
 require (
 	emperror.dev/errors v0.8.1
