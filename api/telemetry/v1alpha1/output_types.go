@@ -165,8 +165,10 @@ type Fluentforward struct {
 
 // OutputStatus defines the observed state of Output
 type OutputStatus struct {
-	Tenant string      `json:"tenant,omitempty"`
-	State  state.State `json:"state,omitempty"`
+	Tenant        string      `json:"tenant,omitempty"`
+	State         state.State `json:"state,omitempty"`
+	Problems      []string    `json:"problems,omitempty"`
+	ProblemsCount int         `json:"problemsCount,omitempty"`
 }
 
 func (o *Output) GetTenant() string {
@@ -183,6 +185,21 @@ func (o *Output) GetState() state.State {
 
 func (o *Output) SetState(state state.State) {
 	o.Status.State = state
+}
+
+func (o *Output) GetProblems() []string {
+	return o.Status.Problems
+}
+
+func (o *Output) SetProblems(problems []string) {
+	o.Status.Problems = append(o.Status.Problems, problems...)
+}
+func (o *Output) GetProblemsCount() int {
+	return len(o.Status.Problems)
+}
+
+func (o *Output) SetProblemsCount(count int) {
+	o.Status.ProblemsCount = count
 }
 
 // +kubebuilder:object:root=true

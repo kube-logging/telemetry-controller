@@ -16,6 +16,8 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 )
 
 // BridgeSpec defines the desired state of Bridge
@@ -38,7 +40,11 @@ type BridgeSpec struct {
 }
 
 // BridgeStatus defines the observed state of Bridge
-type BridgeStatus struct{}
+type BridgeStatus struct {
+	State         state.State `json:"state,omitempty"`
+	Problems      []string    `json:"problems,omitempty"`
+	ProblemsCount int         `json:"problemsCount,omitempty"`
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:scope=Cluster,categories=telemetry-all
