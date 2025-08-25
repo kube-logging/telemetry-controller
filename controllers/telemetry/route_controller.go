@@ -103,6 +103,8 @@ func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	tenant.Status.State = state.StateReady
+	tenant.Status.Problems = []string{}
+	tenant.Status.ProblemsCount = len(tenant.Status.Problems)
 	if !reflect.DeepEqual(originalTenantStatus, tenant.Status) {
 		baseManager.Info("tenant status changed")
 		if updateErr := r.Status().Update(ctx, tenant); updateErr != nil {
@@ -276,6 +278,14 @@ func handleOwnedResources(ctx context.Context, tenantResManager *manager.TenantR
 				return err
 			}
 		}
+
+		for _, res := range resourcesForTenant {
+			if res.GetState() == state.StateFailed {
+				tenantResManager.Error(errors.New("resource failed"), "failed resource", "resource", res.GetName())
+				res.SetProblemsCount(len(res.GetProblems()))
+				return fmt.Errorf("resource %s is in a failed state", res.GetName())
+			}
+		}
 	}
 
 	return nil
@@ -335,6 +345,10 @@ func handleBridgeResources(ctx context.Context, bridgeManager *manager.BridgeMan
 
 			return err
 		}
+
+		bridge.Status.State = state.StateReady
+		bridge.Status.Problems = []string{}
+		bridge.Status.ProblemsCount = len(bridge.Status.Problems)
 	}
 
 	return nil

@@ -65,11 +65,11 @@ func (s *Subscription) GetProblems() []string {
 }
 
 func (s *Subscription) SetProblems(problems []string) {
-	s.Status.Problems = problems
+	s.Status.Problems = append(s.Status.Problems, problems...)
 }
 
 func (s *Subscription) GetProblemsCount() int {
-	return s.Status.ProblemsCount
+	return len(s.Status.Problems)
 }
 
 func (s *Subscription) SetProblemsCount(count int) {

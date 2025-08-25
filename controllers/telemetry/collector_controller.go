@@ -78,6 +78,8 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	collector.Status.State = state.StateReady
+	collector.Status.Problems = []string{}
+	collector.Status.ProblemsCount = len(collector.Status.Problems)
 	if !reflect.DeepEqual(originalCollectorStatus, collector.Status) {
 		collectorManager.Info("collector status changed")
 		if updateErr := r.Status().Update(ctx, collector); updateErr != nil {
@@ -135,7 +137,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *CollectorReconciler) handleCollectorReconcileError(ctx context.Context, baseManager *manager.BaseManager, collector *v1alpha1.Collector, err error) (ctrl.Result, error) {
 	switch {
 	case errors.Is(err, manager.ErrTenantFailed): // This error indicates that the tenant is in a failed state, and we should requeue after a delay.
-		return ctrl.Result{RequeueAfter: requeueDelayOnFailedTenant}, err
+		return ctrl.Result{RequeueAfter: requeueDelayOnFailedTenant}, nil
 
 	case errors.Is(err, manager.ErrNoResources): // This error indicates that there are no resources to reconcile, which is not a failure state.
 		return ctrl.Result{}, nil

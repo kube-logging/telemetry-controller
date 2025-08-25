@@ -192,10 +192,10 @@ func (o *Output) GetProblems() []string {
 }
 
 func (o *Output) SetProblems(problems []string) {
-	o.Status.Problems = problems
+	o.Status.Problems = append(o.Status.Problems, problems...)
 }
 func (o *Output) GetProblemsCount() int {
-	return o.Status.ProblemsCount
+	return len(o.Status.Problems)
 }
 
 func (o *Output) SetProblemsCount(count int) {
