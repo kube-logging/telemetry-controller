@@ -43,7 +43,7 @@ import (
 
 const (
 	otelCollectorKind            = "OpenTelemetryCollector"
-	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.120.0-axoflow.28"
+	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.129.0-axoflow.0"
 )
 
 var (
