@@ -3,7 +3,7 @@
 ####
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
-CONTROLLER_TOOLS_VERSION := 0.18.0
+CONTROLLER_TOOLS_VERSION := 0.19.0
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver
 KUSTOMIZE_VERSION := 5.7.1
