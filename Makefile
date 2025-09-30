@@ -113,7 +113,7 @@ golangci-lint:
 
 .PHONY: test-e2e
 test-e2e: docker-build kind-cluster ## Run e2e tests
-	e2e/e2e_test.sh || (echo "E2E test failed"; exit 1)
+	e2e/e2e_test.sh && kind delete cluster --name $(KIND_CLUSTER) || (echo "E2E test failed"; exit 1)
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint
