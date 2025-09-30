@@ -1,0 +1,22 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: receiver
+  namespace: telemetry-controller-system
+spec:
+  managementState: managed
+  image: otel/opentelemetry-collector-contrib:0.112.0
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp]
+          exporters: [debug]
