@@ -1,0 +1,21 @@
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: non-existent-output
+  namespace: problem-test-ns
+spec:
+  otlp:
+    endpoint: receiver-collector.telemetry-controller-system.svc.cluster.local:4317
+    tls:
+      insecure: true
+---
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: cross-tenant-subscription
+  namespace: problem-test-ns
+spec:
+  condition: "true"
+  outputs:
+    - name: output-without-tenant
+      namespace: problem-test-ns

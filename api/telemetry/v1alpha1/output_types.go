@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/kube-logging/telemetry-controller/pkg/resources/problem"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/model"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 )
@@ -165,8 +166,10 @@ type Fluentforward struct {
 
 // OutputStatus defines the observed state of Output
 type OutputStatus struct {
-	Tenant string      `json:"tenant,omitempty"`
-	State  state.State `json:"state,omitempty"`
+	Tenant        string      `json:"tenant,omitempty"`
+	State         state.State `json:"state,omitempty"`
+	Problems      []string    `json:"problems,omitempty"`
+	ProblemsCount int         `json:"problemsCount,omitempty"`
 }
 
 func (o *Output) GetTenant() string {
@@ -183,6 +186,23 @@ func (o *Output) GetState() state.State {
 
 func (o *Output) SetState(state state.State) {
 	o.Status.State = state
+}
+
+func (o *Output) GetProblems() []string {
+	return o.Status.Problems
+}
+
+func (o *Output) SetProblems(problems []string) {
+	o.Status.Problems = problems
+	o.Status.ProblemsCount = len(problems)
+}
+
+func (o *Output) AddProblem(probs ...string) {
+	problem.Add(o, probs...)
+}
+
+func (o *Output) ClearProblems() {
+	o.SetProblems([]string{})
 }
 
 // +kubebuilder:object:root=true

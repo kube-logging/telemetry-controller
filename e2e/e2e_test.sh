@@ -11,6 +11,7 @@ function main()
     test_tenants_with_bridges
     test_filestorage_receiver_failure
     test_filestorage_collector_failure
+    test_problem_tracking
 
     echo "E2E (helm) test: PASSED"
 }
@@ -150,6 +151,46 @@ function test_filestorage_collector_failure()
     undeploy_test_assets "e2e/testdata/filestorage/"
 }
 
+function test_problem_tracking()
+{
+    helm_install_log_generator_to_ns "problem-test-ns"
+
+    deploy_test_assets "e2e/testdata/problem_tracking/problem"
+    
+    # Verify initial problem states
+    check_resource_status "output" "problem-test-ns" "output-without-tenant" "tenant" "problem-test-tenant"
+    check_resource_status "subscription" "problem-test-ns" "valid-subscription" "state" "ready"
+    
+    check_resource_status "subscription" "problem-test-ns" "subscription-missing-output" "state" "failed"
+    check_resource_problems "subscription" "problem-test-ns" "subscription-missing-output" "non-existent-output" 1
+    
+    check_resource_status "subscription" "problem-test-ns" "cross-tenant-subscription" "state" "failed"
+    check_resource_problems "subscription" "problem-test-ns" "cross-tenant-subscription" "tenant" 1
+    
+    check_resource_status "tenant" "" "problem-test-tenant" "state" "failed"
+    # there should be atleast 1 problem
+    check_resource_problems_min "tenant" "" "problem-test-tenant" "subscription-missing-output" 1
+    
+    # Apply fixes
+    deploy_test_assets "e2e/testdata/problem_tracking/fix"
+    
+    # Verify fixed states
+    check_resource_status "subscription" "problem-test-ns" "subscription-missing-output" "state" "ready"
+    check_resource_problems "subscription" "problem-test-ns" "subscription-missing-output" "" 0
+    
+    check_resource_status "subscription" "problem-test-ns" "cross-tenant-subscription" "state" "ready"
+    check_resource_problems "subscription" "problem-test-ns" "cross-tenant-subscription" "" 0
+    
+    check_resource_status "tenant" "" "problem-test-tenant" "state" "ready"
+    check_resource_problems "tenant" "" "problem-test-tenant" "" 0
+    
+    # Verify logs are flowing
+    check_logs_in_workload_with_regex "telemetry-controller-system" "deployments" "receiver-collector" "valid-subscription"
+    
+    helm_uninstall_log_generator_from_ns "problem-test-ns"
+    undeploy_test_assets "e2e/testdata/problem_tracking/problem"
+}
+
 function helm_install_log_generator_to_ns() {
     local namespace="$1"
     shift
@@ -178,18 +219,18 @@ function helm_uninstall_log_generator_from_ns()
 
 function deploy_test_assets()
 {
-    local manifests="$1"
-
-    kubectl apply -f "${manifests}"
+    for manifest in "$@"; do
+        kubectl apply -f "${manifest}"
+    done
 
     sleep 5
 }
 
 function undeploy_test_assets()
 {
-    local manifests="$1"
-
-    kubectl delete -f "${manifests}"
+    for manifest in "$@"; do
+        kubectl delete -f "${manifest}"
+    done
 
     sleep 5
 }
@@ -252,6 +293,85 @@ function check_logs_until_expected_number_is_reached() {
             return 1
         fi
     done
+}
+
+function check_resource_status()
+{
+    local resource_type="$1"
+    local namespace="$2"
+    local resource_name="$3"
+    local field="$4"
+    local expected_value="$5"
+    
+    local ns_flag=""
+    if [ -n "$namespace" ]; then
+        ns_flag="-n $namespace"
+    fi
+    
+    local actual_value=$(kubectl get "$resource_type" $ns_flag "$resource_name" -o jsonpath="{.status.$field}")
+    
+    if [ "$actual_value" != "$expected_value" ]; then
+        echo "ERROR: $resource_type $resource_name should have $field '$expected_value', but has '$actual_value'"
+        kubectl get "$resource_type" $ns_flag "$resource_name" -o yaml
+        return 1
+    fi
+}
+
+function check_resource_problems()
+{
+    local resource_type="$1"
+    local namespace="$2"
+    local resource_name="$3"
+    local expected_problem_text="$4"
+    local expected_count="$5"
+    
+    local ns_flag=""
+    if [ -n "$namespace" ]; then
+        ns_flag="-n $namespace"
+    fi
+    
+    local problems=$(kubectl get "$resource_type" $ns_flag "$resource_name" -o jsonpath='{.status.problems}')
+    local problems_count=$(kubectl get "$resource_type" $ns_flag "$resource_name" -o jsonpath='{.status.problemsCount}')
+    
+    # Check if problems should be empty
+    if [ -z "$expected_problem_text" ]; then
+        if ([ -n "$problems" ] && [ "$problems" != "[]" ]) || [ "$problems_count" -ne "$expected_count" ]; then
+            echo "ERROR: $resource_type $resource_name should have no problems"
+            echo "Problems: $problems"
+            return 1
+        fi
+    else
+        # Check if problems contain expected text
+        if [[ ! "$problems" == *"$expected_problem_text"* ]] || [ "$problems_count" -ne "$expected_count" ]; then
+            echo "ERROR: $resource_type $resource_name should have problem mentioning '$expected_problem_text' and count $expected_count"
+            echo "Problems: $problems (count: $problems_count)"
+            return 1
+        fi
+    fi
+}
+
+function check_resource_problems_min()
+{
+    local resource_type="$1"
+    local namespace="$2"
+    local resource_name="$3"
+    local expected_problem_text="$4"
+    local min_count="$5"
+    
+    local ns_flag=""
+    if [ -n "$namespace" ]; then
+        ns_flag="-n $namespace"
+    fi
+    
+    local problems=$(kubectl get "$resource_type" $ns_flag "$resource_name" -o jsonpath='{.status.problems}')
+    local problems_count=$(kubectl get "$resource_type" $ns_flag "$resource_name" -o jsonpath='{.status.problemsCount}')
+    
+    # Check if problems contain expected text and count is at least min_count
+    if [[ ! "$problems" == *"$expected_problem_text"* ]] || [ "$problems_count" -lt "$min_count" ]; then
+        echo "ERROR: $resource_type $resource_name should have problem mentioning '$expected_problem_text' and count >= $min_count"
+        echo "Problems: $problems (count: $problems_count)"
+        return 1
+    fi
 }
 
 main "$@"

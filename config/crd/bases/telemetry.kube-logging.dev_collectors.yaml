@@ -7175,6 +7175,12 @@ spec:
           status:
             description: CollectorStatus defines the observed state of Collector
             properties:
+              problems:
+                items:
+                  type: string
+                type: array
+              problemsCount:
+                type: integer
               state:
                 type: string
               tenants:

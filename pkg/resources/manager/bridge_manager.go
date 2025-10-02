@@ -75,7 +75,7 @@ func (b *BridgeManager) getTenants(ctx context.Context, listOpts *client.ListOpt
 	return tenants.Items, nil
 }
 
-func (b *BridgeManager) CheckBridgeConnection(ctx context.Context, tenantName string, bridge *v1alpha1.Bridge) error {
+func (b *BridgeManager) ValidateBridgeConnection(ctx context.Context, tenantName string, bridge *v1alpha1.Bridge) error {
 	for _, tenantReference := range []string{bridge.Spec.SourceTenant, bridge.Spec.TargetTenant} {
 		if tenantReference != tenantName {
 			listOpts := &client.ListOptions{

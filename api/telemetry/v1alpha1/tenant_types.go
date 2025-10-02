@@ -17,6 +17,7 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/kube-logging/telemetry-controller/pkg/resources/problem"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 )
 
@@ -122,6 +123,25 @@ type TenantStatus struct {
 	LogSourceNamespaces []string         `json:"logSourceNamespaces,omitempty"`
 	ConnectedBridges    []string         `json:"connectedBridges,omitempty"`
 	State               state.State      `json:"state,omitempty"`
+	Problems            []string         `json:"problems,omitempty"`
+	ProblemsCount       int              `json:"problemsCount,omitempty"`
+}
+
+func (t *Tenant) GetProblems() []string {
+	return t.Status.Problems
+}
+
+func (t *Tenant) SetProblems(problems []string) {
+	t.Status.Problems = problems
+	t.Status.ProblemsCount = len(problems)
+}
+
+func (t *Tenant) AddProblem(probs ...string) {
+	problem.Add(t, probs...)
+}
+
+func (t *Tenant) ClearProblems() {
+	t.SetProblems([]string{})
 }
 
 //+kubebuilder:object:root=true
