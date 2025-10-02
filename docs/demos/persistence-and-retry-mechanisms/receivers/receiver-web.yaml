@@ -6,7 +6,7 @@ metadata:
 spec:
   managementState: managed
   mode: deployment
-  image: otel/opentelemetry-collector-contrib:0.112.0
+  image: otel/opentelemetry-collector-contrib:0.129.1
   volumeMounts:
     - name: export-web
       mountPath: /etc/otelcol-contrib/

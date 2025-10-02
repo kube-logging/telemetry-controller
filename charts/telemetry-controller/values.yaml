@@ -6,9 +6,9 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/kube-logging/telemetry-controller
-  pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
+  pullPolicy: IfNotPresent
 
 extraArgs:
   - --leader-elect=true
@@ -21,8 +21,6 @@ fullnameOverride: ""
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
-  # Automatically mount a ServiceAccount's API credentials?
-  automount: true
   # Annotations to add to the service account
   annotations: {}
   # The name of the service account to use.
@@ -43,17 +41,24 @@ securityContext:
 
 service:
   type: ClusterIP
-  port: 8443
+  https:
+    name: https
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  http:
+    name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
 
+# -- Configuration for the opentelemetry-operator sub-chart.
 opentelemetry-operator:
   admissionWebhooks:
     certManager:
       enabled: false
     autoGenerateCert:
       enabled: true
-  manager:
-    collectorImage:
-      repository: otel/opentelemetry-collector-k8s
 
 monitoring:
   secure: true

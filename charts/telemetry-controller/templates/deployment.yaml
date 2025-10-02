@@ -7,7 +7,7 @@ metadata:
   name: '{{ include "telemetry-controller.fullname" . }}'
   namespace: '{{ include "telemetry-controller.namespace" . }}'
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       control-plane: controller-manager
@@ -17,6 +17,9 @@ spec:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
+    {{- with .Values.podAnnotations }}
+        {{ toYaml . | nindent 8 }}
+    {{- end }}
       labels:
         control-plane: controller-manager
         app.kubernetes.io/name: {{ include "telemetry-controller.name" . }}
@@ -35,7 +38,11 @@ spec:
           image:
             '{{ .Values.image.repository | default "" }}:{{ .Values.image.tag | default .Chart.AppVersion
             }}'
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: '{{ .Values.image.pullPolicy }}'
+        {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 8 }}
+        {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz
