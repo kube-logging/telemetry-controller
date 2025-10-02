@@ -7,17 +7,18 @@ metadata:
   name: {{ include "telemetry-controller.fullname" . }}-metrics-service
   namespace: {{ .Release.Namespace }}
 spec:
+  type: {{ .Values.service.type }}
   ports:
     {{- if .Values.monitoring.secure }}
-    - name: https
-      port: 8443
-      protocol: TCP
-      targetPort: 8443
+    - name: {{ .Values.service.https.name }}
+      port: {{ .Values.service.https.port }}
+      protocol: {{ .Values.service.https.protocol }}
+      targetPort: {{ .Values.service.https.targetPort }}
     {{- else }}
-    - name: http
-      port: 8080
-      protocol: TCP
-      targetPort: 8080
+    - name: {{ .Values.service.http.name }}
+      port: {{ .Values.service.http.port }}
+      protocol: {{ .Values.service.http.protocol }}
+      targetPort: {{ .Values.service.http.targetPort }}
     {{- end }}
   selector:
     control-plane: controller-manager
