@@ -15,6 +15,9 @@
 package v1alpha1
 
 import (
+	"time"
+
+	"go.opentelemetry.io/collector/component"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -66,6 +69,7 @@ type OutputSpec struct {
 	OTLPGRPC       *OTLPGRPC      `json:"otlp,omitempty"`
 	Fluentforward  *Fluentforward `json:"fluentforward,omitempty"`
 	OTLPHTTP       *OTLPHTTP      `json:"otlphttp,omitempty"`
+	File           *File          `json:"file,omitempty"`
 	Authentication *OutputAuth    `json:"authentication,omitempty"`
 	Batch          *Batch         `json:"batch,omitempty"`
 }
@@ -108,6 +112,99 @@ type OTLPHTTP struct {
 
 	// The encoding to export telemetry (default: "proto")
 	Encoding *string `json:"encoding,omitempty"`
+}
+
+type formatType string
+
+const (
+	FormatTypeJSON  formatType = "json"
+	FormatTypeProto formatType = "proto"
+)
+
+type compression string
+
+const (
+	CompressionZstd compression = "zstd"
+)
+
+// File defines configuration for the file exporter.
+type File struct {
+	// Path of the file to write to. Path is relative to current directory.
+	Path string `json:"path,omitempty"`
+
+	// Mode defines whether the exporter should append to the file.
+	// Options:
+	// - false[default]:  truncates the file
+	// - true:  appends to the file.
+	Append bool `json:"append,omitempty"`
+
+	// Rotation defines an option about rotation of telemetry files. Ignored
+	// when GroupByAttribute is used.
+	Rotation *Rotation `json:"rotation,omitempty"`
+
+	// +kubebuilder:validation:Enum:=proto;json
+
+	// FormatType define the data format of encoded telemetry data
+	// Options:
+	// - json[default]:  OTLP json bytes.
+	// - proto:  OTLP binary protobuf bytes.
+
+	FormatType formatType `json:"format,omitempty"`
+
+	// Encoding defines the encoding of the telemetry data.
+	// If specified, it overrides `FormatType` and applies an encoding extension.
+	Encoding *component.ID `json:"encoding,omitempty"`
+
+	// +kubebuilder:validation:Enum:=zstd
+
+	// Compression Codec used to export telemetry data
+	// Supported compression algorithms:`zstd`
+	Compression compression `json:"compression,omitempty"`
+
+	// FlushInterval is the duration between flushes.
+	// See time.ParseDuration for valid values.
+	FlushInterval time.Duration `json:"flush_interval,omitempty"`
+
+	// GroupBy enables writing to separate files based on a resource attribute.
+	GroupBy *GroupBy `json:"group_by,omitempty"`
+}
+
+// Rotation an option to rolling log files
+type Rotation struct {
+	// MaxMegabytes is the maximum size in megabytes of the file before it gets
+	// rotated. It defaults to 100 megabytes.
+	MaxMegabytes int `json:"max_megabytes,omitempty"`
+
+	// MaxDays is the maximum number of days to retain old log files based on the
+	// timestamp encoded in their filename.  Note that a day is defined as 24
+	// hours and may not exactly correspond to calendar days due to daylight
+	// savings, leap seconds, etc. The default is not to remove old log files
+	// based on age.
+	MaxDays int `json:"max_days,omitempty"`
+
+	// MaxBackups is the maximum number of old log files to retain. The default
+	// is to 100 files.
+	MaxBackups int `json:"max_backups,omitempty"`
+
+	// LocalTime determines if the time used for formatting the timestamps in
+	// backup files is the computer's local time.  The default is to use UTC
+	// time.
+	LocalTime *bool `json:"localtime,omitempty"`
+}
+
+type GroupBy struct {
+	// Enables group_by. When group_by is enabled, rotation setting is ignored.  Default is false.
+	Enabled bool `json:"enabled,omitempty"`
+
+	// ResourceAttribute specifies the name of the resource attribute that
+	// contains the path segment of the file to write to. The final path will be
+	// the Path config value, with the * replaced with the value of this resource
+	// attribute. Default is "fileexporter.path_segment".
+	ResourceAttribute string `json:"resource_attribute,omitempty"`
+
+	// MaxOpenFiles specifies the maximum number of open file descriptors for the output files.
+	// The default is 100.
+	MaxOpenFiles int `json:"max_open_files,omitempty"`
 }
 
 type Endpoint struct {

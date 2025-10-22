@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"path/filepath"
 	"strings"
 
 	"emperror.dev/errors"
@@ -163,7 +164,7 @@ func (c *CollectorManager) ReconcileRBAC(collector *v1alpha1.Collector, scheme *
 	return sa, nil
 }
 
-func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, tenants []v1alpha1.Tenant, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState) {
+func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, tenants []v1alpha1.Tenant, outputs []components.OutputWithSecretData, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState) {
 	otelCollector := otelv1beta1.OpenTelemetryCollector{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: otelv1beta1.GroupVersion.String(),
@@ -180,7 +181,7 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 			OpenTelemetryCommonFields: *collector.Spec.OtelCommonFields,
 		},
 	}
-	appendAdditionalVolumesForTenantsFileStorage(&otelCollector.Spec.OpenTelemetryCommonFields, tenants)
+	handleVolumes(&otelCollector.Spec.OpenTelemetryCommonFields, tenants, outputs)
 	setOtelCommonFieldsDefaults(&otelCollector.Spec.OpenTelemetryCommonFields, additionalArgs, saName)
 
 	if memoryLimit := collector.Spec.GetMemoryLimit(); memoryLimit != nil {
@@ -349,36 +350,14 @@ func validateSubscriptionsAndBridges(tenants *[]v1alpha1.Tenant, subscriptions *
 	return result.ErrorOrNil()
 }
 
-func appendAdditionalVolumesForTenantsFileStorage(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, tenants []v1alpha1.Tenant) {
-	var volumeMountsForInit []corev1.VolumeMount
-	var chmodCommands []string
+func handleVolumes(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, tenants []v1alpha1.Tenant, outputs []components.OutputWithSecretData) {
+	volumeMountsForInit, chmodCommands := appendAdditionalVolumesForTenantsFileStorage(otelCommonFields, tenants)
+	volumeMountsForInit2, chmodCommands2 := appendFileExporterVolume(otelCommonFields, outputs)
 
-	for _, tenant := range tenants {
-		if tenant.Spec.PersistenceConfig.EnableFileStorage {
-			bufferVolumeName := fmt.Sprintf("buffervolume-%s", tenant.Name)
-			mountPath := storage.DetermineFileStorageDirectory(tenant.Spec.PersistenceConfig.Directory, tenant.Name)
-			volumeMount := corev1.VolumeMount{
-				Name:      bufferVolumeName,
-				MountPath: mountPath,
-			}
-			volumeMountsForInit = append(volumeMountsForInit, volumeMount)
-			chmodCommands = append(chmodCommands, fmt.Sprintf("chmod -R 777 %s", mountPath))
+	volumeMountsForInit = append(volumeMountsForInit, volumeMountsForInit2...)
+	chmodCommands = append(chmodCommands, chmodCommands2...)
 
-			otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, volumeMount)
-			otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
-				Name: bufferVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: mountPath,
-						Type: utils.ToPtr(corev1.HostPathDirectoryOrCreate),
-					},
-				},
-			})
-		}
-	}
-
-	// Add a single initContainer to handle all chmod operations
-	if len(chmodCommands) > 0 && len(volumeMountsForInit) > 0 {
+	if len(chmodCommands) > 0 {
 		initContainer := corev1.Container{
 			Name:         "init-chmod",
 			Image:        "busybox",
@@ -388,6 +367,101 @@ func appendAdditionalVolumesForTenantsFileStorage(otelCommonFields *otelv1beta1.
 		}
 		otelCommonFields.InitContainers = append(otelCommonFields.InitContainers, initContainer)
 	}
+}
+
+func appendAdditionalVolumesForTenantsFileStorage(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, tenants []v1alpha1.Tenant) ([]corev1.VolumeMount, []string) {
+	var volumeMountsForInit []corev1.VolumeMount
+	var chmodCommands []string
+
+	for _, tenant := range tenants {
+		if !tenant.Spec.PersistenceConfig.EnableFileStorage {
+			continue
+		}
+
+		bufferVolumeName := fmt.Sprintf("buffervolume-%s", tenant.Name)
+		mountPath := storage.DetermineFileStorageDirectory(tenant.Spec.PersistenceConfig.Directory, tenant.Name)
+
+		if volumeExists(otelCommonFields.Volumes, bufferVolumeName) {
+			continue
+		}
+
+		volumeMount := corev1.VolumeMount{
+			Name:      bufferVolumeName,
+			MountPath: mountPath,
+		}
+		volumeMountsForInit = append(volumeMountsForInit, volumeMount)
+		chmodCommands = append(chmodCommands, fmt.Sprintf("chmod -R 777 %s", mountPath))
+
+		otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, volumeMount)
+		otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
+			Name: bufferVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: mountPath,
+					Type: utils.ToPtr(corev1.HostPathDirectoryOrCreate),
+				},
+			},
+		})
+	}
+
+	return volumeMountsForInit, chmodCommands
+}
+
+func appendFileExporterVolume(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, outputs []components.OutputWithSecretData) ([]corev1.VolumeMount, []string) {
+	var volumeMountsForInit []corev1.VolumeMount
+	var chmodCommands []string
+	processedMountPaths := make(map[string]bool)
+
+	for _, output := range outputs {
+		if output.Output.Spec.File == nil {
+			continue
+		}
+
+		mountPath := filepath.Dir(output.Output.Spec.File.Path)
+		if processedMountPaths[mountPath] {
+			continue
+		}
+
+		fileExporterVolumeName := fmt.Sprintf("file-exporter-%s", sanitizePathForVolumeName(mountPath))
+		if volumeExists(otelCommonFields.Volumes, fileExporterVolumeName) {
+			processedMountPaths[mountPath] = true
+			continue
+		}
+
+		volumeMount := corev1.VolumeMount{
+			Name:      fileExporterVolumeName,
+			MountPath: mountPath,
+		}
+		volumeMountsForInit = append(volumeMountsForInit, volumeMount)
+		chmodCommands = append(chmodCommands, fmt.Sprintf("chmod -R 777 %s", mountPath))
+		otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, volumeMount)
+		otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
+			Name: fileExporterVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: mountPath,
+					Type: utils.ToPtr(corev1.HostPathDirectoryOrCreate),
+				},
+			},
+		})
+		processedMountPaths[mountPath] = true
+	}
+
+	return volumeMountsForInit, chmodCommands
+}
+
+func sanitizePathForVolumeName(path string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.Trim(path, "/"), "/", "-"))
+}
+
+func volumeExists(volumes []corev1.Volume, name string) bool {
+	for _, volume := range volumes {
+		if volume.Name == name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryCommonFields, additionalArgs map[string]string, saName string) {

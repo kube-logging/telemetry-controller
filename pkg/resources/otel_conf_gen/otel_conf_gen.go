@@ -66,6 +66,7 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 	maps.Copy(exporters, exporter.GenerateOTLPGRPCExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateOTLPHTTPExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateFluentforwardExporters(ctx, cfgInput.ResourceRelations))
+	maps.Copy(exporters, exporter.GenerateFileExporter(ctx, cfgInput.ResourceRelations))
 	if cfgInput.Debug {
 		maps.Copy(exporters, exporter.GenerateDebugExporters())
 	}
@@ -244,6 +245,11 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 					if output.Output.Spec.Fluentforward != nil {
 						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName}
 					}
+
+					if output.Output.Spec.File != nil {
+						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName}
+					}
+
 					if cfgInput.Debug {
 						exporters = append(exporters, "debug")
 					}
