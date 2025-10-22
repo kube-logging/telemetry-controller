@@ -181,7 +181,7 @@ func handleCollectorCreation(ctx context.Context, collectorManager *manager.Coll
 		return fmt.Errorf("%+v", err)
 	}
 
-	otelCollector, collectorState := collectorManager.OtelCollector(collector, otelConfig, additionalArgs, collectorConfigInput.Tenants, saName.Name)
+	otelCollector, collectorState := collectorManager.OtelCollector(collector, otelConfig, additionalArgs, collectorConfigInput.Tenants, collectorConfigInput.OutputsWithSecretData, saName.Name)
 	if err := ctrl.SetControllerReference(collector, otelCollector, scheme); err != nil {
 		return err
 	}
