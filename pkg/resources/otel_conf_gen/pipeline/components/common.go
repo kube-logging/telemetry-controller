@@ -49,6 +49,8 @@ func GetExporterNameForOutput(output v1alpha1.Output) string {
 		exporterName = fmt.Sprintf("otlphttp/%s_%s", output.Namespace, output.Name)
 	} else if output.Spec.Fluentforward != nil {
 		exporterName = fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
+	} else if output.Spec.File != nil {
+		exporterName = fmt.Sprintf("file/%s_%s", output.Namespace, output.Name)
 	}
 
 	return exporterName
