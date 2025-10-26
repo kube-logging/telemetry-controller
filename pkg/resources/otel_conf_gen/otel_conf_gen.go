@@ -40,6 +40,7 @@ type OtelColConfigInput struct {
 	components.ResourceRelations
 	MemoryLimiter v1alpha1.MemoryLimiter
 	Debug         bool
+	DryRunMode    bool
 }
 
 func (cfgInput *OtelColConfigInput) IsEmpty() bool {
@@ -61,15 +62,22 @@ func (cfgInput *OtelColConfigInput) IsEmpty() bool {
 }
 
 func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[string]any {
-	exporters := map[string]any{}
+	// If in dry-run mode, only generate debug exporters
+	if cfgInput.DryRunMode {
+		return exporter.GenerateDebugExporters()
+	}
+
+	exporters := make(map[string]any)
+
+	if cfgInput.Debug {
+		maps.Copy(exporters, exporter.GenerateDebugExporters())
+	}
+
 	maps.Copy(exporters, exporter.GenerateMetricsExporters())
 	maps.Copy(exporters, exporter.GenerateOTLPGRPCExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateOTLPHTTPExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateFluentforwardExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateFileExporter(ctx, cfgInput.ResourceRelations))
-	if cfgInput.Debug {
-		maps.Copy(exporters, exporter.GenerateDebugExporters())
-	}
 
 	return exporters
 }
@@ -122,7 +130,7 @@ func (cfgInput *OtelColConfigInput) generateExtensions() (map[string]any, []stri
 	}
 
 	for _, tenant := range cfgInput.Tenants {
-		if tenant.Spec.PersistenceConfig.EnableFileStorage {
+		if !cfgInput.DryRunMode && tenant.Spec.PersistenceConfig.EnableFileStorage {
 			extensions[fmt.Sprintf("file_storage/%s", tenant.Name)] = storage.GenerateFileStorageExtensionForTenant(tenant.Spec.PersistenceConfig.Directory, tenant.Name)
 		}
 	}
@@ -149,7 +157,7 @@ func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
 		}); tenantIdx != -1 {
 			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
 			if len(namespaces) > 0 || cfgInput.Tenants[tenantIdx].Spec.SelectFromAllNamespaces {
-				receivers[fmt.Sprintf("filelog/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces, cfgInput.Tenants[tenantIdx])
+				receivers[fmt.Sprintf("filelog/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces, cfgInput.DryRunMode, cfgInput.Tenants[tenantIdx])
 			}
 		}
 	}
@@ -159,8 +167,11 @@ func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
 
 func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 	connectors := make(map[string]any)
-	maps.Copy(connectors, connector.GenerateCountConnectors())
-	maps.Copy(connectors, connector.GenerateBytesConnectors())
+
+	if !cfgInput.DryRunMode {
+		maps.Copy(connectors, connector.GenerateCountConnectors())
+		maps.Copy(connectors, connector.GenerateBytesConnectors())
+	}
 
 	for _, tenant := range cfgInput.Tenants {
 		// Generate routing connector for the tenant's subscription if it has any
@@ -193,16 +204,18 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 	namedPipelines := make(map[string]*otelv1beta1.Pipeline)
 	tenants := []string{}
 	for tenant := range cfgInput.TenantSubscriptionMap {
-		namedPipelines[fmt.Sprintf("logs/tenant_%s", tenant)] = pipeline.GenerateRootPipeline(cfgInput.Tenants, tenant)
+		namedPipelines[fmt.Sprintf("logs/tenant_%s", tenant)] = pipeline.GenerateRootPipeline(cfgInput.Tenants, tenant, cfgInput.DryRunMode)
 		tenants = append(tenants, tenant)
 	}
 
-	maps.Copy(namedPipelines, pipeline.GenerateMetricsPipelines())
+	if !cfgInput.DryRunMode {
+		maps.Copy(namedPipelines, pipeline.GenerateMetricsPipelines())
+	}
 
 	for _, tenant := range tenants {
 		// Generate a pipeline for the tenant
 		tenantRootPipeline := fmt.Sprintf("logs/tenant_%s", tenant)
-		namedPipelines[tenantRootPipeline] = pipeline.GenerateRootPipeline(cfgInput.Tenants, tenant)
+		namedPipelines[tenantRootPipeline] = pipeline.GenerateRootPipeline(cfgInput.Tenants, tenant, cfgInput.DryRunMode)
 
 		connector.GenerateRoutingConnectorForBridgesTenantPipeline(tenant, namedPipelines[tenantRootPipeline], cfgInput.Bridges)
 		processor.GenerateTransformProcessorForTenantPipeline(tenant, namedPipelines[tenantRootPipeline], cfgInput.Tenants)
@@ -234,24 +247,25 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 
 					var exporters []string
 
-					if output.Output.Spec.OTLPGRPC != nil {
-						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName}
-					}
-
-					if output.Output.Spec.OTLPHTTP != nil {
-						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName}
-					}
-
-					if output.Output.Spec.Fluentforward != nil {
-						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName}
-					}
-
-					if output.Output.Spec.File != nil {
-						exporters = []string{components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName}
-					}
-
-					if cfgInput.Debug {
-						exporters = append(exporters, "debug")
+					// If in dry-run mode, only generate debug exporters
+					if cfgInput.DryRunMode {
+						exporters = []string{exporter.DebugExporterID}
+					} else {
+						if cfgInput.Debug {
+							exporters = append(exporters, exporter.DebugExporterID)
+						}
+						if output.Output.Spec.OTLPGRPC != nil {
+							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
+						}
+						if output.Output.Spec.OTLPHTTP != nil {
+							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
+						}
+						if output.Output.Spec.Fluentforward != nil {
+							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
+						}
+						if output.Output.Spec.File != nil {
+							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
+						}
 					}
 
 					namedPipelines[outputPipelineName] = pipeline.GeneratePipeline(receivers, processors, exporters)

@@ -32,8 +32,8 @@ func GeneratePipeline(receivers, processors, exporters []string) *otelv1beta1.Pi
 	}
 }
 
-func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string) *otelv1beta1.Pipeline {
-	tenantCountConnectorName := "count/tenant_metrics"
+func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string, dryRunMode bool) *otelv1beta1.Pipeline {
+	const tenantCountConnectorName = "count/tenant_metrics"
 	var receiverName string
 	var exporterName string
 	for _, tenant := range tenants {
@@ -48,6 +48,10 @@ func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string) *otelv1b
 				exporterName = fmt.Sprintf("routing/tenant_%s_subscriptions", tenantName)
 			}
 		}
+	}
+
+	if dryRunMode {
+		return GeneratePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName), "filter/exclude"}, []string{exporterName})
 	}
 
 	return GeneratePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName), "filter/exclude"}, []string{exporterName, tenantCountConnectorName})

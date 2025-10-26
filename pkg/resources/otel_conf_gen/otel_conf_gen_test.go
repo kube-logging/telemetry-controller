@@ -466,6 +466,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 		{
 			name: "Single tenant with no subscriptions",
 			cfgInput: OtelColConfigInput{
+				DryRunMode: false,
 				ResourceRelations: components.ResourceRelations{
 					Bridges:               nil,
 					OutputsWithSecretData: nil,
@@ -486,7 +487,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				},
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
-				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1"),
+				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false),
 				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
 					[]string{"routing/tenant_tenant1_subscriptions"},
 					[]string{"attributes/subscription_sub1"},

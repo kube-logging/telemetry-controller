@@ -132,7 +132,8 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 			TenantSubscriptionMap: tenantSubscriptionMap,
 			SubscriptionOutputMap: subscriptionOutputMap,
 		},
-		Debug:         collector.Spec.Debug,
+		Debug:         utils.DerefOrZero(collector.Spec.Debug),
+		DryRunMode:    utils.DerefOrZero(collector.Spec.DryRunMode),
 		MemoryLimiter: *collector.Spec.MemoryLimiter,
 	}, nil
 }
@@ -181,7 +182,9 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 			OpenTelemetryCommonFields: *collector.Spec.OtelCommonFields,
 		},
 	}
-	handleVolumes(&otelCollector.Spec.OpenTelemetryCommonFields, tenants, outputs)
+	if !utils.DerefOrZero(collector.Spec.DryRunMode) {
+		handleVolumes(&otelCollector.Spec.OpenTelemetryCommonFields, tenants, outputs)
+	}
 	setOtelCommonFieldsDefaults(&otelCollector.Spec.OpenTelemetryCommonFields, additionalArgs, saName)
 
 	if memoryLimit := collector.Spec.GetMemoryLimit(); memoryLimit != nil {

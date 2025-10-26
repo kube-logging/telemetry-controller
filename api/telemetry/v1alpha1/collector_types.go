@@ -50,6 +50,8 @@ type MemoryLimiter struct {
 	MemorySpikePercentage uint32 `json:"spike_limit_percentage"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!has(self.dryRunMode) || !self.dryRunMode || (has(self.debug) && self.debug)",message="dryRunMode can only be set to true when debug is explicitly set to true"
+
 // CollectorSpec defines the desired state of Collector
 type CollectorSpec struct {
 	// +kubebuilder:validation:Required
@@ -64,7 +66,11 @@ type CollectorSpec struct {
 	ControlNamespace string `json:"controlNamespace"`
 
 	// Enables debug logging for the collector.
-	Debug bool `json:"debug,omitempty"`
+	Debug *bool `json:"debug,omitempty"`
+
+	// DryRunMode disables all exporters except for the debug exporter, as well as persistence options configured for the collector.
+	// This can be useful for testing and debugging purposes.
+	DryRunMode *bool `json:"dryRunMode,omitempty"`
 
 	// Setting memory limits for the Collector using the memory limiter processor.
 	MemoryLimiter *MemoryLimiter `json:"memoryLimiter,omitempty"`
