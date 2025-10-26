@@ -20,6 +20,8 @@ import (
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
+	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/exporter"
+	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/processor"
 )
 
 func GeneratePipeline(receivers, processors, exporters []string) *otelv1beta1.Pipeline {
@@ -55,19 +57,19 @@ func GenerateMetricsPipelines() map[string]*otelv1beta1.Pipeline {
 	metricsPipelines := make(map[string]*otelv1beta1.Pipeline)
 	metricsPipelines["metrics/tenant"] = &otelv1beta1.Pipeline{
 		Receivers:  []string{"count/tenant_metrics"},
-		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
-		Exporters:  []string{"prometheus/message_metrics_exporter"},
+		Processors: []string{processor.DefaultDeltaToCumulativeProcessorID, "attributes/metricattributes"},
+		Exporters:  []string{exporter.DefaultPrometheusExporterID},
 	}
 	metricsPipelines["metrics/output"] = &otelv1beta1.Pipeline{
 		Receivers:  []string{"count/output_metrics"},
-		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
-		Exporters:  []string{"prometheus/message_metrics_exporter"},
+		Processors: []string{processor.DefaultDeltaToCumulativeProcessorID, "attributes/metricattributes"},
+		Exporters:  []string{exporter.DefaultPrometheusExporterID},
 	}
 
 	metricsPipelines["metrics/output_bytes"] = &otelv1beta1.Pipeline{
 		Receivers:  []string{"bytes/exporter"},
-		Processors: []string{"deltatocumulative", "attributes/metricattributes"},
-		Exporters:  []string{"prometheus/message_metrics_exporter"},
+		Processors: []string{processor.DefaultDeltaToCumulativeProcessorID, "attributes/metricattributes"},
+		Exporters:  []string{exporter.DefaultPrometheusExporterID},
 	}
 
 	return metricsPipelines

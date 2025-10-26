@@ -14,9 +14,11 @@
 
 package exporter
 
+const DebugExporterID = "debug"
+
 func GenerateDebugExporters() map[string]any {
 	result := make(map[string]any)
-	result["debug"] = map[string]any{
+	result[DebugExporterID] = map[string]any{
 		"verbosity": "detailed",
 	}
 

@@ -24,6 +24,10 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
+const (
+	DefaultPrometheusExporterID = "prometheus/message_metrics_exporter"
+)
+
 type TLSServerConfig struct {
 	// squash ensures fields are correctly decoded in embedded struct.
 	v1alpha1.TLSSetting `json:",inline"`
@@ -125,7 +129,7 @@ func GenerateMetricsExporters() map[string]any {
 	}
 
 	metricsExporters := make(map[string]any)
-	metricsExporters["prometheus/message_metrics_exporter"] = defaultPrometheusExporterConfig
+	metricsExporters[DefaultPrometheusExporterID] = defaultPrometheusExporterConfig
 
 	return metricsExporters
 }

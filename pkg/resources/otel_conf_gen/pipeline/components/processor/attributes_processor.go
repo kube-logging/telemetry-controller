@@ -74,7 +74,7 @@ func GenerateOutputExporterNameProcessor(outputName string) AttributesProcessor 
 
 func GenerateMetricsProcessors() map[string]any {
 	metricsProcessors := make(map[string]any)
-	metricsProcessors["deltatocumulative"] = DeltaToCumulativeConfig{}
+	metricsProcessors[DefaultDeltaToCumulativeProcessorID] = DeltaToCumulativeConfig{}
 	metricsProcessors["attributes/metricattributes"] = AttributesProcessor{
 		Actions: []AttributesProcessorAction{
 			{
