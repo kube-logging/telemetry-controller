@@ -306,6 +306,16 @@ func (in *CollectorList) DeepCopyObject() runtime.Object {
 func (in *CollectorSpec) DeepCopyInto(out *CollectorSpec) {
 	*out = *in
 	in.TenantSelector.DeepCopyInto(&out.TenantSelector)
+	if in.Debug != nil {
+		in, out := &in.Debug, &out.Debug
+		*out = new(bool)
+		**out = **in
+	}
+	if in.DryRunMode != nil {
+		in, out := &in.DryRunMode, &out.DryRunMode
+		*out = new(bool)
+		**out = **in
+	}
 	if in.MemoryLimiter != nil {
 		in, out := &in.MemoryLimiter, &out.MemoryLimiter
 		*out = new(MemoryLimiter)
