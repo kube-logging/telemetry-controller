@@ -16,6 +16,8 @@ package processor
 
 import "time"
 
+const DefaultDeltaToCumulativeProcessorID = "deltatocumulative"
+
 type DeltaToCumulativeConfig struct {
 	MaxStale   time.Duration `json:"max_stale,omitempty"`
 	MaxStreams int           `json:"max_streams,omitempty"`

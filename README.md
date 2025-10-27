@@ -243,6 +243,45 @@ Apply the provided example resource for telemetry-controller: [telemetry-control
 kubectl apply -f telemetry-controller.yaml
 ```
 
+## Testing and Debugging
+
+### Dry Run Mode
+
+The Telemetry Controller supports a `dryRunMode` flag in the Collector CRD that enables a simplified pipeline configuration for testing and debugging purposes.
+
+To enable dry run mode, set both `debug` and `dryRunMode` in your Collector resource:
+
+```yaml
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Collector
+metadata:
+  name: example-collector
+spec:
+  debug: true
+  dryRunMode: true
+  tenantSelector:
+    matchLabels:
+      example: "true"
+```
+
+When `dryRunMode` is enabled, the generated OpenTelemetry Collector pipeline is simplified:
+
+- Only data-modifying components are included (e.g., transform processors, k8sattributes processor)
+- All exporters except the debug exporter are disabled
+- Persistence options are disabled
+
+This feature is particularly useful for:
+
+- **Testing new processor configurations in isolation** - Verify that your data transformations work correctly without sending data to production backends
+- **Validating data transformations before production deployment** - See exactly how your telemetry data is being modified
+- **Inspecting telemetry pipelines** - Examine the data flow without affecting production exporters or generating unnecessary traffic
+
+To view the debug output, check the collector logs:
+
+```sh
+kubectl logs -n telemetry-controller-system -l app.kubernetes.io/name=example-collector -f
+```
+
 ## Under the hood
 
 Telemetry Controller uses a [custom OpenTelemetry Collector distribution](https://github.com/axoflow/axoflow-otel-collector-releases) as its agent. This distribution is and will be compatible with the upstream OpenTelemetry Collector distribution regarding core features, but:

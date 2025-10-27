@@ -75,6 +75,18 @@ func ToObject[T client.Object](items []T) []client.Object {
 	return objects
 }
 
+// DerefOrZero returns the value referenced by p, or the zero-value of the type
+func DerefOrZero[T any](p *T) T {
+	return DerefOr(p, *new(T))
+}
+
+func DerefOr[T any](p *T, defVal T) T {
+	if p == nil {
+		return defVal
+	}
+	return *p
+}
+
 // NormalizeStringSlice takes a slice of strings, removes duplicates, sorts it, and returns the unique sorted slice.
 func NormalizeStringSlice(inputList []string) []string {
 	allKeys := make(map[string]bool)

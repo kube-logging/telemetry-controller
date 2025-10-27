@@ -20,7 +20,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
-func GenerateDefaultKubernetesReceiver(namespaces []string, tenant v1alpha1.Tenant) map[string]any {
+func GenerateDefaultKubernetesReceiver(namespaces []string, dryRunMode bool, tenant v1alpha1.Tenant) map[string]any {
 	// TODO: fix parser-crio
 	operators := []map[string]any{
 		{
@@ -114,7 +114,7 @@ func GenerateDefaultKubernetesReceiver(namespaces []string, tenant v1alpha1.Tena
 			"max_elapsed_time": 0,
 		},
 	}
-	if tenant.Spec.PersistenceConfig.EnableFileStorage {
+	if !dryRunMode && tenant.Spec.PersistenceConfig.EnableFileStorage {
 		k8sReceiver["storage"] = fmt.Sprintf("file_storage/%s", tenant.Name)
 	}
 
