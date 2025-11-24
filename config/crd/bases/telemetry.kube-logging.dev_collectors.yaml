@@ -2573,6 +2573,9 @@ spec:
                     description: Args is the set of arguments to pass to the main
                       container's binary.
                     type: object
+                  dnsPolicy:
+                    description: DNSPolicy defines how a pod's DNS will be configured.
+                    type: string
                   env:
                     description: Environment variables to set on the generated pods.
                     items:
@@ -4932,6 +4935,8 @@ spec:
                           description: Allows defining which port to bind to the host
                             in the Container.
                           format: int32
+                          maximum: 65535
+                          minimum: 0
                           type: integer
                         name:
                           description: |-
