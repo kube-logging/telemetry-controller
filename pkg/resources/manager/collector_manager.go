@@ -17,6 +17,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math"
 	"path/filepath"
 	"strings"
@@ -472,47 +473,39 @@ func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryComm
 		otelCommonFields = &otelv1beta1.OpenTelemetryCommonFields{}
 	}
 
-	otelCommonFields.Image = axoflowOtelCollectorImageRef
+	if otelCommonFields.Image == "" {
+		otelCommonFields.Image = axoflowOtelCollectorImageRef
+	}
+
 	otelCommonFields.ServiceAccount = saName
 
 	if otelCommonFields.Args == nil {
 		otelCommonFields.Args = make(map[string]string)
 	}
-	for key, value := range additionalArgs {
-		otelCommonFields.Args[key] = value
-	}
+	maps.Copy(otelCommonFields.Args, additionalArgs)
 
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "varlog",
-			ReadOnly:  true,
-			MountPath: "/var/log",
-		},
-		{
-			Name:      "varlibdockercontainers",
-			ReadOnly:  true,
-			MountPath: "/var/lib/docker/containers",
-		},
+	volumeConfigs := []struct {
+		name string
+		path string
+	}{
+		{name: "varlog", path: "/var/log"},
+		{name: "varlibdockercontainers", path: "/var/lib/docker/containers"},
 	}
-	otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, volumeMounts...)
-
-	volumes := []corev1.Volume{
-		{
-			Name: "varlog",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/log",
+	for _, config := range volumeConfigs {
+		if !volumeExists(otelCommonFields.Volumes, config.name) {
+			otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
+				Name: config.name,
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: config.path,
+					},
 				},
-			},
-		},
-		{
-			Name: "varlibdockercontainers",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/lib/docker/containers",
-				},
-			},
-		},
+			})
+			otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, corev1.VolumeMount{
+				Name:      config.name,
+				ReadOnly:  true,
+				MountPath: config.path,
+			})
+		}
 	}
-	otelCommonFields.Volumes = append(otelCommonFields.Volumes, volumes...)
 }

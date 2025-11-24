@@ -32,10 +32,8 @@ func TestSetOtelCommonFieldsDefaults(t *testing.T) {
 		expectedError       error
 	}{
 		{
-			name: "Basic Initialization",
-			initialCommonFields: &otelv1beta1.OpenTelemetryCommonFields{
-				Args: map[string]string{},
-			},
+			name:                "Basic Initialization",
+			initialCommonFields: &otelv1beta1.OpenTelemetryCommonFields{},
 			additionalArgs: map[string]string{
 				"key1": "value1",
 			},
@@ -138,6 +136,50 @@ func TestSetOtelCommonFieldsDefaults(t *testing.T) {
 			saName:         "test-sa",
 			expectedResult: nil,
 			expectedError:  nil,
+		},
+		{
+			name: "custom image",
+			initialCommonFields: &otelv1beta1.OpenTelemetryCommonFields{
+				Image: "custom-image:latest",
+			},
+			additionalArgs: map[string]string{},
+			saName:         "test-sa",
+			expectedResult: &otelv1beta1.OpenTelemetryCommonFields{
+				Image:          "custom-image:latest",
+				ServiceAccount: "test-sa",
+				Args:           map[string]string{},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "varlog",
+						ReadOnly:  true,
+						MountPath: "/var/log",
+					},
+					{
+						Name:      "varlibdockercontainers",
+						ReadOnly:  true,
+						MountPath: "/var/lib/docker/containers",
+					},
+				},
+				Volumes: []corev1.Volume{
+					{
+						Name: "varlog",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/var/log",
+							},
+						},
+					},
+					{
+						Name: "varlibdockercontainers",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/var/lib/docker/containers",
+							},
+						},
+					},
+				},
+			},
+			expectedError: nil,
 		},
 	}
 
