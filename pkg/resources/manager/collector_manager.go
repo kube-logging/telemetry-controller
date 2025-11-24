@@ -473,7 +473,10 @@ func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryComm
 		otelCommonFields = &otelv1beta1.OpenTelemetryCommonFields{}
 	}
 
-	otelCommonFields.Image = axoflowOtelCollectorImageRef
+	if otelCommonFields.Image == "" {
+		otelCommonFields.Image = axoflowOtelCollectorImageRef
+	}
+
 	otelCommonFields.ServiceAccount = saName
 
 	if otelCommonFields.Args == nil {
