@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.25.5-alpine3.22@sha256:3587db7cc96576822c606d119729370dbf581931c5f43ac6d3fa03ab4ed85a10 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.6-alpine3.22@sha256:ab0033b336123effda5e57bda16c24334cf91f30695fa646ac67f1b2093877df AS builder
 
 RUN apk add --update --no-cache ca-certificates make git curl
 
@@ -25,7 +25,7 @@ COPY pkg/ pkg/
 # Build
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build $GO_BUILD_FLAGS -o /usr/local/bin/manager cmd/main.go
 
-FROM gcr.io/distroless/static:nonroot@sha256:2b7c93f6d6648c11f0e80a48558c8f77885eb0445213b8e69a6a0d7c89fc6ae4
+FROM gcr.io/distroless/static:nonroot@sha256:cba10d7abd3e203428e86f5b2d7fd5eb7d8987c387864ae4996cf97191b33764
 
 COPY --from=builder /usr/local/bin/manager /manager
 USER 65532:65532
