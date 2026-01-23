@@ -22,10 +22,9 @@ type CountConnectorAttributeConfig struct {
 }
 
 type CountConnectorMetricInfo struct {
-	Description        *string                         `json:"description,omitempty"`
-	Conditions         []string                        `json:"conditions,omitempty"`
-	Attributes         []CountConnectorAttributeConfig `json:"attributes,omitempty"`
-	ResourceAttributes []CountConnectorAttributeConfig `json:"resource_attributes,omitempty"`
+	Description *string                         `json:"description,omitempty"`
+	Conditions  []string                        `json:"conditions,omitempty"`
+	Attributes  []CountConnectorAttributeConfig `json:"attributes,omitempty"`
 }
 
 func GenerateCountConnectors() map[string]any {
@@ -34,10 +33,10 @@ func GenerateCountConnectors() map[string]any {
 		"logs": map[string]CountConnectorMetricInfo{
 			"telemetry_controller_tenant_log_count": {
 				Description: utils.ToPtr("The number of logs from each tenant pipeline."),
-				Attributes: []CountConnectorAttributeConfig{{
-					Key: utils.ToPtr("tenant"),
-				}},
-				ResourceAttributes: []CountConnectorAttributeConfig{
+				Attributes: []CountConnectorAttributeConfig{
+					{
+						Key: utils.ToPtr("tenant"),
+					},
 					{
 						Key: utils.ToPtr("k8s.namespace.name"),
 					},
@@ -68,13 +67,13 @@ func GenerateCountConnectors() map[string]any {
 				Attributes: []CountConnectorAttributeConfig{
 					{
 						Key: utils.ToPtr("tenant"),
-					}, {
+					},
+					{
 						Key: utils.ToPtr("subscription"),
-					}, {
+					},
+					{
 						Key: utils.ToPtr("exporter"),
 					},
-				},
-				ResourceAttributes: []CountConnectorAttributeConfig{
 					{
 						Key: utils.ToPtr("k8s.namespace.name"),
 					},
