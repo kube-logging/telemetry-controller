@@ -6,27 +6,25 @@ connectors:
           - key: tenant
           - key: subscription
           - key: exporter
-        description: The number of logs sent out from each exporter.
-        resource_attributes:
           - key: k8s.namespace.name
           - key: k8s.node.name
           - key: k8s.container.name
           - key: k8s.pod.name
           - key: k8s.pod.labels.app.kubernetes.io/name
           - key: k8s.pod.labels.app
+        description: The number of logs sent out from each exporter.
   count/tenant_metrics:
     logs:
       telemetry_controller_tenant_log_count:
         attributes:
           - key: tenant
-        description: The number of logs from each tenant pipeline.
-        resource_attributes:
           - key: k8s.namespace.name
           - key: k8s.node.name
           - key: k8s.container.name
           - key: k8s.pod.name
           - key: k8s.pod.labels.app.kubernetes.io/name
           - key: k8s.pod.labels.app
+        description: The number of logs from each tenant pipeline.
   routing/subscription_db_sub-db_outputs:
     table:
       - condition: "true"

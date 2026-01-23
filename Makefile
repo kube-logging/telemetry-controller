@@ -19,7 +19,7 @@ LICENSEI_VERSION = 0.9.0
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.35.0
-ENVTEST_OTEL_OPERATOR_VERSION=0.129.1
+ENVTEST_OTEL_OPERATOR_VERSION=0.143.0
 
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
 CERT_MANAGER_VERSION = 1.19.2
