@@ -80,7 +80,7 @@ func GenerateMetricsPipelines() map[string]*otelv1beta1.Pipeline {
 }
 
 func filterEmptyPipelines(items []string) []string {
-	var result []string
+	result := []string{}
 	for _, item := range items {
 		if item != "" {
 			result = append(result, item)
