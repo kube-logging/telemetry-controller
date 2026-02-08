@@ -17,7 +17,6 @@ package exporter
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -90,11 +89,13 @@ func GenerateFluentforwardExporters(ctx context.Context, resourceRelations compo
 
 			fluentForwardMarshaled, err := json.Marshal(internalConfig)
 			if err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
+				logger.Error(err, "failed to marshal config for output", "output", output.Output.NamespacedName().String())
+				continue
 			}
 			var fluentForwardValues map[string]any
 			if err := json.Unmarshal(fluentForwardMarshaled, &fluentForwardValues); err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
+				logger.Error(err, "failed to unmarshal config for output", "output", output.Output.NamespacedName().String())
+				continue
 			}
 
 			result[fmt.Sprintf("fluentforwardexporter/%s_%s", output.Output.Namespace, output.Output.Name)] = fluentForwardValues

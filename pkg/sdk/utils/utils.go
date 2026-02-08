@@ -15,9 +15,9 @@
 package utils
 
 import (
-	"fmt"
 	"slices"
 
+	"emperror.dev/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -39,7 +39,7 @@ func GetConcreteTypeFromList[T client.Object](objects []client.Object) ([]T, err
 	result := make([]T, 0, len(objects))
 	for i, obj := range objects {
 		if concrete, ok := GetConcreteType[T](obj); !ok {
-			return nil, fmt.Errorf("failed to convert object at index %d to type %T", i, *new(T))
+			return nil, errors.Errorf("failed to convert object at index %d to type %T", i, *new(T))
 		} else {
 			result = append(result, concrete)
 		}

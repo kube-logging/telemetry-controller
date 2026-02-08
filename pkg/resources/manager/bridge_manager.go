@@ -83,7 +83,7 @@ func (b *BridgeManager) ValidateBridgeConnection(ctx context.Context, tenantName
 			}
 			tenant, err := b.getTenants(ctx, listOpts)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "failed to get tenant %s for bridge %s", tenantReference, bridge.Name)
 			}
 			if len(tenant) == 0 {
 				return errors.Errorf("bridge %s has a dangling tenant reference %s", bridge.Name, tenantReference)

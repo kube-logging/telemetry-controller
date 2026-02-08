@@ -17,7 +17,6 @@ package exporter
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -33,12 +32,12 @@ func GenerateFileExporter(ctx context.Context, resourceRelations components.Reso
 		if output.Output.Spec.File != nil {
 			fileValuesMarshaled, err := json.Marshal(output.Output.Spec.File)
 			if err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
+				logger.Error(err, "failed to marshal config for output", "output", output.Output.NamespacedName().String())
 				continue
 			}
 			var fileValues map[string]any
 			if err := json.Unmarshal(fileValuesMarshaled, &fileValues); err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
+				logger.Error(err, "failed to unmarshal config for output", "output", output.Output.NamespacedName().String())
 				continue
 			}
 

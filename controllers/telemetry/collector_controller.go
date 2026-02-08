@@ -16,7 +16,6 @@ package telemetry
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -62,7 +61,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	collector := &v1alpha1.Collector{}
-	collectorManager.Info(fmt.Sprintf("getting collector: %q", req.Name))
+	collectorManager.Info("getting collector", "name", req.Name)
 
 	if err := collectorManager.Get(ctx, req.NamespacedName, collector); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -70,10 +69,9 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	collector.Spec.SetDefaults()
 
 	originalCollectorStatus := collector.Status
-	collectorManager.Info(fmt.Sprintf("reconciling collector: %q", collector.Name))
+	collectorManager.Info("reconciling collector", "name", collector.Name)
 
-	err := handleCollectorCreation(ctx, collectorManager, collector, r.Scheme)
-	if err != nil {
+	if err := handleCollectorCreation(ctx, collectorManager, collector, r.Scheme); err != nil {
 		return r.handleCollectorReconcileError(ctx, &collectorManager.BaseManager, collector, err)
 	}
 
@@ -82,8 +80,7 @@ func (r *CollectorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !reflect.DeepEqual(originalCollectorStatus, collector.Status) {
 		collectorManager.Info("collector status changed")
 		if updateErr := r.Status().Update(ctx, collector); updateErr != nil {
-			collectorManager.Error(errors.WithStack(updateErr), "failed updating collector status")
-			return ctrl.Result{}, updateErr
+			return ctrl.Result{}, errors.Wrap(updateErr, "failed updating collector status")
 		}
 	}
 
@@ -139,16 +136,16 @@ func (r *CollectorReconciler) handleCollectorReconcileError(ctx context.Context,
 		return ctrl.Result{RequeueAfter: requeueDelayOnFailedTenant}, nil
 
 	case errors.Is(err, manager.ErrNoResources): // This error indicates that there are no resources to reconcile, which is not a failure state.
+		baseManager.Info("no resources to reconcile for collector, skipping creation")
 		return ctrl.Result{}, nil
 	}
 
 	collector.AddProblem(err.Error())
 	collector.Status.State = state.StateFailed
 
-	baseManager.Error(errors.WithStack(err), "failed reconciling collector", "collector", collector.Name)
+	baseManager.Error(err, "failed reconciling collector")
 	if updateErr := r.Status().Update(ctx, collector); updateErr != nil {
-		baseManager.Error(errors.WithStack(updateErr), "failed updating collector status", "collector", collector.Name)
-		return ctrl.Result{}, errors.Append(err, updateErr)
+		return ctrl.Result{}, errors.Combine(err, errors.Wrap(updateErr, "failed updating collector status"))
 	}
 
 	return ctrl.Result{}, err
@@ -157,41 +154,35 @@ func (r *CollectorReconciler) handleCollectorReconcileError(ctx context.Context,
 func handleCollectorCreation(ctx context.Context, collectorManager *manager.CollectorManager, collector *v1alpha1.Collector, scheme *runtime.Scheme) error {
 	collectorConfigInput, err := collectorManager.BuildConfigInputForCollector(ctx, collector)
 	if err != nil {
-		return fmt.Errorf("failed to build config input for collector %s: %w", collector.Name, err)
+		return errors.Wrapf(err, "failed to build config input for collector %s", collector.Name)
 	}
 
 	if err := collectorManager.ValidateConfigInput(collectorConfigInput); err != nil {
 		if errors.Is(err, manager.ErrNoResources) {
-			collectorManager.Info("no resources to reconcile for collector, skipping creation")
+			return err
 		}
-		collectorManager.Error(errors.WithStack(err), "invalid otel config input")
-
-		return err
+		return errors.Wrapf(err, "failed to validate OpenTelemetry Collector configuration input for collector %s", collector.Name)
 	}
 
 	otelConfig, additionalArgs := collectorConfigInput.AssembleConfig(ctx)
 	if err := validator.ValidateAssembledConfig(otelConfig); err != nil {
-		collectorManager.Error(errors.WithStack(err), "invalid otel config")
-
-		return err
+		return errors.Wrapf(err, "failed to validate assembled OpenTelemetry Collector configuration for collector %s", collector.Name)
 	}
 
 	saName, err := collectorManager.ReconcileRBAC(collector, scheme)
 	if err != nil {
-		return fmt.Errorf("%+v", err)
+		return errors.Wrapf(err, "failed to reconcile RBAC for collector %s", collector.Name)
 	}
 
 	otelCollector, collectorState := collectorManager.OtelCollector(collector, otelConfig, additionalArgs, collectorConfigInput.Tenants, collectorConfigInput.OutputsWithSecretData, saName.Name)
 	if err := ctrl.SetControllerReference(collector, otelCollector, scheme); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to set controller reference for OpenTelemetryCollector for collector %s", collector.Name)
 	}
 
 	resourceReconciler := reconciler.NewReconcilerWith(collectorManager.Client, reconciler.WithLog(collectorManager.Logger))
 	_, err = resourceReconciler.ReconcileResource(otelCollector, collectorState)
 	if err != nil {
-		collectorManager.Error(errors.WithStack(err), "failed reconciling collector")
-
-		return err
+		return errors.Wrapf(err, "failed reconciling OpenTelemetryCollector for collector %s", collector.Name)
 	}
 
 	tenantNames := []string{}

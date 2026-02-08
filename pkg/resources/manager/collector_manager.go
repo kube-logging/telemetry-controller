@@ -67,13 +67,12 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 	subscriptions := make(map[v1alpha1.NamespacedName]v1alpha1.Subscription)
 	outputs := []components.OutputWithSecretData{}
 	if err != nil {
-		c.Error(errors.WithStack(err), "failed listing tenants")
-		return otelcolconfgen.OtelColConfigInput{}, err
+		return otelcolconfgen.OtelColConfigInput{}, errors.Wrap(err, "failed listing tenants")
 	}
 
 	for _, tenant := range tenants {
 		if tenant.Status.State == state.StateFailed {
-			c.Info(fmt.Sprintf("tenant %q is in failed state, retrying later", tenant.Name))
+			c.Info("tenant is in failed state, retrying later", "tenant", tenant.Name)
 			return otelcolconfgen.OtelColConfigInput{}, ErrTenantFailed
 		}
 
@@ -82,8 +81,7 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 		for _, subsName := range subscriptionNames {
 			queriedSubs := &v1alpha1.Subscription{}
 			if err = c.Get(ctx, types.NamespacedName(subsName), queriedSubs); err != nil {
-				c.Error(errors.WithStack(err), "failed getting subscriptions for tenant", "tenant", tenant.Name)
-				return otelcolconfgen.OtelColConfigInput{}, err
+				return otelcolconfgen.OtelColConfigInput{}, errors.Wrapf(err, "failed getting subscriptions for tenant %s", tenant.Name)
 			}
 			subscriptions[subsName] = *queriedSubs
 		}
@@ -92,8 +90,7 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 		for _, bridgeName := range bridgeNames {
 			queriedBridge := &v1alpha1.Bridge{}
 			if err = c.Get(ctx, types.NamespacedName{Name: bridgeName}, queriedBridge); err != nil {
-				c.Error(errors.WithStack(err), "failed getting bridges for tenant", "tenant", tenant.Name)
-				return otelcolconfgen.OtelColConfigInput{}, err
+				return otelcolconfgen.OtelColConfigInput{}, errors.Wrapf(err, "failed getting bridges for tenant %s", tenant.Name)
 			}
 			bridgesReferencedByTenant = append(bridgesReferencedByTenant, *queriedBridge)
 		}
@@ -105,8 +102,7 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 		for _, outputName := range outputNames {
 			queriedOutput := &v1alpha1.Output{}
 			if err = c.Get(ctx, types.NamespacedName(outputName), queriedOutput); err != nil {
-				c.Error(errors.WithStack(err), "failed getting outputs for subscription", "subscription", subscription.NamespacedName().String())
-				return otelcolconfgen.OtelColConfigInput{}, err
+				return otelcolconfgen.OtelColConfigInput{}, errors.Wrapf(err, "failed getting outputs for subscription %s", subscription.NamespacedName().String())
 			}
 			outputWithSecretData := components.OutputWithSecretData{
 				Output: *queriedOutput,
@@ -115,10 +111,9 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 			if queriedOutput.Spec.Authentication != nil {
 				outputSecret, err := components.QueryOutputSecretWithData(ctx, c.Client, queriedOutput)
 				if err != nil {
-					c.Error(errors.WithStack(err), "failed querying output secret for output", "output", queriedOutput.NamespacedName().String())
-				} else {
-					outputWithSecretData.Secret = *outputSecret
+					return otelcolconfgen.OtelColConfigInput{}, errors.Wrapf(err, "failed querying output secret for output %s", queriedOutput.NamespacedName().String())
 				}
+				outputWithSecretData.Secret = *outputSecret
 			}
 			outputs = append(outputs, outputWithSecretData)
 		}
@@ -264,13 +259,11 @@ func (c *CollectorManager) reconcileClusterRoleBinding(collector *v1alpha1.Colle
 		},
 	}
 	if err := ctrl.SetControllerReference(collector, &clusterRoleBinding, scheme); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to set controller reference for cluster role binding for collector %s", collector.Name)
 	}
 
-	resourceReconciler := reconciler.NewReconcilerWith(c.Client, reconciler.WithLog(c.Logger))
-	_, err := resourceReconciler.ReconcileResource(&clusterRoleBinding, reconciler.StatePresent)
-
-	return err
+	_, err := reconciler.NewReconcilerWith(c.Client, reconciler.WithLog(c.Logger)).ReconcileResource(&clusterRoleBinding, reconciler.StatePresent)
+	return errors.Wrapf(err, "failed to reconcile cluster role binding for collector %s", collector.Name)
 }
 
 func (c *CollectorManager) reconcileClusterRole(collector *v1alpha1.Collector, scheme *runtime.Scheme) error {
@@ -293,13 +286,11 @@ func (c *CollectorManager) reconcileClusterRole(collector *v1alpha1.Collector, s
 		},
 	}
 	if err := ctrl.SetControllerReference(collector, &clusterRole, scheme); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to set controller reference for cluster role for collector %s", collector.Name)
 	}
 
-	resourceReconciler := reconciler.NewReconcilerWith(c.Client, reconciler.WithLog(c.Logger))
-	_, err := resourceReconciler.ReconcileResource(&clusterRole, reconciler.StatePresent)
-
-	return err
+	_, err := reconciler.NewReconcilerWith(c.Client, reconciler.WithLog(c.Logger)).ReconcileResource(&clusterRole, reconciler.StatePresent)
+	return errors.Wrapf(err, "failed to reconcile cluster role for collector %s", collector.Name)
 }
 
 func validateTenants(tenants *[]v1alpha1.Tenant) error {
@@ -311,7 +302,7 @@ func validateTenants(tenants *[]v1alpha1.Tenant) error {
 
 	for _, tenant := range *tenants {
 		if tenant.Status.LogSourceNamespaces != nil && tenant.Spec.SelectFromAllNamespaces {
-			result = multierror.Append(result, fmt.Errorf("tenant %s has both log source namespace selectors and select from all namespaces enabled", tenant.Name))
+			result = multierror.Append(result, errors.Errorf("tenant %s has both log source namespace selectors and select from all namespaces enabled", tenant.Name))
 		}
 	}
 
@@ -330,7 +321,7 @@ func validateSubscriptionsAndBridges(tenants *[]v1alpha1.Tenant, subscriptions *
 	if hasSubs {
 		for _, subscription := range *subscriptions {
 			if len(subscription.Spec.Outputs) == 0 {
-				result = multierror.Append(result, fmt.Errorf("subscription %s has no outputs", subscription.Name))
+				result = multierror.Append(result, errors.Errorf("subscription %s has no outputs", subscription.Name))
 			}
 		}
 	}
@@ -343,10 +334,10 @@ func validateSubscriptionsAndBridges(tenants *[]v1alpha1.Tenant, subscriptions *
 
 		for _, bridge := range *bridges {
 			if _, sourceFound := tenantMap[bridge.Spec.SourceTenant]; !sourceFound {
-				result = multierror.Append(result, fmt.Errorf("bridge: %s has a source tenant: %s that does not exist", bridge.Name, bridge.Spec.SourceTenant))
+				result = multierror.Append(result, errors.Errorf("bridge: %s has a source tenant: %s that does not exist", bridge.Name, bridge.Spec.SourceTenant))
 			}
 			if _, targetFound := tenantMap[bridge.Spec.TargetTenant]; !targetFound {
-				result = multierror.Append(result, fmt.Errorf("bridge: %s has a target tenant: %s that does not exist", bridge.Name, bridge.Spec.TargetTenant))
+				result = multierror.Append(result, errors.Errorf("bridge: %s has a target tenant: %s that does not exist", bridge.Name, bridge.Spec.TargetTenant))
 			}
 		}
 	}

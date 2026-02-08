@@ -16,11 +16,11 @@ package components
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
+	"emperror.dev/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,13 +43,14 @@ type OutputWithSecretData struct {
 
 func GetExporterNameForOutput(output v1alpha1.Output) string {
 	var exporterName string
-	if output.Spec.OTLPGRPC != nil {
+	switch {
+	case output.Spec.OTLPGRPC != nil:
 		exporterName = fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
-	} else if output.Spec.OTLPHTTP != nil {
+	case output.Spec.OTLPHTTP != nil:
 		exporterName = fmt.Sprintf("otlphttp/%s_%s", output.Namespace, output.Name)
-	} else if output.Spec.Fluentforward != nil {
+	case output.Spec.Fluentforward != nil:
 		exporterName = fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
-	} else if output.Spec.File != nil {
+	case output.Spec.File != nil:
 		exporterName = fmt.Sprintf("file/%s_%s", output.Namespace, output.Name)
 	}
 
@@ -99,7 +100,7 @@ func (r *ResourceRelations) FindTenantForOutput(targetOutput v1alpha1.Namespaced
 		}
 	}
 
-	return nil, fmt.Errorf("tenant for output %s not found", targetOutput)
+	return nil, errors.Errorf("tenant for output %s not found", targetOutput)
 }
 
 func (r *ResourceRelations) GetTenantByName(tenantName string) (*v1alpha1.Tenant, error) {
@@ -109,7 +110,7 @@ func (r *ResourceRelations) GetTenantByName(tenantName string) (*v1alpha1.Tenant
 		}
 	}
 
-	return nil, fmt.Errorf("tenant %s not found", tenantName)
+	return nil, errors.Errorf("tenant %s not found", tenantName)
 }
 
 // QueryOutputSecret retrieves the secret associated with the output's authentication configuration.
@@ -117,7 +118,7 @@ func (r *ResourceRelations) GetTenantByName(tenantName string) (*v1alpha1.Tenant
 // if multiple authentication methods are configured, or if the secret cannot be found.
 func QueryOutputSecret(ctx context.Context, client client.Client, output *v1alpha1.Output) error {
 	_, err := QueryOutputSecretWithData(ctx, client, output)
-	return err
+	return errors.Wrapf(err, "failed to query secret for output %s/%s", output.Namespace, output.Name)
 }
 
 // QueryOutputSecretWithData retrieves the secret associated with the output's authentication configuration.
@@ -159,8 +160,8 @@ func QueryOutputSecretWithData(ctx context.Context, client client.Client, output
 
 	var secret *corev1.Secret
 	if err := client.Get(ctx, namespacedName, secret); err != nil {
-		return nil, fmt.Errorf("failed to retrieve %s secret %s/%s: %w",
-			authType, namespacedName.Namespace, namespacedName.Name, err)
+		return nil, errors.Wrapf(err, "failed to retrieve %s secret %s/%s",
+			authType, namespacedName.Namespace, namespacedName.Name)
 	}
 
 	return secret, nil
