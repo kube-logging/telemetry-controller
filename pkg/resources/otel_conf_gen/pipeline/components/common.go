@@ -158,7 +158,7 @@ func QueryOutputSecretWithData(ctx context.Context, client client.Client, output
 		authType = "BearerAuth"
 	}
 
-	var secret *corev1.Secret
+	secret := &corev1.Secret{}
 	if err := client.Get(ctx, namespacedName, secret); err != nil {
 		return nil, errors.Wrapf(err, "failed to retrieve %s secret %s/%s",
 			authType, namespacedName.Namespace, namespacedName.Name)
