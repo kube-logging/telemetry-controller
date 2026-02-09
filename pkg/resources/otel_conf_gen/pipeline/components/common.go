@@ -113,55 +113,50 @@ func (r *ResourceRelations) GetTenantByName(tenantName string) (*v1alpha1.Tenant
 	return nil, errors.Errorf("tenant %s not found", tenantName)
 }
 
-// QueryOutputSecret retrieves the secret associated with the output's authentication configuration.
-// It returns an error if the output is nil, if no authentication is configured,
-// if multiple authentication methods are configured, or if the secret cannot be found.
+// QueryOutputSecret validates that the secret referenced by the output's
+// authentication configuration exists and is retrievable.
 func QueryOutputSecret(ctx context.Context, client client.Client, output *v1alpha1.Output) error {
 	_, err := QueryOutputSecretWithData(ctx, client, output)
 	return errors.Wrapf(err, "failed to query secret for output %s/%s", output.Namespace, output.Name)
 }
 
-// QueryOutputSecretWithData retrieves the secret associated with the output's authentication configuration.
-// It returns the secret and an error if the output is nil, if no authentication is configured,
-// if multiple authentication methods are configured, or if the secret cannot be found.
+// QueryOutputSecretWithData retrieves the secret referenced by the output's
+// authentication configuration. Exactly one authentication method (BasicAuth
+// or BearerAuth) with a valid SecretRef must be configured.
 func QueryOutputSecretWithData(ctx context.Context, client client.Client, output *v1alpha1.Output) (*corev1.Secret, error) {
 	auth := output.Spec.Authentication
-	authCount := 0
+
+	type authRef struct {
+		secretRef *corev1.SecretReference
+		name      string
+	}
+
+	var matches []authRef
 	if auth.BasicAuth != nil && auth.BasicAuth.SecretRef != nil {
-		authCount++
+		matches = append(matches, authRef{auth.BasicAuth.SecretRef, "BasicAuth"})
 	}
 	if auth.BearerAuth != nil && auth.BearerAuth.SecretRef != nil {
-		authCount++
+		matches = append(matches, authRef{auth.BearerAuth.SecretRef, "BearerAuth"})
 	}
-	switch authCount {
+
+	switch len(matches) {
 	case 0:
 		return nil, errors.New("no valid authentication method configured")
 	case 1:
-		// Proceed with the single authentication method
+		// valid case, exactly one authentication method is configured
 	default:
 		return nil, errors.New("multiple authentication methods configured; only one is allowed")
 	}
 
-	var namespacedName types.NamespacedName
-	var authType string
-	if auth.BasicAuth != nil && auth.BasicAuth.SecretRef != nil {
-		namespacedName = types.NamespacedName{
-			Namespace: auth.BasicAuth.SecretRef.Namespace,
-			Name:      auth.BasicAuth.SecretRef.Name,
-		}
-		authType = "BasicAuth"
-	} else if auth.BearerAuth != nil && auth.BearerAuth.SecretRef != nil {
-		namespacedName = types.NamespacedName{
-			Namespace: auth.BearerAuth.SecretRef.Namespace,
-			Name:      auth.BearerAuth.SecretRef.Name,
-		}
-		authType = "BearerAuth"
+	ref := matches[0]
+	namespacedName := types.NamespacedName{
+		Namespace: ref.secretRef.Namespace,
+		Name:      ref.secretRef.Name,
 	}
-
 	secret := &corev1.Secret{}
 	if err := client.Get(ctx, namespacedName, secret); err != nil {
 		return nil, errors.Wrapf(err, "failed to retrieve %s secret %s/%s",
-			authType, namespacedName.Namespace, namespacedName.Name)
+			ref.name, namespacedName.Namespace, namespacedName.Name)
 	}
 
 	return secret, nil
