@@ -15,7 +15,6 @@
 package validator
 
 import (
-	"fmt"
 	"strings"
 
 	"emperror.dev/errors"
@@ -66,7 +65,7 @@ func ValidateAssembledConfig(otelConfig otelv1beta1.Config) error {
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return fmt.Errorf("invalid OpenTelemetry Collector configuration: %w", err)
+		return errors.Wrap(err, "invalid OpenTelemetry Collector configuration")
 	}
 
 	return nil
@@ -76,10 +75,10 @@ func decodeAnyConfig(anyConfig otelv1beta1.AnyConfig) (map[component.ID]componen
 	var result map[component.ID]component.Config
 	decoder, err := mapstructure.NewDecoder(createDecoderConfig(&result, decodeID, mapstructure.StringToTimeDurationHookFunc(), mapstructure.StringToSliceHookFunc(",")))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create decoder: %w", err)
+		return nil, errors.Wrap(err, "failed to create decoder")
 	}
 	if err := decoder.Decode(anyConfig.Object); err != nil {
-		return nil, fmt.Errorf("failed to decode AnyConfig: %w", err)
+		return nil, errors.Wrap(err, "failed to decode AnyConfig")
 	}
 
 	return result, nil
@@ -90,7 +89,7 @@ func decodeServiceConfig(serviceConfig otelv1beta1.Service) (service.Config, err
 	var err error
 	if serviceConfig.Telemetry != nil {
 		if result.Telemetry, err = decodeTelemetryConfig(*serviceConfig.Telemetry); err != nil {
-			return result, fmt.Errorf("failed to decode telemetry config: %w", err)
+			return result, errors.Wrap(err, "failed to decode telemetry config")
 		}
 	}
 
@@ -100,7 +99,7 @@ func decodeServiceConfig(serviceConfig otelv1beta1.Service) (service.Config, err
 
 	if serviceConfig.Pipelines != nil {
 		if result.Pipelines, err = decodePipelinesConfig(serviceConfig.Pipelines); err != nil {
-			return result, fmt.Errorf("failed to decode pipelines config: %w", err)
+			return result, errors.Wrap(err, "failed to decode pipelines config")
 		}
 	}
 
@@ -111,10 +110,10 @@ func decodeTelemetryConfig(anyConfig otelv1beta1.AnyConfig) (otelconftelemetry.C
 	var result otelconftelemetry.Config
 	decoder, err := mapstructure.NewDecoder(createDecoderConfig(&result, decodeID, decodeLevel, mapstructure.StringToTimeDurationHookFunc(), mapstructure.StringToSliceHookFunc(",")))
 	if err != nil {
-		return result, fmt.Errorf("failed to create telemetry decoder: %w", err)
+		return result, errors.Wrap(err, "failed to create telemetry decoder")
 	}
 	if err := decoder.Decode(anyConfig.Object); err != nil {
-		return result, fmt.Errorf("failed to decode telemetry config: %w", err)
+		return result, errors.Wrap(err, "failed to decode telemetry config")
 	}
 
 	return result, nil
@@ -138,10 +137,10 @@ func decodePipelinesConfig(pipelinesConfig map[string]*otelv1beta1.Pipeline) (pi
 	result := make(pipelines.Config)
 	decoder, err := mapstructure.NewDecoder(createDecoderConfig(&result, decodeID, mapstructure.StringToSliceHookFunc(","), mapstructure.StringToTimeDurationHookFunc()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create decoder: %w", err)
+		return nil, errors.Wrap(err, "failed to create decoder")
 	}
 	if err := decoder.Decode(pipelinesConfig); err != nil {
-		return nil, fmt.Errorf("failed to decode pipelines: %w", err)
+		return nil, errors.Wrap(err, "failed to decode pipelines")
 	}
 
 	return result, nil

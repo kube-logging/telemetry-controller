@@ -15,10 +15,10 @@
 package validator
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 
+	"emperror.dev/errors"
 	"github.com/mitchellh/mapstructure"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
@@ -54,16 +54,16 @@ func decodeID(from reflect.Type, to reflect.Type, data interface{}) (interface{}
 					return component.MustNewID(parts[0]), nil
 				}
 
-				return nil, fmt.Errorf("invalid component ID format: %s", data.(string))
+				return nil, errors.Errorf("invalid component ID format: %s", data.(string))
 			}
 			return component.NewIDWithName(component.MustNewType(parts[0]), parts[1]), nil
 		case reflect.TypeOf(pipeline.ID{}):
 			if len(parts) != 2 {
-				return nil, fmt.Errorf("invalid pipeline ID format: %s", data.(string))
+				return nil, errors.Errorf("invalid pipeline ID format: %s", data.(string))
 			}
 			signal := pipeline.Signal{}
 			if err := signal.UnmarshalText([]byte(parts[0])); err != nil {
-				return nil, fmt.Errorf("invalid pipeline signal: %s", parts[0])
+				return nil, errors.Errorf("invalid pipeline signal: %s", parts[0])
 			}
 			return pipeline.NewIDWithName(signal, parts[1]), nil
 		}
@@ -79,13 +79,13 @@ func decodeLevel(from reflect.Type, to reflect.Type, data interface{}) (interfac
 		case reflect.TypeOf(configtelemetry.Level(0)):
 			var level configtelemetry.Level
 			if err := level.UnmarshalText([]byte(data.(string))); err != nil {
-				return nil, fmt.Errorf("invalid telemetry level: %s", data.(string))
+				return nil, errors.Errorf("invalid telemetry level: %s", data.(string))
 			}
 			return level, nil
 		case reflect.TypeOf(zapcore.Level(0)):
 			level, err := zapcore.ParseLevel(data.(string))
 			if err != nil {
-				return nil, fmt.Errorf("invalid zapcore level: %s", data.(string))
+				return nil, errors.Errorf("invalid zapcore level: %s", data.(string))
 			}
 			return level, nil
 		}

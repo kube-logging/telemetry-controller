@@ -17,7 +17,6 @@ package exporter
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -76,12 +75,12 @@ func GenerateOTLPGRPCExporters(ctx context.Context, resourceRelations components
 			}
 			otlpGrpcValuesMarshaled, err := json.Marshal(internalConfig)
 			if err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
+				logger.Error(err, "failed to marshal config for output", "output", output.Output.NamespacedName().String())
 				continue
 			}
 			var otlpGRPCValues map[string]any
 			if err := json.Unmarshal(otlpGrpcValuesMarshaled, &otlpGRPCValues); err != nil {
-				logger.Error(errors.New("failed to compile config for output"), "failed to compile config for output %q", output.Output.NamespacedName().String())
+				logger.Error(err, "failed to unmarshal config for output", "output", output.Output.NamespacedName().String())
 				continue
 			}
 
