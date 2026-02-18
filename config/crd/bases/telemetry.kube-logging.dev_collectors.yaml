@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: collectors.telemetry.kube-logging.dev
 spec:
   group: telemetry.kube-logging.dev
@@ -2787,6 +2787,10 @@ spec:
                   hostNetwork:
                     description: HostNetwork indicates if the pod should run in the
                       host networking namespace.
+                    type: boolean
+                  hostPID:
+                    description: HostPID indicates if the pod should have access to
+                      the host process ID namespace.
                     type: boolean
                   image:
                     description: Image indicates the container image to use for the
