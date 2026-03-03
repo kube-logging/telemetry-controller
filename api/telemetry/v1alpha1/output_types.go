@@ -70,6 +70,7 @@ type OutputSpec struct {
 	Fluentforward  *Fluentforward `json:"fluentforward,omitempty"`
 	OTLPHTTP       *OTLPHTTP      `json:"otlphttp,omitempty"`
 	File           *File          `json:"file,omitempty"`
+	Elasticsearch  *Elasticsearch `json:"elasticsearch,omitempty"`
 	Authentication *OutputAuth    `json:"authentication,omitempty"`
 	Batch          *Batch         `json:"batch,omitempty"`
 }
@@ -205,6 +206,106 @@ type GroupBy struct {
 	// MaxOpenFiles specifies the maximum number of open file descriptors for the output files.
 	// The default is 100.
 	MaxOpenFiles int `json:"max_open_files,omitempty"`
+}
+
+type Elasticsearch struct {
+	// Endpoint is the Elasticsearch URL (e.g. https://elasticsearch:9200).
+	// Mutually exclusive with Endpoints and CloudID.
+	Endpoint *string `json:"endpoint,omitempty"`
+
+	// Endpoints is a list of Elasticsearch URLs for round-robin.
+	// Mutually exclusive with Endpoint and CloudID.
+	Endpoints []string `json:"endpoints,omitempty"`
+
+	// CloudID is the Elastic Cloud ID.
+	// Mutually exclusive with Endpoint and Endpoints.
+	CloudID *string `json:"cloudid,omitempty"`
+
+	// User for HTTP Basic Authentication.
+	User *string `json:"user,omitempty"`
+
+	// Password for HTTP Basic Authentication.
+	Password *string `json:"password,omitempty"`
+
+	// APIKey for Elasticsearch API Key authentication (encoded format).
+	APIKey *string `json:"api_key,omitempty"`
+
+	// LogsIndex is the static index/data stream for logs.
+	LogsIndex *string `json:"logs_index,omitempty"`
+
+	// MetricsIndex is the static index/data stream for metrics.
+	MetricsIndex *string `json:"metrics_index,omitempty"`
+
+	// TracesIndex is the static index/data stream for traces.
+	TracesIndex *string `json:"traces_index,omitempty"`
+
+	// Mapping configures document mapping.
+	Mapping *ElasticsearchMapping `json:"mapping,omitempty"`
+
+	// Retry settings for bulk indexing.
+	Retry *ElasticsearchRetry `json:"retry,omitempty"`
+
+	// Flush settings for bulk indexing.
+	Flush *ElasticsearchFlush `json:"flush,omitempty"`
+
+	// QueueConfig for the sending queue.
+	QueueConfig *QueueSettings `json:"sending_queue,omitempty"`
+
+	// NumWorkers is the number of workers for bulk indexing.
+	NumWorkers *int `json:"num_workers,omitempty"`
+
+	// TLSSetting for TLS configuration.
+	TLSSetting *TLSClientSetting `json:"tls,omitempty"`
+
+	// Pipeline is the Elasticsearch ingest pipeline ID.
+	Pipeline *string `json:"pipeline,omitempty"`
+
+	// Discover configures node discovery.
+	Discover *ElasticsearchDiscover `json:"discover,omitempty"`
+}
+
+// ElasticsearchMapping configures document mapping for the Elasticsearch exporter.
+type ElasticsearchMapping struct {
+	// +kubebuilder:validation:Enum:=none;ecs;otel;raw;bodymap
+
+	// Mode is the document mapping mode: "none", "ecs", "otel", "raw", "bodymap".
+	Mode *string `json:"mode,omitempty"`
+}
+
+// ElasticsearchRetry defines retry settings for the Elasticsearch exporter.
+type ElasticsearchRetry struct {
+	// Enabled enables/disables retry on error. Default: true.
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// MaxRetries is the number of retries. Default: 2.
+	MaxRetries *int `json:"max_retries,omitempty"`
+
+	// InitialInterval before first retry. Default: 100ms.
+	InitialInterval *string `json:"initial_interval,omitempty"`
+
+	// MaxInterval upper bound on retry delay. Default: 1m.
+	MaxInterval *string `json:"max_interval,omitempty"`
+
+	// RetryOnStatus are HTTP status codes that trigger retries. Default: [429].
+	RetryOnStatus []int `json:"retry_on_status,omitempty"`
+}
+
+// ElasticsearchFlush defines flush settings for the Elasticsearch exporter.
+type ElasticsearchFlush struct {
+	// Bytes threshold to trigger a flush.
+	Bytes *int `json:"bytes,omitempty"`
+
+	// Interval between flushes.
+	Interval *string `json:"interval,omitempty"`
+}
+
+// ElasticsearchDiscover configures node discovery for the Elasticsearch exporter.
+type ElasticsearchDiscover struct {
+	// OnStart queries ES for nodes on startup.
+	OnStart *bool `json:"on_start,omitempty"`
+
+	// Interval to refresh node list. Set to 0 to disable.
+	Interval *string `json:"interval,omitempty"`
 }
 
 type Endpoint struct {
