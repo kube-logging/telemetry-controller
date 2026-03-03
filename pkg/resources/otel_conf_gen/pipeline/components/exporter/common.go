@@ -21,6 +21,33 @@ import (
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
+type queueBatchPartitionWrapper struct {
+	MetadataKeys []string `json:"metadata_keys,omitempty"`
+}
+
+type queueBatchWrapper struct {
+	FlushTimeout string                      `json:"flush_timeout,omitempty"`
+	MinSize      *int                        `json:"min_size,omitempty"`
+	MaxSize      *int                        `json:"max_size,omitempty"`
+	Sizer        *string                     `json:"sizer,omitempty"`
+	Partition    *queueBatchPartitionWrapper `json:"partition,omitempty"`
+}
+
+func newQueueBatchWrapper(batch *v1alpha1.QueueBatch) *queueBatchWrapper {
+	w := &queueBatchWrapper{
+		FlushTimeout: batch.FlushTimeout,
+		MinSize:      batch.MinSize,
+		MaxSize:      batch.MaxSize,
+		Sizer:        batch.Sizer,
+	}
+	if len(batch.MetadataKeys) > 0 {
+		w.Partition = &queueBatchPartitionWrapper{
+			MetadataKeys: batch.MetadataKeys,
+		}
+	}
+	return w
+}
+
 type queueWrapper struct {
 	// Enabled indicates whether to not enqueue batches before sending to the consumerSender.
 	Enabled *bool `json:"enabled,omitempty"`
@@ -28,22 +55,30 @@ type queueWrapper struct {
 	// NumConsumers is the number of consumers from the queue.
 	NumConsumers *int `json:"num_consumers,omitempty"`
 
-	// QueueSize is the maximum number of batches allowed in queue at a given time.
-	// Default value is 100.
+	// QueueSize is the maximum size the queue can accept.
+	// Default value is 1000.
 	QueueSize *int `json:"queue_size,omitempty"`
 
-	// Blocking controls the queue behavior when full.
-	// If true it blocks until enough space to add the new request to the queue.
-	Blocking *bool `json:"blocking,omitempty"`
+	// Sizer defines how queue size and batching are measured: "requests", "items", or "bytes".
+	Sizer *string `json:"sizer,omitempty"`
+
+	// WaitForResult determines if incoming requests are blocked until processed.
+	WaitForResult *bool `json:"wait_for_result,omitempty"`
+
+	// BlockOnOverflow blocks requests when the queue is full instead of rejecting them.
+	BlockOnOverflow *bool `json:"block_on_overflow,omitempty"`
 
 	// If Storage is not empty, enables the persistent storage and uses the component specified
 	// as a storage extension for the persistent queue.
 	Storage *string `json:"storage,omitempty"`
+
+	// Batch configures batching within the sending queue.
+	Batch *queueBatchWrapper `json:"batch,omitempty"`
 }
 
 func (q *queueWrapper) setDefaultQueueSettings(apiQueueSettings *v1alpha1.QueueSettings) {
 	q.Enabled = utils.ToPtr(true)
-	q.QueueSize = utils.ToPtr(100)
+	q.QueueSize = utils.ToPtr(1000)
 
 	if apiQueueSettings != nil {
 		if apiQueueSettings.NumConsumers != nil {
@@ -52,8 +87,17 @@ func (q *queueWrapper) setDefaultQueueSettings(apiQueueSettings *v1alpha1.QueueS
 		if apiQueueSettings.QueueSize != nil {
 			q.QueueSize = apiQueueSettings.QueueSize
 		}
-		if apiQueueSettings.Blocking != nil {
-			q.Blocking = apiQueueSettings.Blocking
+		if apiQueueSettings.Sizer != nil {
+			q.Sizer = apiQueueSettings.Sizer
+		}
+		if apiQueueSettings.WaitForResult != nil {
+			q.WaitForResult = apiQueueSettings.WaitForResult
+		}
+		if apiQueueSettings.BlockOnOverflow != nil {
+			q.BlockOnOverflow = apiQueueSettings.BlockOnOverflow
+		}
+		if apiQueueSettings.Batch != nil {
+			q.Batch = newQueueBatchWrapper(apiQueueSettings.Batch)
 		}
 	}
 }
