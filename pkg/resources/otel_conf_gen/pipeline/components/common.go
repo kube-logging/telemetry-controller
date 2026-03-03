@@ -52,6 +52,8 @@ func GetExporterNameForOutput(output v1alpha1.Output) string {
 		exporterName = fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
 	case output.Spec.File != nil:
 		exporterName = fmt.Sprintf("file/%s_%s", output.Namespace, output.Name)
+	case output.Spec.Elasticsearch != nil:
+		exporterName = fmt.Sprintf("elasticsearch/%s_%s", output.Namespace, output.Name)
 	}
 
 	return exporterName
