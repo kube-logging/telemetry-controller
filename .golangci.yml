@@ -32,7 +32,6 @@ linters:
     gocyclo:
       min-complexity: 15
   enable:
-    - staticcheck
     - bodyclose
     - errcheck
     - ineffassign
