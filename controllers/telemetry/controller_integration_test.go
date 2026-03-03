@@ -18,8 +18,8 @@ import (
 	"context"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2" //nolint: revive
-	. "github.com/onsi/gomega"    //nolint: revive
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -28,7 +28,8 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
-	//+kubebuilder:scaffold:imports
+	//nolint: gci
+	// +kubebuilder:scaffold:imports
 )
 
 var _ = Describe("Telemetry controller integration test", func() {
