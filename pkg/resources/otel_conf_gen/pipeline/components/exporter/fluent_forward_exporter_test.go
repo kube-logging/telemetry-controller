@@ -115,7 +115,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 					},
 					"sending_queue": map[string]any{
 						"enabled":    true,
-						"queue_size": float64(100),
+						"queue_size": float64(1000),
 						"storage":    fmt.Sprintf("file_storage/%s", testTenantName),
 					},
 					"retry_on_failure": map[string]any{
@@ -220,7 +220,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 					"default_labels_enabled": map[string]any{"label1": true},
 					"sending_queue": map[string]any{
 						"enabled":    true,
-						"queue_size": float64(100),
+						"queue_size": float64(1000),
 						"storage":    fmt.Sprintf("file_storage/%s", testTenantName),
 					},
 					"retry_on_failure": map[string]any{

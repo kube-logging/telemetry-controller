@@ -69,7 +69,7 @@ exporters:
       max_elapsed_time: 0
     sending_queue:
       enabled: true
-      queue_size: 100
+      queue_size: 1000
       storage: file_storage/example-tenant-b
     tls:
       insecure: true
@@ -82,7 +82,7 @@ exporters:
       max_elapsed_time: 0
     sending_queue:
       enabled: true
-      queue_size: 100
+      queue_size: 1000
       storage: file_storage/example-tenant-a
     tls:
       insecure: true
@@ -93,7 +93,7 @@ exporters:
       max_elapsed_time: 0
     sending_queue:
       enabled: true
-      queue_size: 100
+      queue_size: 1000
       storage: file_storage/example-tenant-a
     tls:
       insecure: true
@@ -104,7 +104,7 @@ exporters:
       max_elapsed_time: 0
     sending_queue:
       enabled: true
-      queue_size: 100
+      queue_size: 1000
       storage: file_storage/example-tenant-b
     tls:
       insecure: true
@@ -115,7 +115,7 @@ exporters:
       max_elapsed_time: 0
     sending_queue:
       enabled: true
-      queue_size: 100
+      queue_size: 1000
       storage: file_storage/example-tenant-a
     tls:
       insecure: true
