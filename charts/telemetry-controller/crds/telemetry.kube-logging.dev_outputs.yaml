@@ -144,6 +144,263 @@ spec:
                     format: duration
                     type: string
                 type: object
+              elasticsearch:
+                properties:
+                  api_key:
+                    description: APIKey for Elasticsearch API Key authentication (encoded
+                      format).
+                    type: string
+                  cloudid:
+                    description: |-
+                      CloudID is the Elastic Cloud ID.
+                      Mutually exclusive with Endpoint and Endpoints.
+                    type: string
+                  discover:
+                    description: Discover configures node discovery.
+                    properties:
+                      interval:
+                        description: Interval to refresh node list. Set to 0 to disable.
+                        type: string
+                      on_start:
+                        description: OnStart queries ES for nodes on startup.
+                        type: boolean
+                    type: object
+                  endpoint:
+                    description: |-
+                      Endpoint is the Elasticsearch URL (e.g. https://elasticsearch:9200).
+                      Mutually exclusive with Endpoints and CloudID.
+                    type: string
+                  endpoints:
+                    description: |-
+                      Endpoints is a list of Elasticsearch URLs for round-robin.
+                      Mutually exclusive with Endpoint and CloudID.
+                    items:
+                      type: string
+                    type: array
+                  flush:
+                    description: Flush settings for bulk indexing.
+                    properties:
+                      bytes:
+                        description: Bytes threshold to trigger a flush.
+                        type: integer
+                      interval:
+                        description: Interval between flushes.
+                        type: string
+                    type: object
+                  logs_index:
+                    description: LogsIndex is the static index/data stream for logs.
+                    type: string
+                  mapping:
+                    description: Mapping configures document mapping.
+                    properties:
+                      mode:
+                        description: 'Mode is the document mapping mode: "none", "ecs",
+                          "otel", "raw", "bodymap".'
+                        enum:
+                        - none
+                        - ecs
+                        - otel
+                        - raw
+                        - bodymap
+                        type: string
+                    type: object
+                  metrics_index:
+                    description: MetricsIndex is the static index/data stream for
+                      metrics.
+                    type: string
+                  num_workers:
+                    description: NumWorkers is the number of workers for bulk indexing.
+                    type: integer
+                  password:
+                    description: Password for HTTP Basic Authentication.
+                    type: string
+                  pipeline:
+                    description: Pipeline is the Elasticsearch ingest pipeline ID.
+                    type: string
+                  retry:
+                    description: Retry settings for bulk indexing.
+                    properties:
+                      enabled:
+                        description: 'Enabled enables/disables retry on error. Default:
+                          true.'
+                        type: boolean
+                      initial_interval:
+                        description: 'InitialInterval before first retry. Default:
+                          100ms.'
+                        type: string
+                      max_interval:
+                        description: 'MaxInterval upper bound on retry delay. Default:
+                          1m.'
+                        type: string
+                      max_retries:
+                        description: 'MaxRetries is the number of retries. Default:
+                          2.'
+                        type: integer
+                      retry_on_status:
+                        description: 'RetryOnStatus are HTTP status codes that trigger
+                          retries. Default: [429].'
+                        items:
+                          type: integer
+                        type: array
+                    type: object
+                  sending_queue:
+                    description: QueueConfig for the sending queue.
+                    properties:
+                      batch:
+                        description: Batch configures batching within the sending
+                          queue. Disabled by default.
+                        properties:
+                          flush_timeout:
+                            description: |-
+                              FlushTimeout is the time after which a batch is sent regardless of size.
+                              Must be non-zero. Default: 200ms.
+                            format: duration
+                            type: string
+                          max_size:
+                            description: 'MaxSize is the maximum batch size; enables
+                              splitting. Default: 0 (no limit).'
+                            type: integer
+                          metadata_keys:
+                            description: |-
+                              MetadataKeys partitions batches by client.Metadata keys.
+                              When empty, a single batcher is used.
+                            items:
+                              type: string
+                            type: array
+                          min_size:
+                            description: 'MinSize is the minimum number of items/bytes
+                              before a batch is sent. Default: 8192.'
+                            type: integer
+                          sizer:
+                            description: 'Sizer defines how batch size is measured:
+                              "items" (default) or "bytes".'
+                            enum:
+                            - items
+                            - bytes
+                            type: string
+                        type: object
+                      block_on_overflow:
+                        description: |-
+                          BlockOnOverflow blocks the request until the queue has space when true,
+                          otherwise rejects data immediately when the queue is full.
+                          Default: false.
+                        type: boolean
+                      num_consumers:
+                        description: |-
+                          NumConsumers is the number of consumers from the queue. Defaults to 10.
+                          If batching is enabled, a combined batch cannot contain more requests than the number of consumers.
+                          So it's recommended to set higher number of consumers if batching is enabled.
+                        type: integer
+                      queue_size:
+                        description: |-
+                          QueueSize is the maximum size the queue can accept, measured in units defined by Sizer.
+                          Default value is 1000.
+                        type: integer
+                      sizer:
+                        description: |-
+                          Sizer defines how the queue size and batching are measured.
+                          Available options: "requests" (default), "items", "bytes".
+                        enum:
+                        - requests
+                        - items
+                        - bytes
+                        type: string
+                      wait_for_result:
+                        description: |-
+                          WaitForResult determines if incoming requests are blocked until the request is processed.
+                          Default: false.
+                        type: boolean
+                    type: object
+                  tls:
+                    description: TLSSetting for TLS configuration.
+                    properties:
+                      ca_file:
+                        description: |-
+                          Path to the CA cert. For a client this verifies the server certificate.
+                          For a server this verifies client certificates. If empty uses system root CA.
+                          (optional)
+                        type: string
+                      ca_pem:
+                        description: In memory PEM encoded cert. (optional)
+                        type: string
+                      cert_file:
+                        description: Path to the TLS cert to use for TLS required
+                          connections. (optional)
+                        type: string
+                      cert_pem:
+                        description: In memory PEM encoded TLS cert to use for TLS
+                          required connections. (optional)
+                        type: string
+                      cipher_suites:
+                        description: |-
+                          CipherSuites is a list of TLS cipher suites that the TLS transport can use.
+                          If left blank, a safe default list is used.
+                          See https://go.dev/src/crypto/tls/cipher_suites.go for a list of supported cipher suites.
+                        items:
+                          type: string
+                        type: array
+                      curve_preferences:
+                        description: |-
+                          contains the elliptic curves that will be used in
+                          an ECDHE handshake, in preference order
+                          Defaults to empty list and "crypto/tls" defaults are used, internally.
+                        items:
+                          type: string
+                        type: array
+                      include_system_ca_certs_pool:
+                        description: |-
+                          If true, load system CA certificates pool in addition to the certificates
+                          configured in this struct.
+                        type: boolean
+                      insecure:
+                        description: |-
+                          In gRPC and HTTP when set to true, this is used to disable the client transport security.
+                          See https://godoc.org/google.golang.org/grpc#WithInsecure for gRPC.
+                          Please refer to https://godoc.org/crypto/tls#Config for more information.
+                          (optional, default false)
+                        type: boolean
+                      insecure_skip_verify:
+                        description: InsecureSkipVerify will enable TLS but not verify
+                          the certificate.
+                        type: boolean
+                      key_file:
+                        description: Path to the TLS key to use for TLS required connections.
+                          (optional)
+                        type: string
+                      key_pem:
+                        description: In memory PEM encoded TLS key to use for TLS
+                          required connections. (optional)
+                        type: string
+                      max_version:
+                        description: |-
+                          MaxVersion sets the maximum TLS version that is acceptable.
+                          If not set, refer to crypto/tls for defaults. (optional)
+                        type: string
+                      min_version:
+                        description: |-
+                          MinVersion sets the minimum TLS version that is acceptable.
+                          If not set, TLS 1.2 will be used. (optional)
+                        type: string
+                      reload_interval:
+                        description: |-
+                          ReloadInterval specifies the duration after which the certificate will be reloaded
+                          If not set, it will never be reloaded (optional)
+                        format: int64
+                        type: integer
+                      server_name_override:
+                        description: |-
+                          ServerName requested by client for virtual hosting.
+                          This sets the ServerName in the TLSConfig. Please refer to
+                          https://godoc.org/crypto/tls#Config for more information. (optional)
+                        type: string
+                    type: object
+                  traces_index:
+                    description: TracesIndex is the static index/data stream for traces.
+                    type: string
+                  user:
+                    description: User for HTTP Basic Authentication.
+                    type: string
+                type: object
               file:
                 description: File defines configuration for the file exporter.
                 properties:
