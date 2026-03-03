@@ -124,11 +124,57 @@ Paste this token to the example manifests:
 sed -i '' -e "s/\<TOKEN\>/INSERT YOUR COPIED TOKEN HERE/" docs/examples/simple-demo/one_tenant_two_subscriptions.yaml
 ```
 
-**Note: Telemetry Controller supports batching, you can enable it by adding it to your `output` definition.**
+**Note: Telemetry Controller supports batching. The recommended approach is output batching via `sending_queue.batch` (see below). Batch processor (`spec.batch`) is also available but not recommended for new configurations.**
 
-We reccommend the following settings:
+### Output Batching (recommended)
 
-### Low-Latency settings
+Output batching configures batching inside the sending queue of the exporter itself.
+
+Batching is disabled by default. To enable with default settings, use `batch: {}`.
+
+#### Low-latency settings
+
+Prioritizes sending small, frequent batches — useful when minimal transmission delay is critical:
+
+```yaml
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: ll-output
+  namespace: example
+spec:
+  otlp:
+    endpoint: example
+    sending_queue:
+      batch:
+        flush_timeout: 200ms
+        min_size: 8192
+```
+
+#### Archival settings
+
+Maximizes throughput by waiting for large batches — useful when efficiency is prioritized over latency:
+
+```yaml
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Output
+metadata:
+  name: archival-output
+  namespace: example
+spec:
+  otlp:
+    endpoint: example
+    sending_queue:
+      batch:
+        flush_timeout: 60s
+        min_size: 1048576
+```
+
+### Batch processor (not recommended for new configurations)
+
+The `spec.batch` field inserts a batch processor into the OTEL pipeline before the exporter. Prefer output batching via `sending_queue.batch` for new configurations.
+
+#### Low-Latency settings
 
 This configuration prioritizes sending small, frequent batches over achieving efficiency through larger batch sizes, it is useful for scenarios where minimal delay in data transmission is critical:
 
@@ -151,7 +197,7 @@ spec:
     endpoint: example
 ```
 
-### Archival settings
+#### Archival settings
 
 This configuration maximizes resource usage, making it ideal for batch processing and data archival purposes, it is useful for scenarios where efficiency and throughput are prioritized over immediate transmission:
 
