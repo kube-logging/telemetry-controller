@@ -312,10 +312,44 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
-                      blocking:
+                      batch:
+                        description: Batch configures batching within the sending
+                          queue. Disabled by default.
+                        properties:
+                          flush_timeout:
+                            description: |-
+                              FlushTimeout is the time after which a batch is sent regardless of size.
+                              Must be non-zero. Default: 200ms.
+                            format: duration
+                            type: string
+                          max_size:
+                            description: 'MaxSize is the maximum batch size; enables
+                              splitting. Default: 0 (no limit).'
+                            type: integer
+                          metadata_keys:
+                            description: |-
+                              MetadataKeys partitions batches by client.Metadata keys.
+                              When empty, a single batcher is used.
+                            items:
+                              type: string
+                            type: array
+                          min_size:
+                            description: 'MinSize is the minimum number of items/bytes
+                              before a batch is sent. Default: 8192.'
+                            type: integer
+                          sizer:
+                            description: 'Sizer defines how batch size is measured:
+                              "items" (default) or "bytes".'
+                            enum:
+                            - items
+                            - bytes
+                            type: string
+                        type: object
+                      block_on_overflow:
                         description: |-
-                          Blocking controls the queue behavior when full.
-                          If true it blocks until enough space to add the new request to the queue.
+                          BlockOnOverflow blocks the request until the queue has space when true,
+                          otherwise rejects data immediately when the queue is full.
+                          Default: false.
                         type: boolean
                       num_consumers:
                         description: |-
@@ -325,9 +359,23 @@ spec:
                         type: integer
                       queue_size:
                         description: |-
-                          QueueSize is the maximum number of batches allowed in queue at a given time.
-                          Default value is 100.
+                          QueueSize is the maximum size the queue can accept, measured in units defined by Sizer.
+                          Default value is 1000.
                         type: integer
+                      sizer:
+                        description: |-
+                          Sizer defines how the queue size and batching are measured.
+                          Available options: "requests" (default), "items", "bytes".
+                        enum:
+                        - requests
+                        - items
+                        - bytes
+                        type: string
+                      wait_for_result:
+                        description: |-
+                          WaitForResult determines if incoming requests are blocked until the request is processed.
+                          Default: false.
+                        type: boolean
                     type: object
                   shared_key:
                     description: SharedKey is used for authorization with the server
@@ -524,10 +572,44 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
-                      blocking:
+                      batch:
+                        description: Batch configures batching within the sending
+                          queue. Disabled by default.
+                        properties:
+                          flush_timeout:
+                            description: |-
+                              FlushTimeout is the time after which a batch is sent regardless of size.
+                              Must be non-zero. Default: 200ms.
+                            format: duration
+                            type: string
+                          max_size:
+                            description: 'MaxSize is the maximum batch size; enables
+                              splitting. Default: 0 (no limit).'
+                            type: integer
+                          metadata_keys:
+                            description: |-
+                              MetadataKeys partitions batches by client.Metadata keys.
+                              When empty, a single batcher is used.
+                            items:
+                              type: string
+                            type: array
+                          min_size:
+                            description: 'MinSize is the minimum number of items/bytes
+                              before a batch is sent. Default: 8192.'
+                            type: integer
+                          sizer:
+                            description: 'Sizer defines how batch size is measured:
+                              "items" (default) or "bytes".'
+                            enum:
+                            - items
+                            - bytes
+                            type: string
+                        type: object
+                      block_on_overflow:
                         description: |-
-                          Blocking controls the queue behavior when full.
-                          If true it blocks until enough space to add the new request to the queue.
+                          BlockOnOverflow blocks the request until the queue has space when true,
+                          otherwise rejects data immediately when the queue is full.
+                          Default: false.
                         type: boolean
                       num_consumers:
                         description: |-
@@ -537,9 +619,23 @@ spec:
                         type: integer
                       queue_size:
                         description: |-
-                          QueueSize is the maximum number of batches allowed in queue at a given time.
-                          Default value is 100.
+                          QueueSize is the maximum size the queue can accept, measured in units defined by Sizer.
+                          Default value is 1000.
                         type: integer
+                      sizer:
+                        description: |-
+                          Sizer defines how the queue size and batching are measured.
+                          Available options: "requests" (default), "items", "bytes".
+                        enum:
+                        - requests
+                        - items
+                        - bytes
+                        type: string
+                      wait_for_result:
+                        description: |-
+                          WaitForResult determines if incoming requests are blocked until the request is processed.
+                          Default: false.
+                        type: boolean
                     type: object
                   timeout:
                     description: |-
@@ -781,10 +877,44 @@ spec:
                     description: QueueSettings defines configuration for queueing
                       batches before sending to the consumerSender.
                     properties:
-                      blocking:
+                      batch:
+                        description: Batch configures batching within the sending
+                          queue. Disabled by default.
+                        properties:
+                          flush_timeout:
+                            description: |-
+                              FlushTimeout is the time after which a batch is sent regardless of size.
+                              Must be non-zero. Default: 200ms.
+                            format: duration
+                            type: string
+                          max_size:
+                            description: 'MaxSize is the maximum batch size; enables
+                              splitting. Default: 0 (no limit).'
+                            type: integer
+                          metadata_keys:
+                            description: |-
+                              MetadataKeys partitions batches by client.Metadata keys.
+                              When empty, a single batcher is used.
+                            items:
+                              type: string
+                            type: array
+                          min_size:
+                            description: 'MinSize is the minimum number of items/bytes
+                              before a batch is sent. Default: 8192.'
+                            type: integer
+                          sizer:
+                            description: 'Sizer defines how batch size is measured:
+                              "items" (default) or "bytes".'
+                            enum:
+                            - items
+                            - bytes
+                            type: string
+                        type: object
+                      block_on_overflow:
                         description: |-
-                          Blocking controls the queue behavior when full.
-                          If true it blocks until enough space to add the new request to the queue.
+                          BlockOnOverflow blocks the request until the queue has space when true,
+                          otherwise rejects data immediately when the queue is full.
+                          Default: false.
                         type: boolean
                       num_consumers:
                         description: |-
@@ -794,9 +924,23 @@ spec:
                         type: integer
                       queue_size:
                         description: |-
-                          QueueSize is the maximum number of batches allowed in queue at a given time.
-                          Default value is 100.
+                          QueueSize is the maximum size the queue can accept, measured in units defined by Sizer.
+                          Default value is 1000.
                         type: integer
+                      sizer:
+                        description: |-
+                          Sizer defines how the queue size and batching are measured.
+                          Available options: "requests" (default), "items", "bytes".
+                        enum:
+                        - requests
+                        - items
+                        - bytes
+                        type: string
+                      wait_for_result:
+                        description: |-
+                          WaitForResult determines if incoming requests are blocked until the request is processed.
+                          Default: false.
+                        type: boolean
                     type: object
                   timeout:
                     description: |-
