@@ -28,6 +28,29 @@ type TimeoutSettings struct {
 	Timeout *time.Duration `json:"timeout,omitempty"`
 }
 
+// QueueBatch defines batching within the sending queue.
+// Batching is disabled by default; to enable with defaults, use `batch: {}`.
+type QueueBatch struct {
+	// FlushTimeout is the time after which a batch is sent regardless of size.
+	// Must be non-zero. Default: 200ms.
+	// +kubebuilder:validation:Format=duration
+	FlushTimeout string `json:"flush_timeout,omitempty"`
+
+	// MinSize is the minimum number of items/bytes before a batch is sent. Default: 8192.
+	MinSize *int `json:"min_size,omitempty"`
+
+	// MaxSize is the maximum batch size; enables splitting. Default: 0 (no limit).
+	MaxSize *int `json:"max_size,omitempty"`
+
+	// Sizer defines how batch size is measured: "items" (default) or "bytes".
+	// +kubebuilder:validation:Enum=items;bytes
+	Sizer *string `json:"sizer,omitempty"`
+
+	// MetadataKeys partitions batches by client.Metadata keys.
+	// When empty, a single batcher is used.
+	MetadataKeys []string `json:"metadata_keys,omitempty"`
+}
+
 // QueueSettings defines configuration for queueing batches before sending to the consumerSender.
 type QueueSettings struct {
 	// NumConsumers is the number of consumers from the queue. Defaults to 10.
@@ -35,13 +58,26 @@ type QueueSettings struct {
 	// So it's recommended to set higher number of consumers if batching is enabled.
 	NumConsumers *int `json:"num_consumers,omitempty"`
 
-	// QueueSize is the maximum number of batches allowed in queue at a given time.
-	// Default value is 100.
+	// QueueSize is the maximum size the queue can accept, measured in units defined by Sizer.
+	// Default value is 1000.
 	QueueSize *int `json:"queue_size,omitempty"`
 
-	// Blocking controls the queue behavior when full.
-	// If true it blocks until enough space to add the new request to the queue.
-	Blocking *bool `json:"blocking,omitempty"`
+	// Sizer defines how the queue size and batching are measured.
+	// Available options: "requests" (default), "items", "bytes".
+	// +kubebuilder:validation:Enum=requests;items;bytes
+	Sizer *string `json:"sizer,omitempty"`
+
+	// WaitForResult determines if incoming requests are blocked until the request is processed.
+	// Default: false.
+	WaitForResult *bool `json:"wait_for_result,omitempty"`
+
+	// BlockOnOverflow blocks the request until the queue has space when true,
+	// otherwise rejects data immediately when the queue is full.
+	// Default: false.
+	BlockOnOverflow *bool `json:"block_on_overflow,omitempty"`
+
+	// Batch configures batching within the sending queue. Disabled by default.
+	Batch *QueueBatch `json:"batch,omitempty"`
 }
 
 // BackOffConfig defines configuration for retrying batches in case of export failure.
