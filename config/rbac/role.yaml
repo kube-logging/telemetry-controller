@@ -11,7 +11,6 @@ rules:
   - namespaces
   - nodes
   - nodes/proxy
-  - secrets
   verbs:
   - get
   - list
@@ -21,6 +20,7 @@ rules:
   resources:
   - persistentvolumeclaims
   - pods
+  - secrets
   - serviceaccounts
   - services
   verbs:

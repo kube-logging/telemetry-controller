@@ -123,7 +123,7 @@ exporters:
     endpoint: :9999
 extensions:
   bearertokenauth/collector_otlp-test-output:
-    token: testtoken
+    token: ${TC_BEARERAUTH_COLLECTOR_OTLP_TEST_OUTPUT_TOKEN}
   file_storage/example-tenant-a:
     create_directory: true
     directory: /var/lib/otelcol/file_storage/example-tenant-a
