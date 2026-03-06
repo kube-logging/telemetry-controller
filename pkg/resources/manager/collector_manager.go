@@ -38,6 +38,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	otelcolconfgen "github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
+	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/extension"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/extension/storage"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
@@ -45,7 +46,7 @@ import (
 
 const (
 	otelCollectorKind            = "OpenTelemetryCollector"
-	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.143.0-axoflow.1"
+	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.143.0-axoflow.2"
 )
 
 var (
@@ -191,6 +192,50 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 		otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{Name: "GOMEMLIMIT", Value: goMemLimit.String()})
 	}
 
+	for _, output := range outputs {
+		if output.Output.Spec.Authentication == nil {
+			continue
+		}
+
+		secretName := authSecretName(collector.Name)
+		outputNamespacedName := output.Output.NamespacedName()
+		if output.Output.Spec.Authentication.BasicAuth != nil {
+			userVar, passVar := extension.BasicAuthEnvVarNames(outputNamespacedName)
+			userKey, passKey := extension.BasicAuthSecretKeys(outputNamespacedName)
+			otelCollector.Spec.Env = append(otelCollector.Spec.Env,
+				corev1.EnvVar{
+					Name: userVar,
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+							Key:                  userKey,
+						},
+					},
+				},
+				corev1.EnvVar{
+					Name: passVar,
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+							Key:                  passKey,
+						},
+					},
+				},
+			)
+		}
+		if output.Output.Spec.Authentication.BearerAuth != nil {
+			otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{
+				Name: extension.BearerAuthEnvVarName(outputNamespacedName),
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+						Key:                  extension.BearerAuthSecretKey(outputNamespacedName),
+					},
+				},
+			})
+		}
+	}
+
 	beforeUpdateHook := reconciler.DesiredStateHook(func(current runtime.Object) error {
 		if currentCollector, ok := current.(*otelv1beta1.OpenTelemetryCollector); ok {
 			otelCollector.Finalizers = currentCollector.Finalizers
@@ -201,6 +246,37 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 	})
 
 	return &otelCollector, beforeUpdateHook
+}
+
+// AuthSecret builds the derived auth secret containing credentials for all outputs
+// that use authentication. The secret lives in the controlNamespace so that the OTel
+// collector pod (managed by opentelemetry-operator) can reference it via secretKeyRef.
+func (c *CollectorManager) AuthSecret(collector *v1alpha1.Collector, outputs []components.OutputWithSecretData) *corev1.Secret {
+	data := make(map[string][]byte)
+
+	for _, output := range outputs {
+		if output.Output.Spec.Authentication == nil {
+			continue
+		}
+		if output.Output.Spec.Authentication.BasicAuth != nil {
+			maps.Copy(data, extension.BasicAuthSecretData(output))
+		}
+		if output.Output.Spec.Authentication.BearerAuth != nil {
+			maps.Copy(data, extension.BearerAuthSecretData(output))
+		}
+	}
+
+	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      authSecretName(collector.Name),
+			Namespace: collector.Spec.ControlNamespace,
+		},
+		Data: data,
+	}
 }
 
 func (c *CollectorManager) getTenantsMatchingSelectors(ctx context.Context, labelSelector metav1.LabelSelector) ([]v1alpha1.Tenant, error) {
@@ -499,4 +575,8 @@ func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryComm
 			})
 		}
 	}
+}
+
+func authSecretName(collectorName string) string {
+	return fmt.Sprintf("otelcollector-%s-auth", collectorName)
 }

@@ -49,9 +49,9 @@ type CollectorReconciler struct {
 // +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors;tenants;subscriptions;outputs;bridges;,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/status;tenants/status;subscriptions/status;outputs/status;bridges/status;,verbs=get;update;patch
 // +kubebuilder:rbac:groups=telemetry.kube-logging.dev,resources=collectors/finalizers,verbs=update
-// +kubebuilder:rbac:groups="",resources=secrets;nodes;namespaces;endpoints;nodes/proxy,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=nodes;namespaces;endpoints;nodes/proxy,verbs=get;list;watch
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles;clusterrolebindings;roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=services;persistentvolumeclaims;serviceaccounts;pods,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services;persistentvolumeclaims;serviceaccounts;pods;secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets;daemonsets;replicasets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=opentelemetry.io,resources=opentelemetrycollectors,verbs=get;list;watch;create;update;patch;delete
 
@@ -174,12 +174,21 @@ func handleCollectorCreation(ctx context.Context, collectorManager *manager.Coll
 		return errors.Wrapf(err, "failed to reconcile RBAC for collector %s", collector.Name)
 	}
 
+	resourceReconciler := reconciler.NewReconcilerWith(collectorManager.Client, reconciler.WithLog(collectorManager.Logger))
+
+	authSecret := collectorManager.AuthSecret(collector, collectorConfigInput.OutputsWithSecretData)
+	if err := ctrl.SetControllerReference(collector, authSecret, scheme); err != nil {
+		return errors.Wrapf(err, "failed to set controller reference for auth secret for collector %s", collector.Name)
+	}
+	if _, err := resourceReconciler.ReconcileResource(authSecret, reconciler.StatePresent); err != nil {
+		return errors.Wrapf(err, "failed reconciling auth secret for collector %s", collector.Name)
+	}
+
 	otelCollector, collectorState := collectorManager.OtelCollector(collector, otelConfig, additionalArgs, collectorConfigInput.Tenants, collectorConfigInput.OutputsWithSecretData, saName.Name)
 	if err := ctrl.SetControllerReference(collector, otelCollector, scheme); err != nil {
 		return errors.Wrapf(err, "failed to set controller reference for OpenTelemetryCollector for collector %s", collector.Name)
 	}
 
-	resourceReconciler := reconciler.NewReconcilerWith(collectorManager.Client, reconciler.WithLog(collectorManager.Logger))
 	_, err = resourceReconciler.ReconcileResource(otelCollector, collectorState)
 	if err != nil {
 		return errors.Wrapf(err, "failed reconciling OpenTelemetryCollector for collector %s", collector.Name)
