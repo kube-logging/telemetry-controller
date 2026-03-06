@@ -4,6 +4,11 @@ run:
   allow-parallel-runners: true
 
 formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
   settings:
     gci:
       sections:
@@ -22,6 +27,8 @@ linters:
   settings:
     misspell:
       locale: US
+    revive:
+      confidence: 0.9
     gocyclo:
       min-complexity: 15
   enable:
@@ -31,6 +38,8 @@ linters:
     - ineffassign
     - misspell
     - nolintlint
+    - revive
+    - gocyclo
     - unconvert
     - unparam
     - unused

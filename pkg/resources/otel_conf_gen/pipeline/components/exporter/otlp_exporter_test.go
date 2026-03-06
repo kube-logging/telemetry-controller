@@ -135,7 +135,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 					},
 					"sending_queue": map[string]any{
 						"enabled":    true,
-						"queue_size": float64(100),
+						"queue_size": float64(1000),
 						"storage":    fmt.Sprintf("file_storage/%s", testTenantName),
 					},
 					"retry_on_failure": map[string]any{
@@ -242,7 +242,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 					},
 					"sending_queue": map[string]any{
 						"enabled":    true,
-						"queue_size": float64(100),
+						"queue_size": float64(1000),
 						"storage":    fmt.Sprintf("file_storage/%s", testTenantName),
 					},
 					"retry_on_failure": map[string]any{
@@ -328,8 +328,112 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 					"endpoint": "http://example.com",
 					"sending_queue": map[string]any{
 						"enabled":    true,
-						"queue_size": float64(100),
+						"queue_size": float64(1000),
 						"storage":    fmt.Sprintf("file_storage/%s", testTenantName),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": float64(0),
+					},
+				},
+			},
+		},
+		{
+			name: "Queue batch settings",
+			resourceRelations: components.ResourceRelations{
+				Tenants: []v1alpha1.Tenant{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: testTenantName,
+						},
+						Spec: v1alpha1.TenantSpec{
+							PersistenceConfig: v1alpha1.PersistenceConfig{
+								EnableFileStorage: true,
+							},
+						},
+					},
+				},
+				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
+					{
+						Name:      "default",
+						Namespace: "default",
+					}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sub-batch",
+							Namespace: "default",
+						},
+						Spec: v1alpha1.SubscriptionSpec{
+							Outputs: []v1alpha1.NamespacedName{
+								{
+									Name:      "output-batch",
+									Namespace: "default",
+								},
+							},
+						},
+					},
+				},
+				OutputsWithSecretData: []components.OutputWithSecretData{
+					{
+						Output: v1alpha1.Output{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "output-batch",
+								Namespace: "default",
+							},
+							Spec: v1alpha1.OutputSpec{
+								OTLPGRPC: &v1alpha1.OTLPGRPC{
+									GRPCClientConfig: v1alpha1.GRPCClientConfig{
+										Endpoint: utils.ToPtr("http://example.com"),
+									},
+									QueueConfig: &v1alpha1.QueueSettings{
+										Batch: &v1alpha1.QueueBatch{
+											FlushTimeout: "200ms",
+											MinSize:      utils.ToPtr(8192),
+											MaxSize:      utils.ToPtr(0),
+											Sizer:        utils.ToPtr("items"),
+											MetadataKeys: []string{"k8s.namespace.name"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					testTenantName: {
+						{
+							Name:      "sub-batch",
+							Namespace: "default",
+						},
+					},
+				},
+				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+					{
+						Name:      "sub-batch",
+						Namespace: "default",
+					}: {
+						{
+							Name:      "output-batch",
+							Namespace: "default",
+						},
+					},
+				},
+			},
+			expectedResult: map[string]any{
+				"otlp/default_output-batch": map[string]any{
+					"endpoint": "http://example.com",
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(1000),
+						"storage":    fmt.Sprintf("file_storage/%s", testTenantName),
+						"batch": map[string]any{
+							"flush_timeout": "200ms",
+							"min_size":      float64(8192),
+							"max_size":      float64(0),
+							"sizer":         "items",
+							"partition": map[string]any{
+								"metadata_keys": []any{"k8s.namespace.name"},
+							},
+						},
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,

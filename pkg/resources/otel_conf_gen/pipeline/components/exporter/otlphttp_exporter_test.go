@@ -136,7 +136,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					},
 					"sending_queue": map[string]any{
 						"enabled":    true,
-						"queue_size": float64(100),
+						"queue_size": float64(1000),
 						"storage":    fmt.Sprintf("file_storage/%s", testTenantName),
 					},
 					"retry_on_failure": map[string]any{
@@ -243,7 +243,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					},
 					"sending_queue": map[string]any{
 						"enabled":    true,
-						"queue_size": float64(100),
+						"queue_size": float64(1000),
 						"storage":    fmt.Sprintf("file_storage/%s", testTenantName),
 					},
 					"retry_on_failure": map[string]any{
@@ -329,7 +329,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					"endpoint": "http://example.com",
 					"sending_queue": map[string]any{
 						"enabled":    true,
-						"queue_size": float64(100),
+						"queue_size": float64(1000),
 						"storage":    fmt.Sprintf("file_storage/%s", testTenantName),
 					},
 					"retry_on_failure": map[string]any{
