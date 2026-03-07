@@ -9,7 +9,7 @@ CONTROLLER_TOOLS_VERSION := 0.20.1
 KUSTOMIZE_VERSION := 5.8.1
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-GOLANGCI_LINT_VERSION := 2.10.1
+GOLANGCI_LINT_VERSION := 2.11.1
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
 KIND_VERSION ?= 0.31.0
@@ -22,7 +22,7 @@ ENVTEST_K8S_VERSION = 1.35.0
 ENVTEST_OTEL_OPERATOR_VERSION=0.143.0
 
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
-CERT_MANAGER_VERSION = 1.19.3
+CERT_MANAGER_VERSION = 1.19.4
 
 BIN := ${PWD}/bin
 
