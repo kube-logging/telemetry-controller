@@ -30,6 +30,31 @@ serviceAccount:
 podAnnotations: {}
 podLabels: {}
 
+# -- Resource requests and limits for the manager container.
+# @default -- See values.yaml
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+# -- Node selector for pod scheduling.
+nodeSelector: {}
+
+# -- Tolerations for pod scheduling.
+tolerations: []
+
+# -- Affinity rules for pod scheduling.
+affinity: {}
+
+# -- Topology spread constraints for pod scheduling.
+topologySpreadConstraints: []
+
+# -- Priority class name for the pod.
+priorityClassName: ""
+
 podSecurityContext:
   runAsNonRoot: true
 
@@ -53,6 +78,7 @@ service:
     targetPort: 8080
 
 # -- Configuration for the opentelemetry-operator sub-chart.
+# @default -- See values.yaml
 opentelemetry-operator:
   admissionWebhooks:
     certManager:

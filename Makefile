@@ -11,6 +11,9 @@ KUSTOMIZE_VERSION := 5.8.1
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
 GOLANGCI_LINT_VERSION := 2.10.1
 
+# renovate: datasource=github-releases depName=norwoodj/helm-docs versioning=semver
+HELM_DOCS_VERSION = 1.14.2
+
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
 KIND_VERSION ?= 0.31.0
 
@@ -56,6 +59,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 LICENSEI := ${BIN}/licensei
+HELM_DOCS := ${BIN}/helm-docs
 
 ##@ General
 
@@ -78,7 +82,7 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: generate
-generate: codegen manifests fmt ## Generate code, documentation, etc
+generate: codegen manifests fmt helm-docs ## Generate code, documentation, etc
 
 .PHONY: codegen
 codegen: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -248,6 +252,16 @@ $(ENVTEST): $(LOCALBIN)
 
 stern: | ${BIN}
 	GOBIN=${BIN} go install github.com/stern/stern@latest
+
+.PHONY: helm-docs
+helm-docs: ${HELM_DOCS}
+	${HELM_DOCS} -s file -c charts/ -t ../charts-docs/templates/overrides.gotmpl -t README.md.gotmpl
+
+${HELM_DOCS}: ${HELM_DOCS}-${HELM_DOCS_VERSION}
+	@ln -sf ${HELM_DOCS}-${HELM_DOCS_VERSION} ${HELM_DOCS}
+${HELM_DOCS}-${HELM_DOCS_VERSION}:
+	@mkdir -p bin
+	curl -L https://github.com/norwoodj/helm-docs/releases/download/v${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION}_$(shell uname)_x86_64.tar.gz | tar -zOxf - helm-docs > ${HELM_DOCS}-${HELM_DOCS_VERSION} && chmod +x ${HELM_DOCS}-${HELM_DOCS_VERSION}
 
 .PHONY: kind-cluster
 kind-cluster: ${KIND}
