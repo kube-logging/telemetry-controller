@@ -9,7 +9,7 @@ CONTROLLER_TOOLS_VERSION := 0.20.1
 KUSTOMIZE_VERSION := 5.8.1
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-GOLANGCI_LINT_VERSION := 2.10.1
+GOLANGCI_LINT_VERSION := 2.11.4
 
 # renovate: datasource=github-releases depName=norwoodj/helm-docs versioning=semver
 HELM_DOCS_VERSION = 1.14.2
@@ -25,7 +25,7 @@ ENVTEST_K8S_VERSION = 1.35.0
 ENVTEST_OTEL_OPERATOR_VERSION=0.143.0
 
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
-CERT_MANAGER_VERSION = 1.19.3
+CERT_MANAGER_VERSION = 1.20.1
 
 BIN := ${PWD}/bin
 
