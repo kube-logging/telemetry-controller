@@ -2792,6 +2792,10 @@ spec:
                     description: HostPID indicates if the pod should have access to
                       the host process ID namespace.
                     type: boolean
+                  hostUsers:
+                    description: HostUsers isolates pod processes in a separate user
+                      namespace, reducing the risk of privilege escalation.
+                    type: boolean
                   image:
                     description: Image indicates the container image to use for the
                       generated pods.
@@ -5271,7 +5275,7 @@ spec:
                   serviceAccount:
                     description: |-
                       ServiceAccount indicates the name of an existing service account to use with this instance. When set,
-                      the operator will not automatically create a ServiceAccount.
+                      the operator will not automatically Create a ServiceAccount.
                     type: string
                   shareProcessNamespace:
                     description: ShareProcessNamespace indicates if the pod's containers
