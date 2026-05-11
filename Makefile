@@ -3,13 +3,13 @@
 ####
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
-CONTROLLER_TOOLS_VERSION := 0.20.1
+CONTROLLER_TOOLS_VERSION := 0.21.0
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver
 KUSTOMIZE_VERSION := 5.8.1
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-GOLANGCI_LINT_VERSION := 2.11.4
+GOLANGCI_LINT_VERSION := 2.12.2
 
 # renovate: datasource=github-releases depName=norwoodj/helm-docs versioning=semver
 HELM_DOCS_VERSION = 1.14.2
@@ -25,13 +25,19 @@ ENVTEST_K8S_VERSION = 1.35.0
 ENVTEST_OTEL_OPERATOR_VERSION=0.150.0
 
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
-CERT_MANAGER_VERSION = 1.20.1
+CERT_MANAGER_VERSION = 1.20.2
 
 BIN := ${PWD}/bin
 
 export PATH := $(BIN):$(PATH)
 
 GOVERSION := $(shell go env GOVERSION)
+
+GOLANGCI_LINT := $(BIN)/golangci-lint
+KUBECTL ?= kubectl
+KUSTOMIZE ?= $(BIN)/kustomize
+CONTROLLER_GEN ?= $(BIN)/controller-gen
+ENVTEST ?= $(BIN)/setup-envtest
 
 KIND := ${BIN}/kind
 KIND_IMAGE ?= kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
@@ -108,26 +114,19 @@ tidy: ## Tidy Go modules
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run verifications and tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v ./... -coverprofile cover.out
-
-GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
-golangci-lint:
-	@[ -f $(GOLANGCI_LINT) ] || { \
-	set -e ;\
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell dirname $(GOLANGCI_LINT)) v$(GOLANGCI_LINT_VERSION) ;\
-	}
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN) -p path)" go test -v ./... -coverprofile cover.out
 
 .PHONY: test-e2e
 test-e2e: docker-build kind-cluster ## Run e2e tests
 	e2e/e2e_test.sh && kind delete cluster --name $(KIND_CLUSTER) || (echo "E2E test failed"; exit 1)
 
 .PHONY: lint
-lint: golangci-lint ## Run golangci-lint
-	$(GOLANGCI_LINT) run
+lint: ${GOLANGCI_LINT} ## Run golangci-lint
+	${GOLANGCI_LINT} run
 
 .PHONY: lint-fix
-lint-fix: golangci-lint ## Run golangci-lint and perform fixes
-	$(GOLANGCI_LINT) run --fix
+lint-fix: ${GOLANGCI_LINT} ## Run golangci-lint and perform fixes
+	${GOLANGCI_LINT} run --fix
 
 .PHONY: run-delve
 run-delve: generate fmt vet manifests
@@ -215,31 +214,28 @@ undeploy: ## Undeploy controller from the actual K8s cluster. Call with ignore-n
 
 ##@ Build Dependencies
 
-## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
-$(LOCALBIN):
-	mkdir -p $(LOCALBIN)
+${GOLANGCI_LINT}: ${GOLANGCI_LINT}_${GOLANGCI_LINT_VERSION}_${GOVERSION} | ${BIN}
+	ln -sf $(notdir $<) $@
 
-## Tool Binaries
-KUBECTL ?= kubectl
-KUSTOMIZE ?= $(LOCALBIN)/kustomize
-CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-ENVTEST ?= $(LOCALBIN)/setup-envtest
+${GOLANGCI_LINT}_${GOLANGCI_LINT_VERSION}_${GOVERSION}: IMPORT_PATH := github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+${GOLANGCI_LINT}_${GOLANGCI_LINT_VERSION}_${GOVERSION}: VERSION := v${GOLANGCI_LINT_VERSION}
+${GOLANGCI_LINT}_${GOLANGCI_LINT_VERSION}_${GOVERSION}: | ${BIN}
+	${go_install_binary}
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
-$(KUSTOMIZE): $(LOCALBIN)
-	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q v$(KUSTOMIZE_VERSION); then \
-		echo "$(LOCALBIN)/kustomize version is not expected v$(KUSTOMIZE_VERSION). Removing it before installing."; \
-		rm -rf $(LOCALBIN)/kustomize; \
+$(KUSTOMIZE): $(BIN)
+	@if test -x $(BIN)/kustomize && ! $(BIN)/kustomize version | grep -q v$(KUSTOMIZE_VERSION); then \
+		echo "$(BIN)/kustomize version is not expected v$(KUSTOMIZE_VERSION). Removing it before installing."; \
+		rm -rf $(BIN)/kustomize; \
 	fi
-	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v5@v$(KUSTOMIZE_VERSION)
+	test -s $(BIN)/kustomize || GOBIN=$(BIN) GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v5@v$(KUSTOMIZE_VERSION)
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
-$(CONTROLLER_GEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q v$(CONTROLLER_TOOLS_VERSION) || \
-	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CONTROLLER_TOOLS_VERSION)
+$(CONTROLLER_GEN): $(BIN)
+	test -s $(BIN)/controller-gen && $(BIN)/controller-gen --version | grep -q v$(CONTROLLER_TOOLS_VERSION) || \
+	GOBIN=$(BIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CONTROLLER_TOOLS_VERSION)
 
 # Download CRDs for envtest
 crddir/github.com/open-telemetry/opentelemetry-operator:
@@ -247,8 +243,8 @@ crddir/github.com/open-telemetry/opentelemetry-operator:
 
 .PHONY: envtest
 envtest: $(ENVTEST) crddir/github.com/open-telemetry/opentelemetry-operator ## Download envtest-setup locally if necessary.
-$(ENVTEST): $(LOCALBIN)
-	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+$(ENVTEST): $(BIN)
+	test -s $(BIN)/setup-envtest || GOBIN=$(BIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 stern: | ${BIN}
 	GOBIN=${BIN} go install github.com/stern/stern@latest
@@ -289,6 +285,9 @@ ifndef GITHUB_TOKEN
 	@>&2 echo "(Hint: If too many licenses are missing, try specifying a Github token via the environment variable GITHUB_TOKEN.)"
 endif
 	${LICENSEI} cache
+
+${BIN}:
+	mkdir -p bin
 
 define go_install_binary
 find ${BIN} -name '$(notdir ${IMPORT_PATH})_*' -exec rm {} +

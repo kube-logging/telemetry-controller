@@ -4,7 +4,6 @@
     "Welcome to the Telemetry-controller project!\nIf you have any questions or need assistance, feel free to reach out to the maintainers or the community.\nWe are excited to have you on board and look forward to your contributions."
   ],
   "model": "sonnet",
-  "availableModels": ["haiku", "sonnet", "opus"],
   "cleanupPeriodDays": 14,
   "env": {
     "DISABLE_TELEMETRY": "1",
@@ -13,6 +12,47 @@
     "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
   },
   "includeCoAuthoredBy": false,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/security-bash.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/security-file.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/security-file.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-end.sh"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "deny": [
       "Read(./.env)",
@@ -35,6 +75,7 @@
       "Read(./**/id_ed25519*)",
       "Read(./**/.htpasswd)",
       "Read(./**/*.sqlite)",
+      "Read(./**/tmp/**)",
       "Bash(rm -rf *)",
       "Bash(rm -fr *)",
       "Bash(git push *)",
@@ -47,19 +88,11 @@
       "Bash(* >> /dev/*)"
     ],
     "ask": [
-      "Bash",
       "WebFetch"
     ],
-    "defaultMode": "plan",
-    "disableBypassPermissionsMode": "disable"
+    "defaultMode": "plan"
   },
-  "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": false,
-    "excludedCommands": [],
-    "allowUnsandboxedCommands": false
-  },
-  "enableAllProjectMcpServers": false,
+  "enableAllProjectMcpServers": true,
   "enabledPlugins": {
     "context7@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
