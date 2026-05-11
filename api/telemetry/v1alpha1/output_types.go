@@ -435,10 +435,6 @@ func (l *OutputList) GetItems() []model.ResourceOwnedByTenant {
 	return items
 }
 
-func init() {
-	SchemeBuilder.Register(&Output{}, &OutputList{})
-}
-
 func (o *Output) NamespacedName() NamespacedName {
 	return NamespacedName{Namespace: o.Namespace, Name: o.Name}
 }

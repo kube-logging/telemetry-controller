@@ -111,10 +111,6 @@ func (l *SubscriptionList) GetItems() []model.ResourceOwnedByTenant {
 	return items
 }
 
-func init() {
-	SchemeBuilder.Register(&Subscription{}, &SubscriptionList{})
-}
-
 func (s *Subscription) NamespacedName() NamespacedName {
 	return NamespacedName{Namespace: s.Namespace, Name: s.Name}
 }

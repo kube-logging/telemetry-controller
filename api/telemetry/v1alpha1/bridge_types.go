@@ -87,7 +87,3 @@ type BridgeList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Bridge `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&Bridge{}, &BridgeList{})
-}
