@@ -24,7 +24,6 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 const testTenantName = "tenant1"
@@ -80,7 +79,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 								Fluentforward: &v1alpha1.Fluentforward{
 									TCPClientSettings: v1alpha1.TCPClientSettings{
 										Endpoint: &v1alpha1.Endpoint{
-											TCPAddr: utils.ToPtr("http://example.com"),
+											TCPAddr: new("http://example.com"),
 										},
 									},
 								},
@@ -170,14 +169,14 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 								Fluentforward: &v1alpha1.Fluentforward{
 									TCPClientSettings: v1alpha1.TCPClientSettings{
 										Endpoint: &v1alpha1.Endpoint{
-											TCPAddr: utils.ToPtr("http://example.com"),
+											TCPAddr: new("http://example.com"),
 										},
-										ConnectionTimeout: utils.ToPtr("30s"),
-										SharedKey:         utils.ToPtr("shared-key"),
+										ConnectionTimeout: new("30s"),
+										SharedKey:         new("shared-key"),
 									},
-									RequireAck:           utils.ToPtr(true),
-									Tag:                  utils.ToPtr("tag"),
-									CompressGzip:         utils.ToPtr(true),
+									RequireAck:           new(true),
+									Tag:                  new("tag"),
+									CompressGzip:         new(true),
 									DefaultLabelsEnabled: &map[string]bool{"label1": true},
 									QueueConfig:          &v1alpha1.QueueSettings{},
 									RetryConfig:          &v1alpha1.BackOffConfig{},

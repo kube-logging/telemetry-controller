@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 	//nolint: gci
 	// +kubebuilder:scaffold:imports
 )
@@ -178,7 +177,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
-								Endpoint: utils.ToPtr("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
+								Endpoint: new("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
 								TLSSetting: &v1alpha1.TLSClientSetting{
 									Insecure: true,
 								},
@@ -194,7 +193,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{
 							GRPCClientConfig: v1alpha1.GRPCClientConfig{
-								Endpoint: utils.ToPtr("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
+								Endpoint: new("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
 								TLSSetting: &v1alpha1.TLSClientSetting{
 									Insecure: true,
 								},

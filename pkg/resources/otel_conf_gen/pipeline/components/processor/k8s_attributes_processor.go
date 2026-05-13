@@ -14,8 +14,6 @@
 
 package processor
 
-import "github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
-
 func GenerateDefaultKubernetesProcessor() map[string]any {
 	type Source struct {
 		Name string `json:"name,omitempty"`
@@ -55,9 +53,9 @@ func GenerateDefaultKubernetesProcessor() map[string]any {
 
 	defaultLabels := []FieldExtract{
 		{
-			From:     utils.ToPtr("pod"),
-			TagName:  utils.ToPtr("all_labels"),
-			KeyRegex: utils.ToPtr(".*"),
+			From:     new("pod"),
+			TagName:  new("all_labels"),
+			KeyRegex: new(".*"),
 		},
 	}
 
@@ -69,14 +67,14 @@ func GenerateDefaultKubernetesProcessor() map[string]any {
 			"labels":   defaultLabels,
 			"annotations": []FieldExtract{
 				{
-					TagName: utils.ToPtr("exclude-tc"),
-					Key:     utils.ToPtr("telemetry.kube-logging.dev/exclude"),
-					From:    utils.ToPtr("pod"),
+					TagName: new("exclude-tc"),
+					Key:     new("telemetry.kube-logging.dev/exclude"),
+					From:    new("pod"),
 				},
 				{
-					TagName: utils.ToPtr("exclude-fluentbit"),
-					Key:     utils.ToPtr("fluentbit.io/exclude"),
-					From:    utils.ToPtr("pod"),
+					TagName: new("exclude-fluentbit"),
+					Key:     new("fluentbit.io/exclude"),
+					From:    new("pod"),
 				},
 			},
 		},

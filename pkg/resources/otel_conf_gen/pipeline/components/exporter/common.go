@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 type queueBatchPartitionWrapper struct {
@@ -77,8 +76,8 @@ type queueWrapper struct {
 }
 
 func (q *queueWrapper) setDefaultQueueSettings(apiQueueSettings *v1alpha1.QueueSettings) {
-	q.Enabled = utils.ToPtr(true)
-	q.QueueSize = utils.ToPtr(1000)
+	q.Enabled = new(true)
+	q.QueueSize = new(1000)
 
 	if apiQueueSettings != nil {
 		if apiQueueSettings.NumConsumers != nil {
@@ -127,8 +126,8 @@ type backOffWrapper struct {
 }
 
 func (b *backOffWrapper) setDefaultBackOffConfig(apiBackOffConfig *v1alpha1.BackOffConfig) {
-	b.Enabled = utils.ToPtr(true)
-	b.MaxElapsedTime = utils.ToPtr(0 * time.Second)
+	b.Enabled = new(true)
+	b.MaxElapsedTime = new(0 * time.Second)
 
 	if apiBackOffConfig != nil {
 		if apiBackOffConfig.InitialInterval != nil {

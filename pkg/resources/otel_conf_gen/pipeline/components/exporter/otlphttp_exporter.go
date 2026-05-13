@@ -23,7 +23,6 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 type OTLPHTTPWrapper struct {
@@ -54,17 +53,17 @@ func GenerateOTLPHTTPExporters(ctx context.Context, resourceRelations components
 				continue
 			}
 			if tenant.Spec.PersistenceConfig.EnableFileStorage {
-				internalConfig.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("file_storage/%s", tenant.Name))
+				internalConfig.QueueConfig.Storage = new(fmt.Sprintf("file_storage/%s", tenant.Name))
 			}
 
 			if output.Output.Spec.Authentication != nil {
 				if output.Output.Spec.Authentication.BasicAuth != nil {
 					internalConfig.Auth = &v1alpha1.Authentication{
-						AuthenticatorID: utils.ToPtr(fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name)),
+						AuthenticatorID: new(fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name)),
 					}
 				} else if output.Output.Spec.Authentication.BearerAuth != nil {
 					internalConfig.Auth = &v1alpha1.Authentication{
-						AuthenticatorID: utils.ToPtr(fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name)),
+						AuthenticatorID: new(fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name)),
 					}
 				}
 			}

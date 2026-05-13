@@ -469,7 +469,7 @@ func appendAdditionalVolumesForTenantsFileStorage(otelCommonFields *otelv1beta1.
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: mountPath,
-					Type: utils.ToPtr(corev1.HostPathDirectoryOrCreate),
+					Type: new(corev1.HostPathDirectoryOrCreate),
 				},
 			},
 		})
@@ -511,7 +511,7 @@ func appendFileExporterVolume(otelCommonFields *otelv1beta1.OpenTelemetryCommonF
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: mountPath,
-					Type: utils.ToPtr(corev1.HostPathDirectoryOrCreate),
+					Type: new(corev1.HostPathDirectoryOrCreate),
 				},
 			},
 		})

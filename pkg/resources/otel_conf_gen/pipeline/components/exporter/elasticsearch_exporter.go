@@ -23,7 +23,6 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 type ElasticsearchWrapper struct {
@@ -47,7 +46,7 @@ func (w *ElasticsearchWrapper) mapToElasticsearchWrapper(apiConfig *v1alpha1.Ela
 
 func setDefaultElasticsearchRetry(apiRetry *v1alpha1.ElasticsearchRetry) *v1alpha1.ElasticsearchRetry {
 	retry := &v1alpha1.ElasticsearchRetry{
-		Enabled: utils.ToPtr(true),
+		Enabled: new(true),
 	}
 
 	if apiRetry != nil {
@@ -79,11 +78,11 @@ func GenerateElasticsearchExporters(ctx context.Context, resourceRelations compo
 			if output.Output.Spec.Authentication != nil {
 				if output.Output.Spec.Authentication.BasicAuth != nil {
 					internalConfig.Auth = &v1alpha1.Authentication{
-						AuthenticatorID: utils.ToPtr(fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name)),
+						AuthenticatorID: new(fmt.Sprintf("basicauth/%s_%s", output.Output.Namespace, output.Output.Name)),
 					}
 				} else if output.Output.Spec.Authentication.BearerAuth != nil {
 					internalConfig.Auth = &v1alpha1.Authentication{
-						AuthenticatorID: utils.ToPtr(fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name)),
+						AuthenticatorID: new(fmt.Sprintf("bearertokenauth/%s_%s", output.Output.Namespace, output.Output.Name)),
 					}
 				}
 			}
