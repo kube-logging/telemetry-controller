@@ -43,6 +43,7 @@ func decodeID(from reflect.Type, to reflect.Type, data any) (any, error) {
 		"deltatocumulative": true,
 		"memory_limiter":    true,
 		"k8sattributes":     true,
+		"health_check":      true,
 	}
 
 	if from.Kind() == reflect.String {

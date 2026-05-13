@@ -116,6 +116,12 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 
 func (cfgInput *OtelColConfigInput) generateExtensions() (map[string]any, []string) {
 	extensions := make(map[string]any)
+
+	// opentelemetry-operator auto-injects livenessProbe/readinessProbe when it sees this.
+	if !cfgInput.DryRunMode {
+		extensions[extension.HealthCheckExtensionName] = extension.GenerateHealthCheckExtension()
+	}
+
 	for _, output := range cfgInput.OutputsWithSecretData {
 		if output.Output.Spec.Authentication != nil {
 			if output.Output.Spec.Authentication.BasicAuth != nil {
