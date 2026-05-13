@@ -40,6 +40,7 @@ import (
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/extension"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/extension/storage"
+	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/processor"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/model/state"
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
@@ -181,6 +182,18 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 	}
 	if !utils.DerefOrZero(collector.Spec.DryRunMode) {
 		handleVolumes(&otelCollector.Spec.OpenTelemetryCommonFields, tenants, outputs)
+
+		// Inject the node name via the downward API so the k8sattributes
+		// processor can scope its informer to the local node
+		// (filter.node_from_env_var).
+		otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{
+			Name: processor.NodeNameEnvVar,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "spec.nodeName",
+				},
+			},
+		})
 	}
 	setOtelCommonFieldsDefaults(&otelCollector.Spec.OpenTelemetryCommonFields, additionalArgs, saName)
 

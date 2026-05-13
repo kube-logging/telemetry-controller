@@ -14,6 +14,10 @@
 
 package processor
 
+// NodeNameEnvVar is the downward API environment variable that the k8sattributes
+// processor reads to scope its informers to a single node.
+const NodeNameEnvVar = "KUBE_NODE_NAME"
+
 func GenerateDefaultKubernetesProcessor() map[string]any {
 	type Source struct {
 		Name string `json:"name,omitempty"`
@@ -35,13 +39,21 @@ func GenerateDefaultKubernetesProcessor() map[string]any {
 		{"sources": defaultSources},
 	}
 
+	// Metadata fields are scoped to what the existing collector ClusterRole can
+	// resolve: pods, namespaces, nodes (core) and replicasets (apps).
 	defaultMetadata := []string{
-		"k8s.pod.name",
-		"k8s.pod.uid",
-		"k8s.deployment.name",
 		"k8s.namespace.name",
 		"k8s.node.name",
+		"k8s.pod.name",
+		"k8s.pod.uid",
+		"k8s.pod.ip",
 		"k8s.pod.start_time",
+		"k8s.replicaset.name",
+		"k8s.deployment.name",
+		"k8s.cluster.uid",
+		"k8s.container.name",
+		"container.image.name",
+		"container.image.tag",
 	}
 
 	type FieldExtract struct {
@@ -62,9 +74,17 @@ func GenerateDefaultKubernetesProcessor() map[string]any {
 	k8sProcessor := map[string]any{
 		"auth_type":   "serviceAccount",
 		"passthrough": false,
+		// Filter pods to those scheduled on the same node as the collector pod.
+		"filter": map[string]any{
+			"node_from_env_var": NodeNameEnvVar,
+		},
 		"extract": map[string]any{
 			"metadata": defaultMetadata,
-			"labels":   defaultLabels,
+			// Derive `k8s.deployment.name` from the owning ReplicaSet name
+			// instead of watching Deployment resources. Cuts API server load
+			// and informer memory.
+			"deployment_name_from_replicaset": true,
+			"labels":                          defaultLabels,
 			"annotations": []FieldExtract{
 				{
 					TagName: new("exclude-tc"),
