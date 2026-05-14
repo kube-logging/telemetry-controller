@@ -27,7 +27,6 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 func TestGenerateOTLPGRPCExporters(t *testing.T) {
@@ -80,7 +79,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
 									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: utils.ToPtr("http://example.com"),
+										Endpoint: new("http://example.com"),
 									},
 								},
 								Authentication: &v1alpha1.OutputAuth{
@@ -189,7 +188,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
 									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: utils.ToPtr("http://example.com"),
+										Endpoint: new("http://example.com"),
 									},
 								},
 								Authentication: &v1alpha1.OutputAuth{
@@ -296,7 +295,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
 									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: utils.ToPtr("http://example.com"),
+										Endpoint: new("http://example.com"),
 									},
 								},
 							},
@@ -382,14 +381,14 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
 									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: utils.ToPtr("http://example.com"),
+										Endpoint: new("http://example.com"),
 									},
 									QueueConfig: &v1alpha1.QueueSettings{
 										Batch: &v1alpha1.QueueBatch{
 											FlushTimeout: "200ms",
-											MinSize:      utils.ToPtr(8192),
-											MaxSize:      utils.ToPtr(0),
-											Sizer:        utils.ToPtr("items"),
+											MinSize:      new(8192),
+											MaxSize:      new(0),
+											Sizer:        new("items"),
 											MetadataKeys: []string{"k8s.namespace.name"},
 										},
 									},
@@ -486,22 +485,22 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
 									QueueConfig: &v1alpha1.QueueSettings{
-										NumConsumers: utils.ToPtr(10),
-										QueueSize:    utils.ToPtr(100),
+										NumConsumers: new(10),
+										QueueSize:    new(100),
 									},
 									RetryConfig: &v1alpha1.BackOffConfig{
-										InitialInterval:     utils.ToPtr(5 * time.Second),
-										RandomizationFactor: utils.ToPtr("0.1"),
-										Multiplier:          utils.ToPtr("2.0"),
-										MaxInterval:         utils.ToPtr(10 * time.Second),
-										MaxElapsedTime:      utils.ToPtr(60 * time.Second),
+										InitialInterval:     new(5 * time.Second),
+										RandomizationFactor: new("0.1"),
+										Multiplier:          new("2.0"),
+										MaxInterval:         new(10 * time.Second),
+										MaxElapsedTime:      new(60 * time.Second),
 									},
 									TimeoutSettings: v1alpha1.TimeoutSettings{
-										Timeout: utils.ToPtr(5 * time.Second),
+										Timeout: new(5 * time.Second),
 									},
 									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint:    utils.ToPtr("http://example.com"),
-										Compression: utils.ToPtr(configcompression.Type("gzip")),
+										Endpoint:    new("http://example.com"),
+										Compression: new(configcompression.Type("gzip")),
 										TLSSetting: &v1alpha1.TLSClientSetting{
 											Insecure:           true,
 											InsecureSkipVerify: true,
@@ -512,14 +511,14 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 											Timeout:             5 * time.Second,
 											PermitWithoutStream: true,
 										},
-										ReadBufferSize:  utils.ToPtr(1024),
-										WriteBufferSize: utils.ToPtr(1024),
-										WaitForReady:    utils.ToPtr(true),
+										ReadBufferSize:  new(1024),
+										WriteBufferSize: new(1024),
+										WaitForReady:    new(true),
 										Headers: &map[string]string{
 											"header1": "value1",
 										},
-										BalancerName: utils.ToPtr("round_robin"),
-										Authority:    utils.ToPtr("authority"),
+										BalancerName: new("round_robin"),
+										Authority:    new("authority"),
 									},
 								},
 							},

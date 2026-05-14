@@ -33,7 +33,6 @@ import (
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components/connector"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 //go:embed otel_col_conf_test_fixtures/complex.yaml
@@ -204,7 +203,7 @@ func TestOtelColConfComplex(t *testing.T) {
 						Spec: v1alpha1.OutputSpec{
 							OTLPGRPC: &v1alpha1.OTLPGRPC{
 								GRPCClientConfig: v1alpha1.GRPCClientConfig{
-									Endpoint: utils.ToPtr("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
+									Endpoint: new("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
 									TLSSetting: &v1alpha1.TLSClientSetting{
 										Insecure: true,
 									},
@@ -237,7 +236,7 @@ func TestOtelColConfComplex(t *testing.T) {
 						Spec: v1alpha1.OutputSpec{
 							OTLPGRPC: &v1alpha1.OTLPGRPC{
 								GRPCClientConfig: v1alpha1.GRPCClientConfig{
-									Endpoint: utils.ToPtr("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
+									Endpoint: new("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
 									TLSSetting: &v1alpha1.TLSClientSetting{
 										Insecure: true,
 									},
@@ -255,7 +254,7 @@ func TestOtelColConfComplex(t *testing.T) {
 						Spec: v1alpha1.OutputSpec{
 							OTLPGRPC: &v1alpha1.OTLPGRPC{
 								GRPCClientConfig: v1alpha1.GRPCClientConfig{
-									Endpoint: utils.ToPtr("receiver-collector.example-tenant-b-ns.svc.cluster.local:4317"),
+									Endpoint: new("receiver-collector.example-tenant-b-ns.svc.cluster.local:4317"),
 									TLSSetting: &v1alpha1.TLSClientSetting{
 										Insecure: true,
 									},
@@ -273,7 +272,7 @@ func TestOtelColConfComplex(t *testing.T) {
 						Spec: v1alpha1.OutputSpec{
 							OTLPHTTP: &v1alpha1.OTLPHTTP{
 								HTTPClientConfig: v1alpha1.HTTPClientConfig{
-									Endpoint: utils.ToPtr("loki.example-tenant-a-ns.svc.cluster.local:4317"),
+									Endpoint: new("loki.example-tenant-a-ns.svc.cluster.local:4317"),
 									TLSSetting: &v1alpha1.TLSClientSetting{
 										Insecure: true,
 									},
@@ -292,7 +291,7 @@ func TestOtelColConfComplex(t *testing.T) {
 							Fluentforward: &v1alpha1.Fluentforward{
 								TCPClientSettings: v1alpha1.TCPClientSettings{
 									Endpoint: &v1alpha1.Endpoint{
-										TCPAddr: utils.ToPtr("fluentd.example-tenant-b-ns.svc.cluster.local:24224"),
+										TCPAddr: new("fluentd.example-tenant-b-ns.svc.cluster.local:24224"),
 									},
 									TLSSetting: &v1alpha1.TLSClientSetting{
 										Insecure: true,

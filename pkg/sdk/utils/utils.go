@@ -21,14 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func ToPtr[T any](v T) *T {
-	return &v
-}
-
-func ToValue[T any](v *T) T {
-	return *v
-}
-
 // GetConcreteTypeFromList converts a slice of client.Object to a slice of concrete types.
 // Returns an error if any conversion fails.
 // Example usage:

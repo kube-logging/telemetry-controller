@@ -49,9 +49,8 @@ func (cfgInput *OtelColConfigInput) IsEmpty() bool {
 	}
 
 	v := reflect.ValueOf(*cfgInput)
-	for i := range v.NumField() {
-		field := v.Field(i)
-		if v.Field(i).Kind() == reflect.Struct {
+	for _, field := range v.Fields() {
+		if field.Kind() == reflect.Struct {
 			if !reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface()) {
 				return false
 			}
@@ -117,6 +116,12 @@ func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 
 func (cfgInput *OtelColConfigInput) generateExtensions() (map[string]any, []string) {
 	extensions := make(map[string]any)
+
+	// opentelemetry-operator auto-injects livenessProbe/readinessProbe when it sees this.
+	if !cfgInput.DryRunMode {
+		extensions[extension.HealthCheckExtensionName] = extension.GenerateHealthCheckExtension()
+	}
+
 	for _, output := range cfgInput.OutputsWithSecretData {
 		if output.Output.Spec.Authentication != nil {
 			if output.Output.Spec.Authentication.BasicAuth != nil {
@@ -282,14 +287,14 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 }
 
 func (cfgInput *OtelColConfigInput) generateTelemetry() map[string]any {
-	telemetry := map[string]interface{}{
-		"metrics": map[string]interface{}{
+	telemetry := map[string]any{
+		"metrics": map[string]any{
 			"level": "detailed",
-			"readers": []map[string]interface{}{
+			"readers": []map[string]any{
 				{
-					"pull": map[string]interface{}{
-						"exporter": map[string]interface{}{
-							"prometheus": map[string]interface{}{
+					"pull": map[string]any{
+						"exporter": map[string]any{
+							"prometheus": map[string]any{
 								"host": "",
 								"port": 8888,
 							},

@@ -36,7 +36,7 @@ type BasicClientAuthConfig struct {
 }
 
 type BasicAuthExtensionConfig struct {
-	ClientAuth BasicClientAuthConfig `json:"client_auth,omitempty"`
+	ClientAuth BasicClientAuthConfig `json:"client_auth"`
 }
 
 // BasicAuthEnvVarNames returns the env var names for basicauth username and password

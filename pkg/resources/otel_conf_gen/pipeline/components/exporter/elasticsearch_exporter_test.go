@@ -24,7 +24,6 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 func TestGenerateElasticsearchExporters(t *testing.T) {
@@ -76,7 +75,7 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								Elasticsearch: &v1alpha1.Elasticsearch{
-									Endpoint: utils.ToPtr("https://elasticsearch:9200"),
+									Endpoint: new("https://elasticsearch:9200"),
 								},
 							},
 						},
@@ -158,7 +157,7 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								Elasticsearch: &v1alpha1.Elasticsearch{
-									Endpoint: utils.ToPtr("https://elasticsearch:9200"),
+									Endpoint: new("https://elasticsearch:9200"),
 								},
 								Authentication: &v1alpha1.OutputAuth{
 									BasicAuth: &v1alpha1.BasicAuthConfig{
@@ -263,7 +262,7 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								Elasticsearch: &v1alpha1.Elasticsearch{
-									Endpoint: utils.ToPtr("https://elasticsearch:9200"),
+									Endpoint: new("https://elasticsearch:9200"),
 								},
 								Authentication: &v1alpha1.OutputAuth{
 									BearerAuth: &v1alpha1.BearerAuthConfig{
@@ -366,10 +365,10 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								Elasticsearch: &v1alpha1.Elasticsearch{
-									Endpoint: utils.ToPtr("https://elasticsearch:9200"),
+									Endpoint: new("https://elasticsearch:9200"),
 									QueueConfig: &v1alpha1.QueueSettings{
-										NumConsumers: utils.ToPtr(5),
-										QueueSize:    utils.ToPtr(500),
+										NumConsumers: new(5),
+										QueueSize:    new(500),
 									},
 								},
 							},
@@ -454,36 +453,36 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								Elasticsearch: &v1alpha1.Elasticsearch{
 									Endpoints:    []string{"https://es1:9200", "https://es2:9200"},
-									CloudID:      utils.ToPtr("my-cloud-id"),
-									User:         utils.ToPtr("elastic"),
-									Password:     utils.ToPtr("changeme"),
-									APIKey:       utils.ToPtr("base64encodedkey"),
-									LogsIndex:    utils.ToPtr("logs-otel"),
-									MetricsIndex: utils.ToPtr("metrics-otel"),
-									TracesIndex:  utils.ToPtr("traces-otel"),
-									NumWorkers:   utils.ToPtr(4),
-									Pipeline:     utils.ToPtr("my-ingest-pipeline"),
+									CloudID:      new("my-cloud-id"),
+									User:         new("elastic"),
+									Password:     new("changeme"),
+									APIKey:       new("base64encodedkey"),
+									LogsIndex:    new("logs-otel"),
+									MetricsIndex: new("metrics-otel"),
+									TracesIndex:  new("traces-otel"),
+									NumWorkers:   new(4),
+									Pipeline:     new("my-ingest-pipeline"),
 									Mapping: &v1alpha1.ElasticsearchMapping{
-										Mode: utils.ToPtr("otel"),
+										Mode: new("otel"),
 									},
 									Retry: &v1alpha1.ElasticsearchRetry{
-										Enabled:         utils.ToPtr(true),
-										MaxRetries:      utils.ToPtr(3),
-										InitialInterval: utils.ToPtr("100ms"),
-										MaxInterval:     utils.ToPtr("1m"),
+										Enabled:         new(true),
+										MaxRetries:      new(3),
+										InitialInterval: new("100ms"),
+										MaxInterval:     new("1m"),
 										RetryOnStatus:   []int{429, 502},
 									},
 									Flush: &v1alpha1.ElasticsearchFlush{
-										Bytes:    utils.ToPtr(5000000),
-										Interval: utils.ToPtr("5s"),
+										Bytes:    new(5000000),
+										Interval: new("5s"),
 									},
 									Discover: &v1alpha1.ElasticsearchDiscover{
-										OnStart:  utils.ToPtr(true),
-										Interval: utils.ToPtr("30s"),
+										OnStart:  new(true),
+										Interval: new("30s"),
 									},
 									QueueConfig: &v1alpha1.QueueSettings{
-										NumConsumers: utils.ToPtr(10),
-										QueueSize:    utils.ToPtr(2000),
+										NumConsumers: new(10),
+										QueueSize:    new(2000),
 									},
 									TLSSetting: &v1alpha1.TLSClientSetting{
 										Insecure:           true,

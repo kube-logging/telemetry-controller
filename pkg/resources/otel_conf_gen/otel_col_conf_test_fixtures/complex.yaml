@@ -130,6 +130,8 @@ extensions:
   file_storage/example-tenant-b:
     create_directory: true
     directory: /var/lib/otelcol/file_storage/example-tenant-b
+  health_check:
+    endpoint: 0.0.0.0:13133
 processors:
   attributes/exporter_name_fluentforward-test-output:
     actions:
@@ -223,17 +225,26 @@ processors:
       - from: pod
         key: fluentbit.io/exclude
         tag_name: exclude-fluentbit
+      deployment_name_from_replicaset: true
       labels:
       - from: pod
         key_regex: .*
         tag_name: all_labels
       metadata:
-      - k8s.pod.name
-      - k8s.pod.uid
-      - k8s.deployment.name
       - k8s.namespace.name
       - k8s.node.name
+      - k8s.pod.name
+      - k8s.pod.uid
+      - k8s.pod.ip
       - k8s.pod.start_time
+      - k8s.replicaset.name
+      - k8s.deployment.name
+      - k8s.cluster.uid
+      - k8s.container.name
+      - container.image.name
+      - container.image.tag
+    filter:
+      node_from_env_var: KUBE_NODE_NAME
     passthrough: false
     pod_association:
     - sources:
@@ -371,6 +382,7 @@ service:
   - bearertokenauth/collector_otlp-test-output
   - file_storage/example-tenant-a
   - file_storage/example-tenant-b
+  - health_check
   pipelines:
     logs/output_example-tenant-a-ns_subscription-example-1_collector_loki-test-output:
       exporters:

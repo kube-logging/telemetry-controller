@@ -14,8 +14,6 @@
 
 package connector
 
-import "github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
-
 type BytesConnectorAttributes struct {
 	Key          *string `json:"key,omitempty"`
 	DefaultValue *string `json:"default_value,omitempty"`
@@ -34,7 +32,7 @@ func GenerateBytesConnectors() map[string]any {
 			"otelcol_exporter_sent_log_records_bytes": {
 				Description: "Bytes of log records successfully sent to destination",
 				Attributes: []BytesConnectorAttributes{{
-					Key: utils.ToPtr("exporter"),
+					Key: new("exporter"),
 				}},
 			},
 		},

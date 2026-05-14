@@ -26,7 +26,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func createDecoderConfig(result interface{}, hooks ...mapstructure.DecodeHookFunc) *mapstructure.DecoderConfig {
+func createDecoderConfig(result any, hooks ...mapstructure.DecodeHookFunc) *mapstructure.DecoderConfig {
 	return &mapstructure.DecoderConfig{
 		DecodeHook:       mapstructure.ComposeDecodeHookFunc(hooks...),
 		Result:           result,
@@ -35,7 +35,7 @@ func createDecoderConfig(result interface{}, hooks ...mapstructure.DecodeHookFun
 }
 
 // decodeID converts string to component.ID or pipeline.ID
-func decodeID(from reflect.Type, to reflect.Type, data interface{}) (interface{}, error) {
+func decodeID(from reflect.Type, to reflect.Type, data any) (any, error) {
 	// occasionally components don't follow the type/name format
 	// in such cases, we need to handle them separately
 	exceptionComponents := map[string]bool{
@@ -43,12 +43,13 @@ func decodeID(from reflect.Type, to reflect.Type, data interface{}) (interface{}
 		"deltatocumulative": true,
 		"memory_limiter":    true,
 		"k8sattributes":     true,
+		"health_check":      true,
 	}
 
 	if from.Kind() == reflect.String {
 		parts := strings.SplitN(data.(string), "/", 2)
 		switch to {
-		case reflect.TypeOf(component.ID{}):
+		case reflect.TypeFor[component.ID]():
 			if len(parts) != 2 {
 				if exceptionComponents[parts[0]] {
 					return component.MustNewID(parts[0]), nil
@@ -57,7 +58,7 @@ func decodeID(from reflect.Type, to reflect.Type, data interface{}) (interface{}
 				return nil, errors.Errorf("invalid component ID format: %s", data.(string))
 			}
 			return component.NewIDWithName(component.MustNewType(parts[0]), parts[1]), nil
-		case reflect.TypeOf(pipeline.ID{}):
+		case reflect.TypeFor[pipeline.ID]():
 			if len(parts) != 2 {
 				return nil, errors.Errorf("invalid pipeline ID format: %s", data.(string))
 			}
@@ -73,16 +74,16 @@ func decodeID(from reflect.Type, to reflect.Type, data interface{}) (interface{}
 }
 
 // decodeLevel converts specific string values to corresponding int-based levels.
-func decodeLevel(from reflect.Type, to reflect.Type, data interface{}) (interface{}, error) {
+func decodeLevel(from reflect.Type, to reflect.Type, data any) (any, error) {
 	if from.Kind() == reflect.String {
 		switch to {
-		case reflect.TypeOf(configtelemetry.Level(0)):
+		case reflect.TypeFor[configtelemetry.Level]():
 			var level configtelemetry.Level
 			if err := level.UnmarshalText([]byte(data.(string))); err != nil {
 				return nil, errors.Errorf("invalid telemetry level: %s", data.(string))
 			}
 			return level, nil
-		case reflect.TypeOf(zapcore.Level(0)):
+		case reflect.TypeFor[zapcore.Level]():
 			level, err := zapcore.ParseLevel(data.(string))
 			if err != nil {
 				return nil, errors.Errorf("invalid zapcore level: %s", data.(string))

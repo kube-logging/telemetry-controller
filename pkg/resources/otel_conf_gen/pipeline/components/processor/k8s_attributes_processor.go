@@ -14,7 +14,9 @@
 
 package processor
 
-import "github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
+// NodeNameEnvVar is the downward API environment variable that the k8sattributes
+// processor reads to scope its informers to a single node.
+const NodeNameEnvVar = "KUBE_NODE_NAME"
 
 func GenerateDefaultKubernetesProcessor() map[string]any {
 	type Source struct {
@@ -37,13 +39,21 @@ func GenerateDefaultKubernetesProcessor() map[string]any {
 		{"sources": defaultSources},
 	}
 
+	// Metadata fields are scoped to what the existing collector ClusterRole can
+	// resolve: pods, namespaces, nodes (core) and replicasets (apps).
 	defaultMetadata := []string{
-		"k8s.pod.name",
-		"k8s.pod.uid",
-		"k8s.deployment.name",
 		"k8s.namespace.name",
 		"k8s.node.name",
+		"k8s.pod.name",
+		"k8s.pod.uid",
+		"k8s.pod.ip",
 		"k8s.pod.start_time",
+		"k8s.replicaset.name",
+		"k8s.deployment.name",
+		"k8s.cluster.uid",
+		"k8s.container.name",
+		"container.image.name",
+		"container.image.tag",
 	}
 
 	type FieldExtract struct {
@@ -55,28 +65,36 @@ func GenerateDefaultKubernetesProcessor() map[string]any {
 
 	defaultLabels := []FieldExtract{
 		{
-			From:     utils.ToPtr("pod"),
-			TagName:  utils.ToPtr("all_labels"),
-			KeyRegex: utils.ToPtr(".*"),
+			From:     new("pod"),
+			TagName:  new("all_labels"),
+			KeyRegex: new(".*"),
 		},
 	}
 
 	k8sProcessor := map[string]any{
 		"auth_type":   "serviceAccount",
 		"passthrough": false,
+		// Filter pods to those scheduled on the same node as the collector pod.
+		"filter": map[string]any{
+			"node_from_env_var": NodeNameEnvVar,
+		},
 		"extract": map[string]any{
 			"metadata": defaultMetadata,
-			"labels":   defaultLabels,
+			// Derive `k8s.deployment.name` from the owning ReplicaSet name
+			// instead of watching Deployment resources. Cuts API server load
+			// and informer memory.
+			"deployment_name_from_replicaset": true,
+			"labels":                          defaultLabels,
 			"annotations": []FieldExtract{
 				{
-					TagName: utils.ToPtr("exclude-tc"),
-					Key:     utils.ToPtr("telemetry.kube-logging.dev/exclude"),
-					From:    utils.ToPtr("pod"),
+					TagName: new("exclude-tc"),
+					Key:     new("telemetry.kube-logging.dev/exclude"),
+					From:    new("pod"),
 				},
 				{
-					TagName: utils.ToPtr("exclude-fluentbit"),
-					Key:     utils.ToPtr("fluentbit.io/exclude"),
-					From:    utils.ToPtr("pod"),
+					TagName: new("exclude-fluentbit"),
+					Key:     new("fluentbit.io/exclude"),
+					From:    new("pod"),
 				},
 			},
 		},

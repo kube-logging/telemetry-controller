@@ -28,7 +28,6 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 func TestGenerateOTLPHTTPExporters(t *testing.T) {
@@ -81,7 +80,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPHTTP: &v1alpha1.OTLPHTTP{
 									HTTPClientConfig: v1alpha1.HTTPClientConfig{
-										Endpoint: utils.ToPtr("http://example.com"),
+										Endpoint: new("http://example.com"),
 									},
 								},
 								Authentication: &v1alpha1.OutputAuth{
@@ -190,7 +189,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPHTTP: &v1alpha1.OTLPHTTP{
 									HTTPClientConfig: v1alpha1.HTTPClientConfig{
-										Endpoint: utils.ToPtr("http://example.com"),
+										Endpoint: new("http://example.com"),
 									},
 								},
 								Authentication: &v1alpha1.OutputAuth{
@@ -297,7 +296,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPHTTP: &v1alpha1.OTLPHTTP{
 									HTTPClientConfig: v1alpha1.HTTPClientConfig{
-										Endpoint: utils.ToPtr("http://example.com"),
+										Endpoint: new("http://example.com"),
 									},
 								},
 							},
@@ -383,38 +382,38 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPHTTP: &v1alpha1.OTLPHTTP{
 									QueueConfig: &v1alpha1.QueueSettings{
-										NumConsumers: utils.ToPtr(10),
-										QueueSize:    utils.ToPtr(100),
+										NumConsumers: new(10),
+										QueueSize:    new(100),
 									},
 									RetryConfig: &v1alpha1.BackOffConfig{
-										InitialInterval:     utils.ToPtr(5 * time.Second),
-										RandomizationFactor: utils.ToPtr("0.1"),
-										Multiplier:          utils.ToPtr("2.0"),
-										MaxInterval:         utils.ToPtr(10 * time.Second),
-										MaxElapsedTime:      utils.ToPtr(60 * time.Second),
+										InitialInterval:     new(5 * time.Second),
+										RandomizationFactor: new("0.1"),
+										Multiplier:          new("2.0"),
+										MaxInterval:         new(10 * time.Second),
+										MaxElapsedTime:      new(60 * time.Second),
 									},
 									HTTPClientConfig: v1alpha1.HTTPClientConfig{
-										Endpoint: utils.ToPtr("http://example.com"),
-										ProxyURL: utils.ToPtr("http://proxy.example.com"),
+										Endpoint: new("http://example.com"),
+										ProxyURL: new("http://proxy.example.com"),
 										TLSSetting: &v1alpha1.TLSClientSetting{
 											Insecure:           true,
 											InsecureSkipVerify: true,
 											ServerName:         "server-name",
 										},
-										ReadBufferSize:  utils.ToPtr(1024),
-										WriteBufferSize: utils.ToPtr(1024),
-										Timeout:         utils.ToPtr(5 * time.Second),
+										ReadBufferSize:  new(1024),
+										WriteBufferSize: new(1024),
+										Timeout:         new(5 * time.Second),
 										Headers: &map[string]configopaque.String{
 											"header1": configopaque.String("value1"),
 										},
-										Compression:          utils.ToPtr(configcompression.Type("gzip")),
-										MaxIdleConns:         utils.ToPtr(10),
-										MaxIdleConnsPerHost:  utils.ToPtr(10),
-										MaxConnsPerHost:      utils.ToPtr(10),
-										IdleConnTimeout:      utils.ToPtr(5 * time.Second),
-										DisableKeepAlives:    utils.ToPtr(true),
-										HTTP2ReadIdleTimeout: utils.ToPtr(5 * time.Second),
-										HTTP2PingTimeout:     utils.ToPtr(5 * time.Second),
+										Compression:          new(configcompression.Type("gzip")),
+										MaxIdleConns:         new(10),
+										MaxIdleConnsPerHost:  new(10),
+										MaxConnsPerHost:      new(10),
+										IdleConnTimeout:      new(5 * time.Second),
+										DisableKeepAlives:    new(true),
+										HTTP2ReadIdleTimeout: new(5 * time.Second),
+										HTTP2PingTimeout:     new(5 * time.Second),
 									},
 								},
 							},

@@ -23,7 +23,6 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 type FluentForwardWrapper struct {
@@ -84,7 +83,7 @@ func GenerateFluentforwardExporters(ctx context.Context, resourceRelations compo
 				continue
 			}
 			if tenant.Spec.PersistenceConfig.EnableFileStorage {
-				internalConfig.QueueConfig.Storage = utils.ToPtr(fmt.Sprintf("file_storage/%s", tenant.Name))
+				internalConfig.QueueConfig.Storage = new(fmt.Sprintf("file_storage/%s", tenant.Name))
 			}
 
 			fluentForwardMarshaled, err := json.Marshal(internalConfig)

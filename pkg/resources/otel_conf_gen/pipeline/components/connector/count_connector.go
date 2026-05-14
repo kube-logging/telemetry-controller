@@ -14,8 +14,6 @@
 
 package connector
 
-import "github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
-
 type CountConnectorAttributeConfig struct {
 	Key          *string `json:"key,omitempty"`
 	DefaultValue *string `json:"default_value,omitempty"`
@@ -32,28 +30,28 @@ func GenerateCountConnectors() map[string]any {
 	countConnectors["count/tenant_metrics"] = map[string]any{
 		"logs": map[string]CountConnectorMetricInfo{
 			"telemetry_controller_tenant_log_count": {
-				Description: utils.ToPtr("The number of logs from each tenant pipeline."),
+				Description: new("The number of logs from each tenant pipeline."),
 				Attributes: []CountConnectorAttributeConfig{
 					{
-						Key: utils.ToPtr("tenant"),
+						Key: new("tenant"),
 					},
 					{
-						Key: utils.ToPtr("k8s.namespace.name"),
+						Key: new("k8s.namespace.name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.node.name"),
+						Key: new("k8s.node.name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.container.name"),
+						Key: new("k8s.container.name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.pod.name"),
+						Key: new("k8s.pod.name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.pod.labels.app.kubernetes.io/name"),
+						Key: new("k8s.pod.labels.app.kubernetes.io/name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.pod.labels.app"),
+						Key: new("k8s.pod.labels.app"),
 					},
 				},
 			},
@@ -63,34 +61,34 @@ func GenerateCountConnectors() map[string]any {
 	countConnectors["count/output_metrics"] = map[string]any{
 		"logs": map[string]CountConnectorMetricInfo{
 			"telemetry_controller_output_log_count": {
-				Description: utils.ToPtr("The number of logs sent out from each exporter."),
+				Description: new("The number of logs sent out from each exporter."),
 				Attributes: []CountConnectorAttributeConfig{
 					{
-						Key: utils.ToPtr("tenant"),
+						Key: new("tenant"),
 					},
 					{
-						Key: utils.ToPtr("subscription"),
+						Key: new("subscription"),
 					},
 					{
-						Key: utils.ToPtr("exporter"),
+						Key: new("exporter"),
 					},
 					{
-						Key: utils.ToPtr("k8s.namespace.name"),
+						Key: new("k8s.namespace.name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.node.name"),
+						Key: new("k8s.node.name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.container.name"),
+						Key: new("k8s.container.name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.pod.name"),
+						Key: new("k8s.pod.name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.pod.labels.app.kubernetes.io/name"),
+						Key: new("k8s.pod.labels.app.kubernetes.io/name"),
 					},
 					{
-						Key: utils.ToPtr("k8s.pod.labels.app"),
+						Key: new("k8s.pod.labels.app"),
 					},
 				},
 			},

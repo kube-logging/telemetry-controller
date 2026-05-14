@@ -25,7 +25,6 @@ import (
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 	"github.com/kube-logging/telemetry-controller/pkg/resources/otel_conf_gen/pipeline/components"
-	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
 func TestGenerateFileExporter(t *testing.T) {
@@ -103,7 +102,7 @@ func TestGenerateFileExporter(t *testing.T) {
 										MaxMegabytes: 100,
 										MaxDays:      7,
 										MaxBackups:   5,
-										LocalTime:    utils.ToPtr(true),
+										LocalTime:    new(true),
 									},
 								},
 							},
@@ -227,7 +226,7 @@ func TestGenerateFileExporter(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								File: &v1alpha1.File{
 									Path:     "/tmp/logs.txt",
-									Encoding: utils.ToPtr(component.MustNewID("json")),
+									Encoding: new(component.MustNewID("json")),
 								},
 							},
 						},
@@ -262,7 +261,7 @@ func TestGenerateFileExporter(t *testing.T) {
 										MaxMegabytes: 200,
 										MaxDays:      14,
 										MaxBackups:   10,
-										LocalTime:    utils.ToPtr(false),
+										LocalTime:    new(false),
 									},
 								},
 							},
@@ -342,7 +341,7 @@ func TestGenerateFileExporter(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
 									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: utils.ToPtr("http://example.com"),
+										Endpoint: new("http://example.com"),
 									},
 								},
 							},

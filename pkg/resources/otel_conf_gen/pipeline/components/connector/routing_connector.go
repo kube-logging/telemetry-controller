@@ -16,6 +16,7 @@ package connector
 
 import (
 	"fmt"
+	"slices"
 
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 
@@ -101,20 +102,9 @@ func GenerateRoutingConnectorForBridge(bridge v1alpha1.Bridge) RoutingConnector 
 	return rc
 }
 
-func hasPipelineReceiverOrExporter(pipeline *otelv1beta1.Pipeline, receiverName string) bool {
-	for _, receiver := range pipeline.Receivers {
-		if receiver == receiverName {
-			return true
-		}
-	}
-
-	for _, exporter := range pipeline.Exporters {
-		if exporter == receiverName {
-			return true
-		}
-	}
-
-	return false
+func hasPipelineReceiverOrExporter(pipeline *otelv1beta1.Pipeline, name string) bool {
+	return slices.Contains(pipeline.Receivers, name) ||
+		slices.Contains(pipeline.Exporters, name)
 }
 
 func addConnectorToPipeline(pipeline *otelv1beta1.Pipeline, connectorName string, needsReceiver, needsExporter bool) {
