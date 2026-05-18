@@ -253,31 +253,15 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 					}
 
 					var exporters []string
-
-					// If in dry-run mode, only generate debug exporters
-					if cfgInput.DryRunMode {
+					if cfgInput.DryRunMode { // In dry-run mode, only generate debug exporters.
 						exporters = []string{exporter.DebugExporterID}
 					} else {
 						if cfgInput.Debug {
 							exporters = append(exporters, exporter.DebugExporterID)
 						}
-						if output.Output.Spec.OTLPGRPC != nil {
-							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
-						}
-						if output.Output.Spec.OTLPHTTP != nil {
-							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
-						}
-						if output.Output.Spec.Fluentforward != nil {
-							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
-						}
-						if output.Output.Spec.File != nil {
-							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
-						}
-						if output.Output.Spec.Elasticsearch != nil {
-							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
-						}
-						if output.Output.Spec.AWSS3 != nil {
-							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
+						// GetExporterNameForOutput returns a non-empty name for any supported exporter.
+						if exporterName := components.GetExporterNameForOutput(output.Output); exporterName != "" {
+							exporters = append(exporters, exporterName, outputCountConnectorName, outputBytesConnectorName)
 						}
 					}
 
