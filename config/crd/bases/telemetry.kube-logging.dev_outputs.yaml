@@ -138,23 +138,25 @@ spec:
                       failure.
                     properties:
                       initial_interval:
-                        description: InitialInterval the time to wait after the first
-                          failure before retrying.
-                        format: int64
-                        type: integer
+                        description: |-
+                          InitialInterval the time to wait after the first failure before retrying.
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       max_elapsed_time:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
                           Default value is 0 to ensure that the data is never discarded.
-                        format: int64
-                        type: integer
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       max_interval:
                         description: |-
                           MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
-                          consecutive retries will always be `MaxInterval`.
-                        format: int64
-                        type: integer
+                          consecutive retries will always be `MaxInterval`. See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       multiplier:
                         description: Multiplier is the value multiplied by the backoff
                           interval bounds
@@ -206,8 +208,8 @@ spec:
                         description: |-
                           RetryMaxBackoff is the maximum backoff delay for the S3 client.
                           See time.ParseDuration for valid values. Default: 20s.
-                        format: int64
-                        type: integer
+                        format: duration
+                        type: string
                       retry_mode:
                         description: |-
                           RetryMode for the S3 client. Supported values: `standard`, `adaptive`, `nop`.
@@ -331,9 +333,9 @@ spec:
                   timeout:
                     description: |-
                       Timeout is the timeout for every attempt to send data to the backend.
-                      A zero timeout means no timeout.
-                    format: int64
-                    type: integer
+                      A zero timeout means no timeout. See time.ParseDuration for valid values.
+                    format: duration
+                    type: string
                 type: object
               batch:
                 description: Batch processor configuration.
@@ -620,10 +622,10 @@ spec:
                         type: string
                       reload_interval:
                         description: |-
-                          ReloadInterval specifies the duration after which the certificate will be reloaded
-                          If not set, it will never be reloaded (optional)
-                        format: int64
-                        type: integer
+                          ReloadInterval specifies the duration after which the certificate will be reloaded.
+                          If not set, it will never be reloaded (optional). See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       server_name_override:
                         description: |-
                           ServerName requested by client for virtual hosting.
@@ -664,8 +666,8 @@ spec:
                     description: |-
                       FlushInterval is the duration between flushes.
                       See time.ParseDuration for valid values.
-                    format: int64
-                    type: integer
+                    format: duration
+                    type: string
                   format:
                     type: string
                   group_by:
@@ -775,23 +777,25 @@ spec:
                       The current supported strategy is exponential backoff.
                     properties:
                       initial_interval:
-                        description: InitialInterval the time to wait after the first
-                          failure before retrying.
-                        format: int64
-                        type: integer
+                        description: |-
+                          InitialInterval the time to wait after the first failure before retrying.
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       max_elapsed_time:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
                           Default value is 0 to ensure that the data is never discarded.
-                        format: int64
-                        type: integer
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       max_interval:
                         description: |-
                           MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
-                          consecutive retries will always be `MaxInterval`.
-                        format: int64
-                        type: integer
+                          consecutive retries will always be `MaxInterval`. See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       multiplier:
                         description: Multiplier is the value multiplied by the backoff
                           interval bounds
@@ -950,10 +954,10 @@ spec:
                         type: string
                       reload_interval:
                         description: |-
-                          ReloadInterval specifies the duration after which the certificate will be reloaded
-                          If not set, it will never be reloaded (optional)
-                        format: int64
-                        type: integer
+                          ReloadInterval specifies the duration after which the certificate will be reloaded.
+                          If not set, it will never be reloaded (optional). See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       server_name_override:
                         description: |-
                           ServerName requested by client for virtual hosting.
@@ -1011,18 +1015,16 @@ spec:
                         type: boolean
                       time:
                         description: |-
-                          A Duration represents the elapsed time between two instants
-                          as an int64 nanosecond count. The representation limits the
-                          largest representable duration to approximately 290 years.
-                        format: int64
-                        type: integer
+                          Time is the duration of inactivity after which the client pings the server.
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       timeout:
                         description: |-
-                          A Duration represents the elapsed time between two instants
-                          as an int64 nanosecond count. The representation limits the
-                          largest representable duration to approximately 290 years.
-                        format: int64
-                        type: integer
+                          Timeout is the duration to wait for the ping ack before assuming the connection is dead.
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                     type: object
                   read_buffer_size:
                     description: |-
@@ -1035,23 +1037,25 @@ spec:
                       The current supported strategy is exponential backoff.
                     properties:
                       initial_interval:
-                        description: InitialInterval the time to wait after the first
-                          failure before retrying.
-                        format: int64
-                        type: integer
+                        description: |-
+                          InitialInterval the time to wait after the first failure before retrying.
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       max_elapsed_time:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
                           Default value is 0 to ensure that the data is never discarded.
-                        format: int64
-                        type: integer
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       max_interval:
                         description: |-
                           MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
-                          consecutive retries will always be `MaxInterval`.
-                        format: int64
-                        type: integer
+                          consecutive retries will always be `MaxInterval`. See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       multiplier:
                         description: Multiplier is the value multiplied by the backoff
                           interval bounds
@@ -1134,9 +1138,9 @@ spec:
                   timeout:
                     description: |-
                       Timeout is the timeout for every attempt to send data to the backend.
-                      A zero timeout means no timeout.
-                    format: int64
-                    type: integer
+                      A zero timeout means no timeout. See time.ParseDuration for valid values.
+                    format: duration
+                    type: string
                   tls:
                     description: TLSSetting struct exposes TLS client configuration.
                     properties:
@@ -1209,10 +1213,10 @@ spec:
                         type: string
                       reload_interval:
                         description: |-
-                          ReloadInterval specifies the duration after which the certificate will be reloaded
-                          If not set, it will never be reloaded (optional)
-                        format: int64
-                        type: integer
+                          ReloadInterval specifies the duration after which the certificate will be reloaded.
+                          If not set, it will never be reloaded (optional). See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       server_name_override:
                         description: |-
                           ServerName requested by client for virtual hosting.
@@ -1292,24 +1296,21 @@ spec:
                   http2_ping_timeout:
                     description: |-
                       HTTP2PingTimeout if there's no response to the ping within the configured value, the connection will be closed.
-                      If not set or set to 0, it defaults to 15s.
-                    format: int64
-                    type: integer
+                      If not set or set to 0, it defaults to 15s. See time.ParseDuration for valid values.
+                    format: duration
+                    type: string
                   http2_read_idle_timeout:
                     description: |-
-                      This is needed in case you run into
-                      https://github.com/golang/go/issues/59690
-                      https://github.com/golang/go/issues/36026
-                      HTTP2ReadIdleTimeout if the connection has been idle for the configured value send a ping frame for health check
-                      0s means no health check will be performed.
-                    format: int64
-                    type: integer
+                      HTTP2ReadIdleTimeout if the connection has been idle for the configured value send a ping frame for health check.
+                      0s means no health check will be performed. See time.ParseDuration for valid values.
+                    format: duration
+                    type: string
                   idle_conn_timeout:
                     description: |-
                       IdleConnTimeout is the maximum amount of time a connection will remain open before closing itself.
-                      By default, it is set to [http.DefaultTransport.IdleConnTimeout]
-                    format: int64
-                    type: integer
+                      By default, it is set to [http.DefaultTransport.IdleConnTimeout]. See time.ParseDuration for valid values.
+                    format: duration
+                    type: string
                   max_conns_per_host:
                     description: |-
                       MaxConnsPerHost limits the total number of connections per host, including connections in the dialing,
@@ -1340,23 +1341,25 @@ spec:
                       The current supported strategy is exponential backoff.
                     properties:
                       initial_interval:
-                        description: InitialInterval the time to wait after the first
-                          failure before retrying.
-                        format: int64
-                        type: integer
+                        description: |-
+                          InitialInterval the time to wait after the first failure before retrying.
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       max_elapsed_time:
                         description: |-
                           MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
                           Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
                           Default value is 0 to ensure that the data is never discarded.
-                        format: int64
-                        type: integer
+                          See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       max_interval:
                         description: |-
                           MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
-                          consecutive retries will always be `MaxInterval`.
-                        format: int64
-                        type: integer
+                          consecutive retries will always be `MaxInterval`. See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       multiplier:
                         description: Multiplier is the value multiplied by the backoff
                           interval bounds
@@ -1439,9 +1442,9 @@ spec:
                   timeout:
                     description: |-
                       Timeout parameter configures `http.Client.Timeout`.
-                      Default is 0 (unlimited).
-                    format: int64
-                    type: integer
+                      Default is 0 (unlimited). See time.ParseDuration for valid values.
+                    format: duration
+                    type: string
                   tls:
                     description: TLSSetting struct exposes TLS client configuration.
                     properties:
@@ -1514,10 +1517,10 @@ spec:
                         type: string
                       reload_interval:
                         description: |-
-                          ReloadInterval specifies the duration after which the certificate will be reloaded
-                          If not set, it will never be reloaded (optional)
-                        format: int64
-                        type: integer
+                          ReloadInterval specifies the duration after which the certificate will be reloaded.
+                          If not set, it will never be reloaded (optional). See time.ParseDuration for valid values.
+                        format: duration
+                        type: string
                       server_name_override:
                         description: |-
                           ServerName requested by client for virtual hosting.
