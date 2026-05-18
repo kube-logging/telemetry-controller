@@ -98,6 +98,243 @@ spec:
                 - message: 'Only one authentication method can be specified: either
                     basicAuth or bearerAuth, not both'
                   rule: (has(self.basicAuth) && has(self.bearerAuth)) == false
+              awss3:
+                description: |-
+                  AWSS3 defines configuration for the AWS S3 exporter.
+                  ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/awss3exporter
+                properties:
+                  encoding:
+                    description: Encoding extension ID. When set, overrides the marshaler.
+                    type: string
+                  encoding_file_extension:
+                    description: EncodingFileExtension is appended to the uploaded
+                      file when an Encoding is configured.
+                    type: string
+                  marshaler:
+                    description: |-
+                      MarshalerName specifies how telemetry is serialized before upload.
+                      Supported values: `otlp_proto`, `otlp_json`, `sumo_ic`, `body`. Default: `otlp_json`.
+                    enum:
+                    - otlp_proto
+                    - otlp_json
+                    - sumo_ic
+                    - body
+                    type: string
+                  resource_attrs_to_s3:
+                    description: ResourceAttrsToS3 allows S3 uploader fields to be
+                      sourced from resource attributes.
+                    properties:
+                      s3_bucket:
+                        description: S3Bucket is the resource attribute key whose
+                          value is used as the bucket name.
+                        type: string
+                      s3_prefix:
+                        description: S3Prefix is the resource attribute key whose
+                          value is used as the object key prefix.
+                        type: string
+                    type: object
+                  retry_on_failure:
+                    description: RetryConfig configures the retry behavior on export
+                      failure.
+                    properties:
+                      initial_interval:
+                        description: InitialInterval the time to wait after the first
+                          failure before retrying.
+                        format: int64
+                        type: integer
+                      max_elapsed_time:
+                        description: |-
+                          MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
+                          Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
+                          Default value is 0 to ensure that the data is never discarded.
+                        format: int64
+                        type: integer
+                      max_interval:
+                        description: |-
+                          MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
+                          consecutive retries will always be `MaxInterval`.
+                        format: int64
+                        type: integer
+                      multiplier:
+                        description: Multiplier is the value multiplied by the backoff
+                          interval bounds
+                        type: string
+                      randomization_factor:
+                        description: |-
+                          RandomizationFactor is a random factor used to calculate next backoffs
+                          Randomized interval = RetryInterval * (1 ± RandomizationFactor)
+                        type: string
+                    type: object
+                  s3uploader:
+                    description: S3Uploader configures the S3 upload behavior (bucket,
+                      prefix, region, etc.).
+                    properties:
+                      acl:
+                        description: ACL is the canned ACL to apply to uploaded objects
+                          (e.g. `private`, `public-read`).
+                        type: string
+                      compression:
+                        description: |-
+                          Compression algorithm applied to the payload before upload.
+                          Supported values: `gzip`, `zstd`.
+                        enum:
+                        - gzip
+                        - zstd
+                        type: string
+                      disable_ssl:
+                        description: DisableSSL forces communication via HTTP instead
+                          of HTTPS.
+                        type: boolean
+                      endpoint:
+                        description: |-
+                          Endpoint is the URL used to communicate with S3 (useful for S3-compatible stores).
+                          Either S3Bucket or Endpoint must be set.
+                        type: string
+                      file_prefix:
+                        description: FilePrefix is prepended to the file name to avoid
+                          potential collisions.
+                        type: string
+                      region:
+                        description: 'Region is the AWS region the bucket lives in.
+                          Default: `us-east-1`.'
+                        type: string
+                      retry_max_attempts:
+                        description: 'RetryMaxAttempts is the maximum number of retry
+                          attempts for the S3 client. Default: 3.'
+                        type: integer
+                      retry_max_backoff:
+                        description: |-
+                          RetryMaxBackoff is the maximum backoff delay for the S3 client.
+                          See time.ParseDuration for valid values. Default: 20s.
+                        format: int64
+                        type: integer
+                      retry_mode:
+                        description: |-
+                          RetryMode for the S3 client. Supported values: `standard`, `adaptive`, `nop`.
+                          Default: `standard`.
+                        enum:
+                        - standard
+                        - adaptive
+                        - nop
+                        type: string
+                      role_arn:
+                        description: RoleArn is the role policy to assume when interacting
+                          with S3.
+                        type: string
+                      s3_base_prefix:
+                        description: S3BasePrefix is the root key (directory) prefix
+                          used to write the file.
+                        type: string
+                      s3_bucket:
+                        description: |-
+                          S3Bucket is the name of the destination bucket.
+                          Either S3Bucket or Endpoint must be set.
+                        type: string
+                      s3_force_path_style:
+                        description: S3ForcePathStyle forces path-style addressing
+                          of S3 objects.
+                        type: boolean
+                      s3_partition_format:
+                        description: |-
+                          S3PartitionFormat controls the time-based rollup of object keys using strftime
+                          formatting. Default: `year=%Y/month=%m/day=%d/hour=%H/minute=%M`.
+                        type: string
+                      s3_partition_timezone:
+                        description: S3PartitionTimezone is the timezone used for
+                          partition time. Defaults to local time.
+                        type: string
+                      s3_prefix:
+                        description: S3Prefix is the key (directory) prefix used inside
+                          the bucket; appended to S3BasePrefix.
+                        type: string
+                      storage_class:
+                        description: |-
+                          StorageClass is the S3 storage class for uploaded objects (e.g. `STANDARD`,
+                          `STANDARD_IA`, `GLACIER`). Default: `STANDARD`.
+                        type: string
+                      unique_key_func_name:
+                        description: |-
+                          UniqueKeyFuncName specifies which function to use for generating a unique
+                          component of the S3 key. Supported values: `uuidv7`.
+                        enum:
+                        - uuidv7
+                        type: string
+                    type: object
+                  sending_queue:
+                    description: QueueConfig configures the sending queue.
+                    properties:
+                      batch:
+                        description: Batch configures batching within the sending
+                          queue. Disabled by default.
+                        properties:
+                          flush_timeout:
+                            description: |-
+                              FlushTimeout is the time after which a batch is sent regardless of size.
+                              Must be non-zero. Default: 200ms.
+                            format: duration
+                            type: string
+                          max_size:
+                            description: 'MaxSize is the maximum batch size; enables
+                              splitting. Default: 0 (no limit).'
+                            type: integer
+                          metadata_keys:
+                            description: |-
+                              MetadataKeys partitions batches by client.Metadata keys.
+                              When empty, a single batcher is used.
+                            items:
+                              type: string
+                            type: array
+                          min_size:
+                            description: 'MinSize is the minimum number of items/bytes
+                              before a batch is sent. Default: 8192.'
+                            type: integer
+                          sizer:
+                            description: 'Sizer defines how batch size is measured:
+                              "items" (default) or "bytes".'
+                            enum:
+                            - items
+                            - bytes
+                            type: string
+                        type: object
+                      block_on_overflow:
+                        description: |-
+                          BlockOnOverflow blocks the request until the queue has space when true,
+                          otherwise rejects data immediately when the queue is full.
+                          Default: false.
+                        type: boolean
+                      num_consumers:
+                        description: |-
+                          NumConsumers is the number of consumers from the queue. Defaults to 10.
+                          If batching is enabled, a combined batch cannot contain more requests than the number of consumers.
+                          So it's recommended to set higher number of consumers if batching is enabled.
+                        type: integer
+                      queue_size:
+                        description: |-
+                          QueueSize is the maximum size the queue can accept, measured in units defined by Sizer.
+                          Default value is 1000.
+                        type: integer
+                      sizer:
+                        description: |-
+                          Sizer defines how the queue size and batching are measured.
+                          Available options: "requests" (default), "items", "bytes".
+                        enum:
+                        - requests
+                        - items
+                        - bytes
+                        type: string
+                      wait_for_result:
+                        description: |-
+                          WaitForResult determines if incoming requests are blocked until the request is processed.
+                          Default: false.
+                        type: boolean
+                    type: object
+                  timeout:
+                    description: |-
+                      Timeout is the timeout for every attempt to send data to the backend.
+                      A zero timeout means no timeout.
+                    format: int64
+                    type: integer
+                type: object
               batch:
                 description: Batch processor configuration.
                 properties:
