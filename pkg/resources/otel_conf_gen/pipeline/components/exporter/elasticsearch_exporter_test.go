@@ -215,6 +215,7 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 					"sending_queue": map[string]any{
 						"enabled":    true,
 						"queue_size": float64(1000),
+						"storage":    "file_storage/" + testTenantName,
 					},
 				},
 			},
@@ -318,6 +319,7 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 					"sending_queue": map[string]any{
 						"enabled":    true,
 						"queue_size": float64(1000),
+						"storage":    "file_storage/" + testTenantName,
 					},
 				},
 			},
@@ -405,6 +407,7 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 						"enabled":       true,
 						"num_consumers": float64(5),
 						"queue_size":    float64(500),
+						"storage":       "file_storage/" + testTenantName,
 					},
 				},
 			},
@@ -576,6 +579,7 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 						"enabled":       true,
 						"num_consumers": float64(10),
 						"queue_size":    float64(2000),
+						"storage":       "file_storage/" + testTenantName,
 					},
 				},
 			},

@@ -70,9 +70,13 @@ func GenerateElasticsearchExporters(ctx context.Context, resourceRelations compo
 		if output.Output.Spec.Elasticsearch != nil {
 			internalConfig := ElasticsearchWrapper{}
 			internalConfig.mapToElasticsearchWrapper(output.Output.Spec.Elasticsearch)
-			if _, err := resourceRelations.FindTenantForOutput(output.Output.NamespacedName()); err != nil {
+			tenant, err := resourceRelations.FindTenantForOutput(output.Output.NamespacedName())
+			if err != nil {
 				logger.Error(err, "failed to find tenant for output, skipping", "output", output.Output.NamespacedName().String())
 				continue
+			}
+			if tenant.Spec.PersistenceConfig.EnableFileStorage {
+				internalConfig.QueueConfig.Storage = new(fmt.Sprintf("file_storage/%s", tenant.Name))
 			}
 
 			if output.Output.Spec.Authentication != nil {
