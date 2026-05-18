@@ -281,9 +281,8 @@ func TestGenerateAWSS3Exporters(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateAWSS3Exporters(context.TODO(), ttp.resourceRelations))
+			assert.Equal(t, tt.expectedResult, GenerateAWSS3Exporters(context.TODO(), tt.resourceRelations))
 		})
 	}
 }

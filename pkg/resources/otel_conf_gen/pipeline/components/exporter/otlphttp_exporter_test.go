@@ -482,9 +482,8 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateOTLPHTTPExporters(context.TODO(), ttp.resourceRelations))
+			assert.Equal(t, tt.expectedResult, GenerateOTLPHTTPExporters(context.TODO(), tt.resourceRelations))
 		})
 	}
 }

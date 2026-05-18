@@ -727,9 +727,8 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
-		t.Run(ttp.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedPipelines, ttp.cfgInput.generateNamedPipelines())
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedPipelines, tt.cfgInput.generateNamedPipelines())
 		})
 	}
 }

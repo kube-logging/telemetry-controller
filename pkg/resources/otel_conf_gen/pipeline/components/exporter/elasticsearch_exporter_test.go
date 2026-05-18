@@ -583,9 +583,8 @@ func TestGenerateElasticsearchExporters(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateElasticsearchExporters(context.TODO(), ttp.resourceRelations))
+			assert.Equal(t, tt.expectedResult, GenerateElasticsearchExporters(context.TODO(), tt.resourceRelations))
 		})
 	}
 }

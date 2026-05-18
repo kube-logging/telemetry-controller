@@ -353,9 +353,8 @@ func TestGenerateFileExporter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
-		t.Run(ttp.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateFileExporter(context.TODO(), ttp.resourceRelations))
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedResult, GenerateFileExporter(context.TODO(), tt.resourceRelations))
 		})
 	}
 }

@@ -587,9 +587,8 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
-		t.Run(ttp.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateOTLPGRPCExporters(context.TODO(), ttp.resourceRelations))
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedResult, GenerateOTLPGRPCExporters(context.TODO(), tt.resourceRelations))
 		})
 	}
 }
