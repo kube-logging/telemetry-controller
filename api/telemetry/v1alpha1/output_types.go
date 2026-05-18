@@ -15,8 +15,6 @@
 package v1alpha1
 
 import (
-	"time"
-
 	"go.opentelemetry.io/collector/component"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -163,9 +161,11 @@ type File struct {
 	// Supported compression algorithms:`zstd`
 	Compression compression `json:"compression,omitempty"`
 
+	// +kubebuilder:validation:Format=duration
+
 	// FlushInterval is the duration between flushes.
 	// See time.ParseDuration for valid values.
-	FlushInterval time.Duration `json:"flush_interval,omitempty"`
+	FlushInterval *string `json:"flush_interval,omitempty"`
 
 	// GroupBy enables writing to separate files based on a resource attribute.
 	GroupBy *GroupBy `json:"group_by,omitempty"`
@@ -455,9 +455,11 @@ type S3UploaderConfig struct {
 	// RetryMaxAttempts is the maximum number of retry attempts for the S3 client. Default: 3.
 	RetryMaxAttempts int `json:"retry_max_attempts,omitempty"`
 
+	// +kubebuilder:validation:Format=duration
+
 	// RetryMaxBackoff is the maximum backoff delay for the S3 client.
 	// See time.ParseDuration for valid values. Default: 20s.
-	RetryMaxBackoff time.Duration `json:"retry_max_backoff,omitempty"`
+	RetryMaxBackoff *string `json:"retry_max_backoff,omitempty"`
 
 	// +kubebuilder:validation:Enum:=uuidv7
 

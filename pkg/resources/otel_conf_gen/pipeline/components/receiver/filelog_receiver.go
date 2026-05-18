@@ -111,7 +111,7 @@ func GenerateDefaultKubernetesReceiver(namespaces []string, dryRunMode bool, ten
 		"operators":         operators,
 		"retry_on_failure": map[string]any{
 			"enabled":          true,
-			"max_elapsed_time": 0,
+			"max_elapsed_time": "0s",
 		},
 	}
 	if !dryRunMode && tenant.Spec.PersistenceConfig.EnableFileStorage {

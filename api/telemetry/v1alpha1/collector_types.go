@@ -15,8 +15,6 @@
 package v1alpha1
 
 import (
-	"time"
-
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,10 +26,12 @@ import (
 type MemoryLimiter struct {
 	// From 	go.opentelemetry.io/collector/processor/memorylimiterprocessor
 
+	// +kubebuilder:validation:Format=duration
+
 	// CheckInterval is the time between measurements of memory usage for the
 	// purposes of avoiding going over the limits. Defaults to zero, so no
-	// checks will be performed.
-	CheckInterval time.Duration `json:"check_interval"`
+	// checks will be performed. See time.ParseDuration for valid values.
+	CheckInterval string `json:"check_interval"`
 
 	// MemoryLimitMiB is the maximum amount of memory, in MiB, targeted to be
 	// allocated by the process.
@@ -82,7 +82,7 @@ type CollectorSpec struct {
 func (c *CollectorSpec) SetDefaults() {
 	if c.MemoryLimiter == nil {
 		c.MemoryLimiter = &MemoryLimiter{
-			CheckInterval:         1 * time.Second,
+			CheckInterval:         "1s",
 			MemoryLimitPercentage: 75,
 			MemorySpikeLimitMiB:   25,
 		}

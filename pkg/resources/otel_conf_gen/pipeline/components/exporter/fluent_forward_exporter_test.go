@@ -119,7 +119,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -224,7 +224,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 					"kubernetes_metadata": map[string]any{
 						"key":                "key",

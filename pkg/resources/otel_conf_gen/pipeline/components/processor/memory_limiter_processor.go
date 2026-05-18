@@ -18,7 +18,7 @@ import "github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 
 func GenerateProcessorMemoryLimiter(memoryLimiter v1alpha1.MemoryLimiter) map[string]any {
 	memoryLimiterResult := make(map[string]any)
-	memoryLimiterResult["check_interval"] = memoryLimiter.CheckInterval.String()
+	memoryLimiterResult["check_interval"] = memoryLimiter.CheckInterval
 	if memoryLimiter.MemoryLimitMiB != 0 {
 		memoryLimiterResult["limit_mib"] = memoryLimiter.MemoryLimitMiB
 	}

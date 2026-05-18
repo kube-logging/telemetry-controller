@@ -17,7 +17,6 @@ package exporter
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,7 +85,7 @@ func TestGenerateAWSS3Exporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -151,7 +150,7 @@ func TestGenerateAWSS3Exporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -199,7 +198,7 @@ func TestGenerateAWSS3Exporters(t *testing.T) {
 										Compression:         "gzip",
 										RetryMode:           "adaptive",
 										RetryMaxAttempts:    5,
-										RetryMaxBackoff:     30 * time.Second,
+										RetryMaxBackoff:     new("30s"),
 										UniqueKeyFuncName:   "uuidv7",
 									},
 									ResourceAttrsToS3: &v1alpha1.ResourceAttrsToS3{
@@ -244,7 +243,7 @@ func TestGenerateAWSS3Exporters(t *testing.T) {
 						"compression":           "gzip",
 						"retry_mode":            "adaptive",
 						"retry_max_attempts":    float64(5),
-						"retry_max_backoff":     float64(30 * time.Second),
+						"retry_max_backoff":     "30s",
 						"unique_key_func_name":  "uuidv7",
 					},
 					"resource_attrs_to_s3": map[string]any{
@@ -258,7 +257,7 @@ func TestGenerateAWSS3Exporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},

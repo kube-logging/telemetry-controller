@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
@@ -304,7 +303,7 @@ func TestOtelColConfComplex(t *testing.T) {
 			},
 		},
 		MemoryLimiter: v1alpha1.MemoryLimiter{
-			CheckInterval:         1 * time.Second,
+			CheckInterval:         "1s",
 			MemoryLimitPercentage: 75,
 			MemorySpikePercentage: 25,
 		},

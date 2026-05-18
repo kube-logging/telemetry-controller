@@ -15,8 +15,6 @@
 package exporter
 
 import (
-	"time"
-
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
 
@@ -106,7 +104,7 @@ type backOffWrapper struct {
 	Enabled *bool `json:"enabled,omitempty"`
 
 	// InitialInterval the time to wait after the first failure before retrying.
-	InitialInterval *time.Duration `json:"initial_interval,omitempty"`
+	InitialInterval *string `json:"initial_interval,omitempty"`
 
 	// RandomizationFactor is a random factor used to calculate next backoffs
 	// Randomized interval = RetryInterval * (1 ± RandomizationFactor)
@@ -117,17 +115,17 @@ type backOffWrapper struct {
 
 	// MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
 	// consecutive retries will always be `MaxInterval`.
-	MaxInterval *time.Duration `json:"max_interval,omitempty"`
+	MaxInterval *string `json:"max_interval,omitempty"`
 
 	// MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
 	// Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
 	// Default value is 0 to ensure that the data is never discarded.
-	MaxElapsedTime *time.Duration `json:"max_elapsed_time,omitempty"`
+	MaxElapsedTime *string `json:"max_elapsed_time,omitempty"`
 }
 
 func (b *backOffWrapper) setDefaultBackOffConfig(apiBackOffConfig *v1alpha1.BackOffConfig) {
 	b.Enabled = new(true)
-	b.MaxElapsedTime = new(0 * time.Second)
+	b.MaxElapsedTime = new("0s")
 
 	if apiBackOffConfig != nil {
 		if apiBackOffConfig.InitialInterval != nil {
