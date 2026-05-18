@@ -78,6 +78,7 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 	maps.Copy(exporters, exporter.GenerateFluentforwardExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateFileExporter(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateElasticsearchExporters(ctx, cfgInput.ResourceRelations))
+	maps.Copy(exporters, exporter.GenerateAWSS3Exporters(ctx, cfgInput.ResourceRelations))
 
 	return exporters
 }
@@ -273,6 +274,9 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
 						}
 						if output.Output.Spec.Elasticsearch != nil {
+							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
+						}
+						if output.Output.Spec.AWSS3 != nil {
 							exporters = append(exporters, components.GetExporterNameForOutput(output.Output), outputCountConnectorName, outputBytesConnectorName)
 						}
 					}
