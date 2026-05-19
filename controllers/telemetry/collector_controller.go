@@ -23,6 +23,7 @@ import (
 	"github.com/cisco-open/operator-tools/pkg/reconciler"
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,7 +39,10 @@ import (
 	"github.com/kube-logging/telemetry-controller/pkg/sdk/utils"
 )
 
-const requeueDelayOnFailedTenant = 20 * time.Second
+const (
+	requeueDelayOnFailedTenant = 20 * time.Second
+	requeueDelayOnConflict     = 1 * time.Second
+)
 
 // CollectorReconciler reconciles a Collector object
 type CollectorReconciler struct {
@@ -132,6 +136,10 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // handleTenantReconcileError handles errors that occur during reconciliation steps
 func (r *CollectorReconciler) handleCollectorReconcileError(ctx context.Context, baseManager *manager.BaseManager, collector *v1alpha1.Collector, err error) (ctrl.Result, error) {
 	switch {
+	case apierrors.IsConflict(err): // Stale resourceVersion, most probably otel-operator raced us. Requeue after a short delay to let otel-operator finish its work``.
+		baseManager.Info("optimistic concurrency conflict, requeueing", "name", collector.Name)
+		return ctrl.Result{RequeueAfter: requeueDelayOnConflict}, nil
+
 	case errors.Is(err, manager.ErrTenantFailed): // This error indicates that the tenant is in a failed state, and we should requeue after a delay.
 		return ctrl.Result{RequeueAfter: requeueDelayOnFailedTenant}, nil
 
