@@ -66,7 +66,7 @@ exporters:
       tcp_addr: fluentd.example-tenant-b-ns.svc.cluster.local:24224
     retry_on_failure:
       enabled: true
-      max_elapsed_time: 0
+      max_elapsed_time: 0s
     sending_queue:
       enabled: true
       queue_size: 1000
@@ -79,7 +79,7 @@ exporters:
     endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
-      max_elapsed_time: 0
+      max_elapsed_time: 0s
     sending_queue:
       enabled: true
       queue_size: 1000
@@ -90,7 +90,7 @@ exporters:
     endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
-      max_elapsed_time: 0
+      max_elapsed_time: 0s
     sending_queue:
       enabled: true
       queue_size: 1000
@@ -101,7 +101,7 @@ exporters:
     endpoint: receiver-collector.example-tenant-b-ns.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
-      max_elapsed_time: 0
+      max_elapsed_time: 0s
     sending_queue:
       enabled: true
       queue_size: 1000
@@ -112,7 +112,7 @@ exporters:
     endpoint: loki.example-tenant-a-ns.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
-      max_elapsed_time: 0
+      max_elapsed_time: 0s
     sending_queue:
       enabled: true
       queue_size: 1000
@@ -314,7 +314,7 @@ receivers:
       type: move
     retry_on_failure:
       enabled: true
-      max_elapsed_time: 0
+      max_elapsed_time: 0s
     start_at: end
     storage: file_storage/example-tenant-a
   filelog/example-tenant-b:
@@ -374,7 +374,7 @@ receivers:
       type: move
     retry_on_failure:
       enabled: true
-      max_elapsed_time: 0
+      max_elapsed_time: 0s
     start_at: end
     storage: file_storage/example-tenant-b
 service:

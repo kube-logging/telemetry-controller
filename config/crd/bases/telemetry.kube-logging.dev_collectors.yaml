@@ -70,9 +70,9 @@ spec:
                     description: |-
                       CheckInterval is the time between measurements of memory usage for the
                       purposes of avoiding going over the limits. Defaults to zero, so no
-                      checks will be performed.
-                    format: int64
-                    type: integer
+                      checks will be performed. See time.ParseDuration for valid values.
+                    format: duration
+                    type: string
                   limit_mib:
                     description: |-
                       MemoryLimitMiB is the maximum amount of memory, in MiB, targeted to be

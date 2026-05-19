@@ -15,17 +15,17 @@
 package v1alpha1
 
 import (
-	"time"
-
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configopaque"
 )
 
 // TimeoutSettings for timeout. The timeout applies to individual attempts to send data to the backend.
 type TimeoutSettings struct {
+	// +kubebuilder:validation:Format=duration
+
 	// Timeout is the timeout for every attempt to send data to the backend.
-	// A zero timeout means no timeout.
-	Timeout *time.Duration `json:"timeout,omitempty"`
+	// A zero timeout means no timeout. See time.ParseDuration for valid values.
+	Timeout *string `json:"timeout,omitempty"`
 }
 
 // QueueBatch defines batching within the sending queue.
@@ -83,8 +83,11 @@ type QueueSettings struct {
 // BackOffConfig defines configuration for retrying batches in case of export failure.
 // The current supported strategy is exponential backoff.
 type BackOffConfig struct {
+	// +kubebuilder:validation:Format=duration
+
 	// InitialInterval the time to wait after the first failure before retrying.
-	InitialInterval *time.Duration `json:"initial_interval,omitempty"`
+	// See time.ParseDuration for valid values.
+	InitialInterval *string `json:"initial_interval,omitempty"`
 
 	// RandomizationFactor is a random factor used to calculate next backoffs
 	// Randomized interval = RetryInterval * (1 ± RandomizationFactor)
@@ -93,23 +96,38 @@ type BackOffConfig struct {
 	// Multiplier is the value multiplied by the backoff interval bounds
 	Multiplier *string `json:"multiplier,omitempty"`
 
+	// +kubebuilder:validation:Format=duration
+
 	// MaxInterval is the upper bound on backoff interval. Once this value is reached the delay between
-	// consecutive retries will always be `MaxInterval`.
-	MaxInterval *time.Duration `json:"max_interval,omitempty"`
+	// consecutive retries will always be `MaxInterval`. See time.ParseDuration for valid values.
+	MaxInterval *string `json:"max_interval,omitempty"`
+
+	// +kubebuilder:validation:Format=duration
 
 	// MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request/batch.
 	// Once this value is reached, the data is discarded. If set to 0, the retries are never stopped.
 	// Default value is 0 to ensure that the data is never discarded.
-	MaxElapsedTime *time.Duration `json:"max_elapsed_time,omitempty"`
+	// See time.ParseDuration for valid values.
+	MaxElapsedTime *string `json:"max_elapsed_time,omitempty"`
 }
 
 // KeepaliveClientConfig exposes the keepalive.ClientParameters to be used by the exporter.
 // Refer to the original data-structure for the meaning of each parameter:
 // https://godoc.org/google.golang.org/grpc/keepalive#ClientParameters
 type KeepaliveClientConfig struct {
-	Time                time.Duration `json:"time,omitempty"`
-	Timeout             time.Duration `json:"timeout,omitempty"`
-	PermitWithoutStream bool          `json:"permit_without_stream,omitempty"`
+	// +kubebuilder:validation:Format=duration
+
+	// Time is the duration of inactivity after which the client pings the server.
+	// See time.ParseDuration for valid values.
+	Time *string `json:"time,omitempty"`
+
+	// +kubebuilder:validation:Format=duration
+
+	// Timeout is the duration to wait for the ping ack before assuming the connection is dead.
+	// See time.ParseDuration for valid values.
+	Timeout *string `json:"timeout,omitempty"`
+
+	PermitWithoutStream bool `json:"permit_without_stream,omitempty"`
 }
 
 // ClientConfig defines common settings for a gRPC client configuration.
@@ -221,9 +239,11 @@ type TLSSetting struct {
 	// See https://go.dev/src/crypto/tls/cipher_suites.go for a list of supported cipher suites.
 	CipherSuites []string `json:"cipher_suites,omitempty"`
 
-	// ReloadInterval specifies the duration after which the certificate will be reloaded
-	// If not set, it will never be reloaded (optional)
-	ReloadInterval time.Duration `json:"reload_interval,omitempty"`
+	// +kubebuilder:validation:Format=duration
+
+	// ReloadInterval specifies the duration after which the certificate will be reloaded.
+	// If not set, it will never be reloaded (optional). See time.ParseDuration for valid values.
+	ReloadInterval *string `json:"reload_interval,omitempty"`
 
 	// contains the elliptic curves that will be used in
 	// an ECDHE handshake, in preference order
@@ -265,9 +285,11 @@ type HTTPClientConfig struct {
 	// Default is 0.
 	WriteBufferSize *int `json:"write_buffer_size,omitempty"`
 
+	// +kubebuilder:validation:Format=duration
+
 	// Timeout parameter configures `http.Client.Timeout`.
-	// Default is 0 (unlimited).
-	Timeout *time.Duration `json:"timeout,omitempty"`
+	// Default is 0 (unlimited). See time.ParseDuration for valid values.
+	Timeout *string `json:"timeout,omitempty"`
 
 	// Additional headers attached to each HTTP request sent by the client.
 	// Existing header values are overwritten if collision happens.
@@ -296,9 +318,11 @@ type HTTPClientConfig struct {
 	// By default, it is set to [http.DefaultTransport.MaxConnsPerHost].
 	MaxConnsPerHost *int `json:"max_conns_per_host,omitempty"`
 
+	// +kubebuilder:validation:Format=duration
+
 	// IdleConnTimeout is the maximum amount of time a connection will remain open before closing itself.
-	// By default, it is set to [http.DefaultTransport.IdleConnTimeout]
-	IdleConnTimeout *time.Duration `json:"idle_conn_timeout,omitempty"`
+	// By default, it is set to [http.DefaultTransport.IdleConnTimeout]. See time.ParseDuration for valid values.
+	IdleConnTimeout *string `json:"idle_conn_timeout,omitempty"`
 
 	// DisableKeepAlives, if true, disables HTTP keep-alives and will only use the connection to the server
 	// for a single HTTP request.
@@ -311,13 +335,17 @@ type HTTPClientConfig struct {
 	// This is needed in case you run into
 	// https://github.com/golang/go/issues/59690
 	// https://github.com/golang/go/issues/36026
-	// HTTP2ReadIdleTimeout if the connection has been idle for the configured value send a ping frame for health check
-	// 0s means no health check will be performed.
-	HTTP2ReadIdleTimeout *time.Duration `json:"http2_read_idle_timeout,omitempty"`
+	// +kubebuilder:validation:Format=duration
+
+	// HTTP2ReadIdleTimeout if the connection has been idle for the configured value send a ping frame for health check.
+	// 0s means no health check will be performed. See time.ParseDuration for valid values.
+	HTTP2ReadIdleTimeout *string `json:"http2_read_idle_timeout,omitempty"`
+
+	// +kubebuilder:validation:Format=duration
 
 	// HTTP2PingTimeout if there's no response to the ping within the configured value, the connection will be closed.
-	// If not set or set to 0, it defaults to 15s.
-	HTTP2PingTimeout *time.Duration `json:"http2_ping_timeout,omitempty"`
+	// If not set or set to 0, it defaults to 15s. See time.ParseDuration for valid values.
+	HTTP2PingTimeout *string `json:"http2_ping_timeout,omitempty"`
 
 	// Cookies configures the cookie management of the HTTP client.
 	Cookies *CookiesConfig `json:"cookies,omitempty"`

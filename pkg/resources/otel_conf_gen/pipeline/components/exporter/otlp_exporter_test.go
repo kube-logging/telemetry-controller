@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/config/configcompression"
@@ -139,7 +138,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -246,7 +245,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -332,7 +331,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -436,7 +435,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -489,14 +488,14 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 										QueueSize:    new(100),
 									},
 									RetryConfig: &v1alpha1.BackOffConfig{
-										InitialInterval:     new(5 * time.Second),
+										InitialInterval:     new("5s"),
 										RandomizationFactor: new("0.1"),
 										Multiplier:          new("2.0"),
-										MaxInterval:         new(10 * time.Second),
-										MaxElapsedTime:      new(60 * time.Second),
+										MaxInterval:         new("10s"),
+										MaxElapsedTime:      new("1m0s"),
 									},
 									TimeoutSettings: v1alpha1.TimeoutSettings{
-										Timeout: new(5 * time.Second),
+										Timeout: new("5s"),
 									},
 									GRPCClientConfig: v1alpha1.GRPCClientConfig{
 										Endpoint:    new("http://example.com"),
@@ -507,8 +506,8 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 											ServerName:         "server-name",
 										},
 										Keepalive: &v1alpha1.KeepaliveClientConfig{
-											Time:                5 * time.Second,
-											Timeout:             5 * time.Second,
+											Time:                new("5s"),
+											Timeout:             new("5s"),
 											PermitWithoutStream: true,
 										},
 										ReadBufferSize:  new(1024),
@@ -555,8 +554,8 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 					},
 					"compression": "gzip",
 					"keepalive": map[string]any{
-						"time":                  float64(5 * time.Second),
-						"timeout":               float64(5 * time.Second),
+						"time":                  "5s",
+						"timeout":               "5s",
 						"permit_without_stream": true,
 					},
 					"read_buffer_size":  float64(1024),
@@ -575,22 +574,21 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":              true,
-						"initial_interval":     float64(5 * time.Second),
+						"initial_interval":     "5s",
 						"randomization_factor": "0.1",
 						"multiplier":           "2.0",
-						"max_interval":         float64(10 * time.Second),
-						"max_elapsed_time":     float64(60 * time.Second),
+						"max_interval":         "10s",
+						"max_elapsed_time":     "1m0s",
 					},
-					"timeout": float64(5 * time.Second),
+					"timeout": "5s",
 				},
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		ttp := tt
-		t.Run(ttp.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateOTLPGRPCExporters(context.TODO(), ttp.resourceRelations))
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedResult, GenerateOTLPGRPCExporters(context.TODO(), tt.resourceRelations))
 		})
 	}
 }

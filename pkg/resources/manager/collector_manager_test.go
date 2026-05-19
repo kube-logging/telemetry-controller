@@ -184,15 +184,14 @@ func TestSetOtelCommonFieldsDefaults(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
-		t.Run(ttp.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			var commonFieldsCopy *otelv1beta1.OpenTelemetryCommonFields
-			if ttp.initialCommonFields != nil {
-				commonFieldsCopy = ttp.initialCommonFields.DeepCopy()
+			if tt.initialCommonFields != nil {
+				commonFieldsCopy = tt.initialCommonFields.DeepCopy()
 			}
-			setOtelCommonFieldsDefaults(commonFieldsCopy, ttp.additionalArgs, ttp.saName)
+			setOtelCommonFieldsDefaults(commonFieldsCopy, tt.additionalArgs, tt.saName)
 
-			assert.Equal(t, ttp.expectedResult, commonFieldsCopy)
+			assert.Equal(t, tt.expectedResult, commonFieldsCopy)
 		})
 	}
 }

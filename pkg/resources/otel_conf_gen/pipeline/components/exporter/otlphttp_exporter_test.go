@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/config/configcompression"
@@ -140,7 +139,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -247,7 +246,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -333,7 +332,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -386,11 +385,11 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 										QueueSize:    new(100),
 									},
 									RetryConfig: &v1alpha1.BackOffConfig{
-										InitialInterval:     new(5 * time.Second),
+										InitialInterval:     new("5s"),
 										RandomizationFactor: new("0.1"),
 										Multiplier:          new("2.0"),
-										MaxInterval:         new(10 * time.Second),
-										MaxElapsedTime:      new(60 * time.Second),
+										MaxInterval:         new("10s"),
+										MaxElapsedTime:      new("1m0s"),
 									},
 									HTTPClientConfig: v1alpha1.HTTPClientConfig{
 										Endpoint: new("http://example.com"),
@@ -402,7 +401,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 										},
 										ReadBufferSize:  new(1024),
 										WriteBufferSize: new(1024),
-										Timeout:         new(5 * time.Second),
+										Timeout:         new("5s"),
 										Headers: &map[string]configopaque.String{
 											"header1": configopaque.String("value1"),
 										},
@@ -410,10 +409,10 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 										MaxIdleConns:         new(10),
 										MaxIdleConnsPerHost:  new(10),
 										MaxConnsPerHost:      new(10),
-										IdleConnTimeout:      new(5 * time.Second),
+										IdleConnTimeout:      new("5s"),
 										DisableKeepAlives:    new(true),
-										HTTP2ReadIdleTimeout: new(5 * time.Second),
-										HTTP2PingTimeout:     new(5 * time.Second),
+										HTTP2ReadIdleTimeout: new("5s"),
+										HTTP2PingTimeout:     new("5s"),
 									},
 								},
 							},
@@ -451,7 +450,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					},
 					"read_buffer_size":  float64(1024),
 					"write_buffer_size": float64(1024),
-					"timeout":           float64(5 * time.Second),
+					"timeout":           "5s",
 					"headers": map[string]any{
 						"header1": configopaque.String("value1").String(),
 					},
@@ -459,10 +458,10 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					"max_idle_conns":          float64(10),
 					"max_idle_conns_per_host": float64(10),
 					"max_conns_per_host":      float64(10),
-					"idle_conn_timeout":       float64(5 * time.Second),
+					"idle_conn_timeout":       "5s",
 					"disable_keep_alives":     true,
-					"http2_read_idle_timeout": float64(5 * time.Second),
-					"http2_ping_timeout":      float64(5 * time.Second),
+					"http2_read_idle_timeout": "5s",
+					"http2_ping_timeout":      "5s",
 					"sending_queue": map[string]any{
 						"enabled":       true,
 						"num_consumers": float64(10),
@@ -471,11 +470,11 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":              true,
-						"initial_interval":     float64(5 * time.Second),
+						"initial_interval":     "5s",
 						"randomization_factor": "0.1",
 						"multiplier":           "2.0",
-						"max_interval":         float64(10 * time.Second),
-						"max_elapsed_time":     float64(60 * time.Second),
+						"max_interval":         "10s",
+						"max_elapsed_time":     "1m0s",
 					},
 				},
 			},
@@ -483,9 +482,8 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateOTLPHTTPExporters(context.TODO(), ttp.resourceRelations))
+			assert.Equal(t, tt.expectedResult, GenerateOTLPHTTPExporters(context.TODO(), tt.resourceRelations))
 		})
 	}
 }

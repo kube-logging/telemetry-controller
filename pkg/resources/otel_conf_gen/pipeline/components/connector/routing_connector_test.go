@@ -53,9 +53,8 @@ func TestGenerateRoutingConnectorForSubscriptionsOutputs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedRC, GenerateRoutingConnectorForSubscriptionsOutputs(ttp.subscriptionRef, ttp.outputNames))
+			assert.Equal(t, tt.expectedRC, GenerateRoutingConnectorForSubscriptionsOutputs(tt.subscriptionRef, tt.outputNames))
 		})
 	}
 }
@@ -87,9 +86,8 @@ func TestGenerateRoutingConnectorForBridge(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedRC, GenerateRoutingConnectorForBridge(ttp.bridge))
+			assert.Equal(t, tt.expectedRC, GenerateRoutingConnectorForBridge(tt.bridge))
 		})
 	}
 }
@@ -162,10 +160,9 @@ func TestGenerateRoutingConnectorForBridgesTenantPipeline(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
 		t.Run(tt.name, func(t *testing.T) {
-			GenerateRoutingConnectorForBridgesTenantPipeline(ttp.tenantName, ttp.pipeline, ttp.bridges)
-			assert.Equal(t, ttp.expectedPipeline, ttp.pipeline)
+			GenerateRoutingConnectorForBridgesTenantPipeline(tt.tenantName, tt.pipeline, tt.bridges)
+			assert.Equal(t, tt.expectedPipeline, tt.pipeline)
 		})
 	}
 }

@@ -15,8 +15,6 @@
 package v1alpha1
 
 import (
-	"time"
-
 	"go.opentelemetry.io/collector/component"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,6 +69,7 @@ type OutputSpec struct {
 	OTLPHTTP       *OTLPHTTP      `json:"otlphttp,omitempty"`
 	File           *File          `json:"file,omitempty"`
 	Elasticsearch  *Elasticsearch `json:"elasticsearch,omitempty"`
+	AWSS3          *AWSS3         `json:"awss3,omitempty"`
 	Authentication *OutputAuth    `json:"authentication,omitempty"`
 	Batch          *Batch         `json:"batch,omitempty"`
 }
@@ -162,9 +161,11 @@ type File struct {
 	// Supported compression algorithms:`zstd`
 	Compression compression `json:"compression,omitempty"`
 
+	// +kubebuilder:validation:Format=duration
+
 	// FlushInterval is the duration between flushes.
 	// See time.ParseDuration for valid values.
-	FlushInterval time.Duration `json:"flush_interval,omitempty"`
+	FlushInterval *string `json:"flush_interval,omitempty"`
 
 	// GroupBy enables writing to separate files based on a resource attribute.
 	GroupBy *GroupBy `json:"group_by,omitempty"`
@@ -360,6 +361,121 @@ type Fluentforward struct {
 	QueueConfig *QueueSettings      `json:"sending_queue,omitempty"`
 	RetryConfig *BackOffConfig      `json:"retry_on_failure,omitempty"`
 	Kubernetes  *KubernetesMetadata `json:"kubernetes_metadata,omitempty"`
+}
+
+// AWSS3 defines configuration for the AWS S3 exporter.
+// ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/awss3exporter
+type AWSS3 struct {
+	// S3Uploader configures the S3 upload behavior (bucket, prefix, region, etc.).
+	S3Uploader *S3UploaderConfig `json:"s3uploader,omitempty"`
+
+	// +kubebuilder:validation:Enum:=otlp_proto;otlp_json;sumo_ic;body
+
+	// MarshalerName specifies how telemetry is serialized before upload.
+	// Supported values: `otlp_proto`, `otlp_json`, `sumo_ic`, `body`. Default: `otlp_json`.
+	MarshalerName *string `json:"marshaler,omitempty"`
+
+	// Encoding extension ID. When set, overrides the marshaler.
+	Encoding *component.ID `json:"encoding,omitempty"`
+
+	// EncodingFileExtension is appended to the uploaded file when an Encoding is configured.
+	EncodingFileExtension string `json:"encoding_file_extension,omitempty"`
+
+	// ResourceAttrsToS3 allows S3 uploader fields to be sourced from resource attributes.
+	ResourceAttrsToS3 *ResourceAttrsToS3 `json:"resource_attrs_to_s3,omitempty"`
+
+	// TimeoutSettings configures the request timeout.
+	TimeoutSettings `json:",inline"`
+
+	// QueueConfig configures the sending queue.
+	QueueConfig *QueueSettings `json:"sending_queue,omitempty"`
+
+	// RetryConfig configures the retry behavior on export failure.
+	RetryConfig *BackOffConfig `json:"retry_on_failure,omitempty"`
+}
+
+// S3UploaderConfig contains S3 uploader related configuration: bucket, prefix,
+// region, retries, etc.
+type S3UploaderConfig struct {
+	// Region is the AWS region the bucket lives in. Default: `us-east-1`.
+	Region string `json:"region,omitempty"`
+
+	// S3Bucket is the name of the destination bucket.
+	// Either S3Bucket or Endpoint must be set.
+	S3Bucket string `json:"s3_bucket,omitempty"`
+
+	// S3BasePrefix is the root key (directory) prefix used to write the file.
+	S3BasePrefix string `json:"s3_base_prefix,omitempty"`
+
+	// S3Prefix is the key (directory) prefix used inside the bucket; appended to S3BasePrefix.
+	S3Prefix string `json:"s3_prefix,omitempty"`
+
+	// S3PartitionFormat controls the time-based rollup of object keys using strftime
+	// formatting. Default: `year=%Y/month=%m/day=%d/hour=%H/minute=%M`.
+	S3PartitionFormat string `json:"s3_partition_format,omitempty"`
+
+	// S3PartitionTimezone is the timezone used for partition time. Defaults to local time.
+	S3PartitionTimezone string `json:"s3_partition_timezone,omitempty"`
+
+	// FilePrefix is prepended to the file name to avoid potential collisions.
+	FilePrefix string `json:"file_prefix,omitempty"`
+
+	// Endpoint is the URL used to communicate with S3 (useful for S3-compatible stores).
+	// Either S3Bucket or Endpoint must be set.
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// RoleArn is the role policy to assume when interacting with S3.
+	RoleArn string `json:"role_arn,omitempty"`
+
+	// S3ForcePathStyle forces path-style addressing of S3 objects.
+	S3ForcePathStyle bool `json:"s3_force_path_style,omitempty"`
+
+	// DisableSSL forces communication via HTTP instead of HTTPS.
+	DisableSSL bool `json:"disable_ssl,omitempty"`
+
+	// ACL is the canned ACL to apply to uploaded objects (e.g. `private`, `public-read`).
+	ACL string `json:"acl,omitempty"`
+
+	// StorageClass is the S3 storage class for uploaded objects (e.g. `STANDARD`,
+	// `STANDARD_IA`, `GLACIER`). Default: `STANDARD`.
+	StorageClass string `json:"storage_class,omitempty"`
+
+	// +kubebuilder:validation:Enum:=gzip;zstd
+
+	// Compression algorithm applied to the payload before upload.
+	// Supported values: `gzip`, `zstd`.
+	Compression string `json:"compression,omitempty"`
+
+	// +kubebuilder:validation:Enum:=standard;adaptive;nop
+
+	// RetryMode for the S3 client. Supported values: `standard`, `adaptive`, `nop`.
+	// Default: `standard`.
+	RetryMode string `json:"retry_mode,omitempty"`
+
+	// RetryMaxAttempts is the maximum number of retry attempts for the S3 client. Default: 3.
+	RetryMaxAttempts int `json:"retry_max_attempts,omitempty"`
+
+	// +kubebuilder:validation:Format=duration
+
+	// RetryMaxBackoff is the maximum backoff delay for the S3 client.
+	// See time.ParseDuration for valid values. Default: 20s.
+	RetryMaxBackoff *string `json:"retry_max_backoff,omitempty"`
+
+	// +kubebuilder:validation:Enum:=uuidv7
+
+	// UniqueKeyFuncName specifies which function to use for generating a unique
+	// component of the S3 key. Supported values: `uuidv7`.
+	UniqueKeyFuncName string `json:"unique_key_func_name,omitempty"`
+}
+
+// ResourceAttrsToS3 maps S3 uploader fields onto resource attribute values, allowing
+// the bucket name or key prefix to be derived from telemetry data at runtime.
+type ResourceAttrsToS3 struct {
+	// S3Bucket is the resource attribute key whose value is used as the bucket name.
+	S3Bucket string `json:"s3_bucket,omitempty"`
+
+	// S3Prefix is the resource attribute key whose value is used as the object key prefix.
+	S3Prefix string `json:"s3_prefix,omitempty"`
 }
 
 // OutputStatus defines the observed state of Output

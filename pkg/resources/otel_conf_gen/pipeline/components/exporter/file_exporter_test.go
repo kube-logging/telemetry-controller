@@ -17,7 +17,6 @@ package exporter
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/component"
@@ -164,7 +163,7 @@ func TestGenerateFileExporter(t *testing.T) {
 							Spec: v1alpha1.OutputSpec{
 								File: &v1alpha1.File{
 									Path:          "/tmp/logs.json",
-									FlushInterval: 5 * time.Second,
+									FlushInterval: new("5s"),
 								},
 							},
 						},
@@ -174,7 +173,7 @@ func TestGenerateFileExporter(t *testing.T) {
 			expectedResult: map[string]any{
 				"file/default_output5": map[string]any{
 					"path":           "/tmp/logs.json",
-					"flush_interval": float64(5 * time.Second),
+					"flush_interval": "5s",
 				},
 			},
 		},
@@ -256,7 +255,7 @@ func TestGenerateFileExporter(t *testing.T) {
 									Append:        true,
 									FormatType:    "json",
 									Compression:   "zstd",
-									FlushInterval: 10 * time.Second,
+									FlushInterval: new("10s"),
 									Rotation: &v1alpha1.Rotation{
 										MaxMegabytes: 200,
 										MaxDays:      14,
@@ -275,7 +274,7 @@ func TestGenerateFileExporter(t *testing.T) {
 					"append":         true,
 					"format":         "json",
 					"compression":    "zstd",
-					"flush_interval": float64(10 * time.Second),
+					"flush_interval": "10s",
 					"rotation": map[string]any{
 						"max_megabytes": float64(200),
 						"max_days":      float64(14),
@@ -354,9 +353,8 @@ func TestGenerateFileExporter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
-		t.Run(ttp.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateFileExporter(context.TODO(), ttp.resourceRelations))
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedResult, GenerateFileExporter(context.TODO(), tt.resourceRelations))
 		})
 	}
 }

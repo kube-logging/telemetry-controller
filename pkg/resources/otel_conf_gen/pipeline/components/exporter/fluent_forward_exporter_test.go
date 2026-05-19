@@ -119,7 +119,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 				},
 			},
@@ -224,7 +224,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 					},
 					"retry_on_failure": map[string]any{
 						"enabled":          true,
-						"max_elapsed_time": float64(0),
+						"max_elapsed_time": "0s",
 					},
 					"kubernetes_metadata": map[string]any{
 						"key":                "key",
@@ -236,9 +236,8 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		ttp := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, ttp.expectedResult, GenerateFluentforwardExporters(context.TODO(), ttp.resourceRelations))
+			assert.Equal(t, tt.expectedResult, GenerateFluentforwardExporters(context.TODO(), tt.resourceRelations))
 		})
 	}
 }
