@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"emperror.dev/errors"
-	apiv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -208,7 +208,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		&v1alpha1.Subscription{},
 		&v1alpha1.Output{},
 		&v1alpha1.Bridge{},
-		&apiv1.Namespace{},
+		&corev1.Namespace{},
 	}
 	for _, resource := range watchedResources {
 		builder = builder.Watches(resource, enqueueAllTenants)
