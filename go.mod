@@ -9,23 +9,23 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/onsi/ginkgo/v2 v2.29.0
+	github.com/onsi/ginkgo/v2 v2.30.0
 	github.com/onsi/gomega v1.41.0
-	github.com/open-telemetry/opentelemetry-operator v0.152.0
+	github.com/open-telemetry/opentelemetry-operator v0.153.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
-	go.opentelemetry.io/collector/component v1.59.0
-	go.opentelemetry.io/collector/config/configauth v1.59.0
-	go.opentelemetry.io/collector/config/configcompression v1.59.0
-	go.opentelemetry.io/collector/config/configopaque v1.59.0
-	go.opentelemetry.io/collector/config/configtelemetry v0.153.0
-	go.opentelemetry.io/collector/otelcol v0.153.0
-	go.opentelemetry.io/collector/pipeline v1.59.0
-	go.opentelemetry.io/collector/service v0.153.0
+	go.opentelemetry.io/collector/component v1.60.0
+	go.opentelemetry.io/collector/config/configauth v1.60.0
+	go.opentelemetry.io/collector/config/configcompression v1.60.0
+	go.opentelemetry.io/collector/config/configopaque v1.60.0
+	go.opentelemetry.io/collector/config/configtelemetry v0.154.0
+	go.opentelemetry.io/collector/otelcol v0.154.0
+	go.opentelemetry.io/collector/pipeline v1.60.0
+	go.opentelemetry.io/collector/service v0.154.0
 	go.uber.org/zap v1.28.0
-	k8s.io/api v0.36.1
-	k8s.io/apimachinery v0.36.1
-	k8s.io/client-go v0.36.1
+	k8s.io/api v0.36.2
+	k8s.io/apimachinery v0.36.2
+	k8s.io/client-go v0.36.2
 	sigs.k8s.io/controller-runtime v0.24.1
 	sigs.k8s.io/yaml v1.6.0
 )
