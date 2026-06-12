@@ -41,6 +41,9 @@ type OtelColConfigInput struct {
 	MemoryLimiter v1alpha1.MemoryLimiter
 	Debug         bool
 	DryRunMode    bool
+
+	// IsAxoflowDistribution gates components only available in that distribution.
+	IsAxoflowDistribution bool
 }
 
 func (cfgInput *OtelColConfigInput) IsEmpty() bool {
@@ -75,7 +78,7 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 	maps.Copy(exporters, exporter.GenerateMetricsExporters())
 	maps.Copy(exporters, exporter.GenerateOTLPGRPCExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateOTLPHTTPExporters(ctx, cfgInput.ResourceRelations))
-	maps.Copy(exporters, exporter.GenerateFluentforwardExporters(ctx, cfgInput.ResourceRelations))
+	maps.Copy(exporters, exporter.GenerateFluentforwardExporters(ctx, cfgInput.ResourceRelations, cfgInput.IsAxoflowDistribution))
 	maps.Copy(exporters, exporter.GenerateFileExporter(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateElasticsearchExporters(ctx, cfgInput.ResourceRelations))
 	maps.Copy(exporters, exporter.GenerateAWSS3Exporters(ctx, cfgInput.ResourceRelations))
@@ -177,7 +180,9 @@ func (cfgInput *OtelColConfigInput) generateConnectors() map[string]any {
 
 	if !cfgInput.DryRunMode {
 		maps.Copy(connectors, connector.GenerateCountConnectors())
-		maps.Copy(connectors, connector.GenerateBytesConnectors())
+		if cfgInput.IsAxoflowDistribution {
+			maps.Copy(connectors, connector.GenerateBytesConnectors())
+		}
 	}
 
 	for _, tenant := range cfgInput.Tenants {
@@ -216,7 +221,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 	}
 
 	if !cfgInput.DryRunMode {
-		maps.Copy(namedPipelines, pipeline.GenerateMetricsPipelines())
+		maps.Copy(namedPipelines, pipeline.GenerateMetricsPipelines(cfgInput.IsAxoflowDistribution))
 	}
 
 	for _, tenant := range tenants {
@@ -261,7 +266,10 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 						}
 						// GetExporterNameForOutput returns a non-empty name for any supported exporter.
 						if exporterName := components.GetExporterNameForOutput(output.Output); exporterName != "" {
-							exporters = append(exporters, exporterName, outputCountConnectorName, outputBytesConnectorName)
+							exporters = append(exporters, exporterName, outputCountConnectorName)
+							if cfgInput.IsAxoflowDistribution {
+								exporters = append(exporters, outputBytesConnectorName)
+							}
 						}
 					}
 

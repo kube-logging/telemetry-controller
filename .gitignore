@@ -38,3 +38,6 @@ go.work.sum
 devspace.yaml
 
 .envrc
+
+**/settings.local.json
+**/CLAUDE.local.md

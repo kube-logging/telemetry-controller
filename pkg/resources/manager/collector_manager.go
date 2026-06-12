@@ -46,8 +46,9 @@ import (
 )
 
 const (
-	otelCollectorKind            = "OpenTelemetryCollector"
-	axoflowOtelCollectorImageRef = "ghcr.io/axoflow/axoflow-otel-collector/axoflow-otel-collector:0.152.0-axoflow.1"
+	otelCollectorKind             = "OpenTelemetryCollector"
+	axoflowOtelCollectorImageRepo = "ghcr.io/axoflow/axoflow-otel-collector"
+	axoflowOtelCollectorImageRef  = axoflowOtelCollectorImageRepo + "/axoflow-otel-collector:0.152.0-axoflow.1"
 )
 
 var (
@@ -121,6 +122,11 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 		}
 	}
 
+	var collectorImage string
+	if collector.Spec.OtelCommonFields != nil {
+		collectorImage = collector.Spec.OtelCommonFields.Image
+	}
+
 	return otelcolconfgen.OtelColConfigInput{
 		ResourceRelations: components.ResourceRelations{
 			Tenants:               tenants,
@@ -130,9 +136,10 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 			TenantSubscriptionMap: tenantSubscriptionMap,
 			SubscriptionOutputMap: subscriptionOutputMap,
 		},
-		Debug:         utils.DerefOrZero(collector.Spec.Debug),
-		DryRunMode:    utils.DerefOrZero(collector.Spec.DryRunMode),
-		MemoryLimiter: *collector.Spec.MemoryLimiter,
+		Debug:                 utils.DerefOrZero(collector.Spec.Debug),
+		DryRunMode:            utils.DerefOrZero(collector.Spec.DryRunMode),
+		MemoryLimiter:         *collector.Spec.MemoryLimiter,
+		IsAxoflowDistribution: isAxoflowDistribution(collectorImage),
 	}, nil
 }
 
@@ -592,4 +599,10 @@ func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryComm
 
 func authSecretName(collectorName string) string {
 	return fmt.Sprintf("otelcollector-%s-auth", collectorName)
+}
+
+func isAxoflowDistribution(image string) bool {
+	return image == "" ||
+		strings.HasPrefix(image, axoflowOtelCollectorImageRepo+"/") ||
+		strings.HasPrefix(image, axoflowOtelCollectorImageRepo+":")
 }

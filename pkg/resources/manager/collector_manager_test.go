@@ -195,3 +195,24 @@ func TestSetOtelCommonFieldsDefaults(t *testing.T) {
 		})
 	}
 }
+
+func TestIsAxoflowDistribution(t *testing.T) {
+	tests := []struct {
+		name     string
+		image    string
+		expected bool
+	}{
+		{name: "Empty image uses axoflow default", image: "", expected: true},
+		{name: "Default axoflow image", image: axoflowOtelCollectorImageRef, expected: true},
+		{name: "Custom axoflow tag", image: axoflowOtelCollectorImageRepo + "/axoflow-otel-collector:dev", expected: true},
+		{name: "Upstream collector image", image: "otel/opentelemetry-collector-contrib:0.152.0", expected: false},
+		{name: "Unrelated custom image", image: "ghcr.io/example/custom-collector:1.0.0", expected: false},
+		{name: "Lookalike repo is not axoflow distribution", image: axoflowOtelCollectorImageRepo + "-fork:latest", expected: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, isAxoflowDistribution(tt.image))
+		})
+	}
+}

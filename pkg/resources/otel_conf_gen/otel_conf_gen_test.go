@@ -104,6 +104,7 @@ func TestOtelColConfComplex(t *testing.T) {
 		},
 	}
 	inputCfg := OtelColConfigInput{
+		IsAxoflowDistribution: true,
 		ResourceRelations: components.ResourceRelations{
 			Subscriptions: subscriptions,
 			Tenants: []v1alpha1.Tenant{
@@ -464,7 +465,8 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 		{
 			name: "Single tenant with no subscriptions",
 			cfgInput: OtelColConfigInput{
-				DryRunMode: false,
+				DryRunMode:            false,
+				IsAxoflowDistribution: true,
 				ResourceRelations: components.ResourceRelations{
 					Bridges:               nil,
 					OutputsWithSecretData: nil,
@@ -509,8 +511,52 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 			},
 		},
 		{
+			name: "Non-axoflow distribution omits the bytes pipeline",
+			cfgInput: OtelColConfigInput{
+				DryRunMode:            false,
+				IsAxoflowDistribution: false,
+				ResourceRelations: components.ResourceRelations{
+					Bridges:               nil,
+					OutputsWithSecretData: nil,
+					TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+						"tenant1": {
+							{
+								Namespace: "ns1",
+								Name:      "sub1",
+							},
+						},
+					},
+					SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+						{
+							Namespace: "ns1",
+							Name:      "sub1",
+						}: {},
+					},
+				},
+			},
+			expectedPipelines: map[string]*otelv1beta1.Pipeline{
+				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false),
+				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
+					[]string{"routing/tenant_tenant1_subscriptions"},
+					[]string{"attributes/subscription_sub1"},
+					[]string{"routing/subscription_ns1_sub1_outputs"},
+				),
+				"metrics/output": pipeline.GeneratePipeline(
+					[]string{"count/output_metrics"},
+					[]string{"deltatocumulative", "attributes/metricattributes"},
+					[]string{"prometheus/message_metrics_exporter"},
+				),
+				"metrics/tenant": pipeline.GeneratePipeline(
+					[]string{"count/tenant_metrics"},
+					[]string{"deltatocumulative", "attributes/metricattributes"},
+					[]string{"prometheus/message_metrics_exporter"},
+				),
+			},
+		},
+		{
 			name: "Three tenants two bridges",
 			cfgInput: OtelColConfigInput{
+				IsAxoflowDistribution: true,
 				ResourceRelations: components.ResourceRelations{
 					Tenants: []v1alpha1.Tenant{
 						{

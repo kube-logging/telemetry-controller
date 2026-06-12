@@ -45,7 +45,7 @@ type FluentForwardWrapper struct {
 	Kubernetes  *v1alpha1.KubernetesMetadata `json:"kubernetes_metadata,omitempty"`
 }
 
-func (w *FluentForwardWrapper) mapToFluentForwardWrapper(userConfig *v1alpha1.Fluentforward) {
+func (w *FluentForwardWrapper) mapToFluentForwardWrapper(userConfig *v1alpha1.Fluentforward, isAxoflowDistribution bool) {
 	w.QueueConfig = &queueWrapper{}
 	w.RetryConfig = &backOffWrapper{}
 	w.QueueConfig.setDefaultQueueSettings(userConfig.QueueConfig)
@@ -63,20 +63,20 @@ func (w *FluentForwardWrapper) mapToFluentForwardWrapper(userConfig *v1alpha1.Fl
 	if userConfig.DefaultLabelsEnabled != nil {
 		w.DefaultLabelsEnabled = userConfig.DefaultLabelsEnabled
 	}
-	if userConfig.Kubernetes != nil {
+	if isAxoflowDistribution && userConfig.Kubernetes != nil {
 		w.Kubernetes = userConfig.Kubernetes
 	}
 	w.TCPClientSettings = userConfig.TCPClientSettings
 }
 
-func GenerateFluentforwardExporters(ctx context.Context, resourceRelations components.ResourceRelations) map[string]any {
+func GenerateFluentforwardExporters(ctx context.Context, resourceRelations components.ResourceRelations, isAxoflowDistribution bool) map[string]any {
 	logger := log.FromContext(ctx)
 
 	result := make(map[string]any)
 	for _, output := range resourceRelations.OutputsWithSecretData {
 		if output.Output.Spec.Fluentforward != nil {
 			internalConfig := FluentForwardWrapper{}
-			internalConfig.mapToFluentForwardWrapper(output.Output.Spec.Fluentforward)
+			internalConfig.mapToFluentForwardWrapper(output.Output.Spec.Fluentforward, isAxoflowDistribution)
 			tenant, err := resourceRelations.FindTenantForOutput(output.Output.NamespacedName())
 			if err != nil {
 				logger.Error(err, "failed to find tenant for output, skipping", "output", output.Output.NamespacedName().String())

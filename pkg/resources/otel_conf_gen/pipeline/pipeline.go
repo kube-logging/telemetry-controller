@@ -57,7 +57,7 @@ func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string, dryRunMo
 	return GeneratePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName), "filter/exclude"}, []string{exporterName, tenantCountConnectorName})
 }
 
-func GenerateMetricsPipelines() map[string]*otelv1beta1.Pipeline {
+func GenerateMetricsPipelines(includeOutputBytes bool) map[string]*otelv1beta1.Pipeline {
 	metricsPipelines := make(map[string]*otelv1beta1.Pipeline)
 	metricsPipelines["metrics/tenant"] = &otelv1beta1.Pipeline{
 		Receivers:  []string{"count/tenant_metrics"},
@@ -70,10 +70,13 @@ func GenerateMetricsPipelines() map[string]*otelv1beta1.Pipeline {
 		Exporters:  []string{exporter.DefaultPrometheusExporterID},
 	}
 
-	metricsPipelines["metrics/output_bytes"] = &otelv1beta1.Pipeline{
-		Receivers:  []string{"bytes/exporter"},
-		Processors: []string{processor.DefaultDeltaToCumulativeProcessorID, "attributes/metricattributes"},
-		Exporters:  []string{exporter.DefaultPrometheusExporterID},
+	// The bytesconnector feeding this pipeline is only available in the axoflow-otel-collector distribution.
+	if includeOutputBytes {
+		metricsPipelines["metrics/output_bytes"] = &otelv1beta1.Pipeline{
+			Receivers:  []string{"bytes/exporter"},
+			Processors: []string{processor.DefaultDeltaToCumulativeProcessorID, "attributes/metricattributes"},
+			Exporters:  []string{exporter.DefaultPrometheusExporterID},
+		}
 	}
 
 	return metricsPipelines
