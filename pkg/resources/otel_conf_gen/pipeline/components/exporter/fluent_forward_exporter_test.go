@@ -30,12 +30,14 @@ const testTenantName = "tenant1"
 
 func TestGenerateFluentforwardExporters(t *testing.T) {
 	tests := []struct {
-		name              string
-		resourceRelations components.ResourceRelations
-		expectedResult    map[string]any
+		name                  string
+		resourceRelations     components.ResourceRelations
+		isAxoflowDistribution bool
+		expectedResult        map[string]any
 	}{
 		{
-			name: "Valid config",
+			name:                  "Valid config",
+			isAxoflowDistribution: true,
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
@@ -125,7 +127,8 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 			},
 		},
 		{
-			name: "All fields set, tls settings omitted",
+			name:                  "All fields set, tls settings omitted",
+			isAxoflowDistribution: true,
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
@@ -233,11 +236,78 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:                  "kubernetes_metadata dropped for non-axoflow distribution",
+			isAxoflowDistribution: false,
+			resourceRelations: components.ResourceRelations{
+				Tenants: []v1alpha1.Tenant{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: testTenantName,
+						},
+					},
+				},
+				OutputsWithSecretData: []components.OutputWithSecretData{
+					{
+						Output: v1alpha1.Output{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "output3",
+								Namespace: "default",
+							},
+							Spec: v1alpha1.OutputSpec{
+								Fluentforward: &v1alpha1.Fluentforward{
+									TCPClientSettings: v1alpha1.TCPClientSettings{
+										Endpoint: &v1alpha1.Endpoint{
+											TCPAddr: new("http://example.com"),
+										},
+									},
+									Kubernetes: &v1alpha1.KubernetesMetadata{Key: "key", IncludePodLabels: true},
+								},
+							},
+						},
+					},
+				},
+				TenantSubscriptionMap: map[string][]v1alpha1.NamespacedName{
+					testTenantName: {
+						{
+							Name:      "sub1",
+							Namespace: "default",
+						},
+					},
+				},
+				SubscriptionOutputMap: map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName{
+					{
+						Name:      "sub1",
+						Namespace: "default",
+					}: {
+						{
+							Name:      "output3",
+							Namespace: "default",
+						},
+					},
+				},
+			},
+			expectedResult: map[string]any{
+				"fluentforwardexporter/default_output3": map[string]any{
+					"endpoint": map[string]any{
+						"tcp_addr": "http://example.com",
+					},
+					"sending_queue": map[string]any{
+						"enabled":    true,
+						"queue_size": float64(1000),
+					},
+					"retry_on_failure": map[string]any{
+						"enabled":          true,
+						"max_elapsed_time": "0s",
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expectedResult, GenerateFluentforwardExporters(context.TODO(), tt.resourceRelations))
+			assert.Equal(t, tt.expectedResult, GenerateFluentforwardExporters(context.TODO(), tt.resourceRelations, tt.isAxoflowDistribution))
 		})
 	}
 }
