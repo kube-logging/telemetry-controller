@@ -88,7 +88,7 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 
 func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	processors := make(map[string]any)
-	processors["k8sattributes"] = processor.GenerateDefaultKubernetesProcessor()
+	processors["k8s_attributes"] = processor.GenerateDefaultKubernetesProcessor()
 	processors["memory_limiter"] = processor.GenerateProcessorMemoryLimiter(cfgInput.MemoryLimiter)
 	processors["filter/exclude"] = processor.GenerateFilterProcessor()
 	maps.Copy(processors, processor.GenerateMetricsProcessors())
@@ -167,7 +167,7 @@ func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
 		}); tenantIdx != -1 {
 			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
 			if len(namespaces) > 0 || cfgInput.Tenants[tenantIdx].Spec.SelectFromAllNamespaces {
-				receivers[fmt.Sprintf("filelog/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces, cfgInput.DryRunMode, cfgInput.Tenants[tenantIdx])
+				receivers[fmt.Sprintf("file_log/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces, cfgInput.DryRunMode, cfgInput.Tenants[tenantIdx])
 			}
 		}
 	}
