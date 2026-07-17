@@ -190,7 +190,7 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 	if !utils.DerefOrZero(collector.Spec.DryRunMode) {
 		handleVolumes(&otelCollector.Spec.OpenTelemetryCommonFields, tenants, outputs)
 
-		// Inject the node name via the downward API so the k8sattributes
+		// Inject the node name via the downward API so the k8s_attributes
 		// processor can scope its informer to the local node
 		// (filter.node_from_env_var).
 		otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{

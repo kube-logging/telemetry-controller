@@ -126,7 +126,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 				},
 			},
 			expectedResult: map[string]any{
-				"otlp/default_output1": map[string]any{
+				"otlp_grpc/default_output1": map[string]any{
 					"endpoint": "http://example.com",
 					"auth": map[string]any{
 						"authenticator": "basicauth/default_output1",
@@ -233,7 +233,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 				},
 			},
 			expectedResult: map[string]any{
-				"otlp/default_output2": map[string]any{
+				"otlp_grpc/default_output2": map[string]any{
 					"endpoint": "http://example.com",
 					"auth": map[string]any{
 						"authenticator": "bearertokenauth/default_output2",
@@ -322,7 +322,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 				},
 			},
 			expectedResult: map[string]any{
-				"otlp/default_output3": map[string]any{
+				"otlp_grpc/default_output3": map[string]any{
 					"endpoint": "http://example.com",
 					"sending_queue": map[string]any{
 						"enabled":    true,
@@ -417,7 +417,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 				},
 			},
 			expectedResult: map[string]any{
-				"otlp/default_output-batch": map[string]any{
+				"otlp_grpc/default_output-batch": map[string]any{
 					"endpoint": "http://example.com",
 					"sending_queue": map[string]any{
 						"enabled":    true,
@@ -545,7 +545,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 				},
 			},
 			expectedResult: map[string]any{
-				"otlp/default_output4": map[string]any{
+				"otlp_grpc/default_output4": map[string]any{
 					"endpoint": "http://example.com",
 					"tls": map[string]any{
 						"insecure":             true,
