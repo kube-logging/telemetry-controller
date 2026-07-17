@@ -372,7 +372,7 @@ func (c *CollectorManager) reconcileClusterRole(collector *v1alpha1.Collector, s
 			{
 				Verbs:     []string{"get", "watch", "list"},
 				APIGroups: []string{""},
-				Resources: []string{"pods", "namespaces", "nodes"},
+				Resources: []string{"pods", "namespaces", "nodes", "events"},
 			},
 			{
 				Verbs:     []string{"get", "watch", "list"},

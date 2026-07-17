@@ -165,9 +165,13 @@ func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
 		if tenantIdx := slices.IndexFunc(cfgInput.Tenants, func(t v1alpha1.Tenant) bool {
 			return tenantName == t.Name
 		}); tenantIdx != -1 {
-			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
-			if len(namespaces) > 0 || cfgInput.Tenants[tenantIdx].Spec.SelectFromAllNamespaces {
-				receivers[fmt.Sprintf("filelog/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces, cfgInput.DryRunMode, cfgInput.Tenants[tenantIdx])
+			tenant := cfgInput.Tenants[tenantIdx]
+			namespaces := tenant.Status.LogSourceNamespaces
+			if len(namespaces) > 0 || tenant.Spec.SelectFromAllNamespaces {
+				receivers[fmt.Sprintf("filelog/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces, cfgInput.DryRunMode, tenant)
+				if tenant.Spec.EventsToLogs {
+					receivers[fmt.Sprintf("k8s_events/%s", tenantName)] = receiver.GenerateKubernetesEventsReceiver(namespaces, tenant.Spec.SelectFromAllNamespaces)
+				}
 			}
 		}
 	}

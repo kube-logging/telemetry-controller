@@ -130,6 +130,7 @@ func TestOtelColConfComplex(t *testing.T) {
 						PersistenceConfig: v1alpha1.PersistenceConfig{
 							EnableFileStorage: true,
 						},
+						EventsToLogs: true,
 					},
 					Status: v1alpha1.TenantStatus{
 						LogSourceNamespaces: []string{

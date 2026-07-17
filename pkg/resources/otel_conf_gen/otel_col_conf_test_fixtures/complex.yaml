@@ -317,6 +317,9 @@ receivers:
       max_elapsed_time: 0s
     start_at: end
     storage: file_storage/example-tenant-a
+  k8s_events/example-tenant-a:
+    namespaces:
+    - example-tenant-a
   filelog/example-tenant-b:
     exclude:
     - /var/log/pods/*/otc-container/*.log
@@ -446,6 +449,7 @@ service:
       - filter/exclude
       receivers:
       - filelog/example-tenant-a
+      - k8s_events/example-tenant-a
     logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1:
       exporters:
       - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs

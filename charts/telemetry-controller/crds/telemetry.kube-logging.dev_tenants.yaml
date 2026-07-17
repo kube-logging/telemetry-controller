@@ -54,6 +54,17 @@ spec:
           spec:
             description: TenantSpec defines the desired state of Tenant
             properties:
+              eventsToLogs:
+                description: |-
+                  EventsToLogs enables collecting Kubernetes events as log records
+                  using the k8s_events receiver.
+                  Events are collected from the namespaces determined by
+                  LogSourceNamespaceSelectors, or from all namespaces
+                  if SelectFromAllNamespaces is true.
+                  NOTE: Since the collector runs as a DaemonSet, events are
+                  received by each collector instance, so they will be
+                  duplicated once per node.
+                type: boolean
               logSourceNamespaceSelectors:
                 description: |-
                   Determines the namespaces from which logs are collected by this tenant.
