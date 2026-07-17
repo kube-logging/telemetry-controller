@@ -105,6 +105,11 @@ func TestOtelColConfComplex(t *testing.T) {
 	}
 	inputCfg := OtelColConfigInput{
 		IsAxoflowDistribution: true,
+		EventsToLogs: &v1alpha1.EventsToLogs{
+			KubeAPIQPS:    new(int32(10)),
+			KubeAPIBurst:  new(int32(20)),
+			DedupInterval: new("5m"),
+		},
 		ResourceRelations: components.ResourceRelations{
 			Subscriptions: subscriptions,
 			Tenants: []v1alpha1.Tenant{
@@ -130,7 +135,6 @@ func TestOtelColConfComplex(t *testing.T) {
 						PersistenceConfig: v1alpha1.PersistenceConfig{
 							EnableFileStorage: true,
 						},
-						EventsToLogs: true,
 					},
 					Status: v1alpha1.TenantStatus{
 						LogSourceNamespaces: []string{
@@ -488,7 +492,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				},
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
-				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false),
+				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false, false),
 				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
 					[]string{"routing/tenant_tenant1_subscriptions"},
 					[]string{"attributes/subscription_sub1"},
@@ -536,7 +540,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				},
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
-				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false),
+				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false, false),
 				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
 					[]string{"routing/tenant_tenant1_subscriptions"},
 					[]string{"attributes/subscription_sub1"},

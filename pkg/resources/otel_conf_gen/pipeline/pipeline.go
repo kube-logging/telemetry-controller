@@ -32,7 +32,7 @@ func GeneratePipeline(receivers, processors, exporters []string) *otelv1beta1.Pi
 	}
 }
 
-func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string, dryRunMode bool) *otelv1beta1.Pipeline {
+func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string, dryRunMode, eventsToLogsEnabled bool) *otelv1beta1.Pipeline {
 	const tenantCountConnectorName = "count/tenant_metrics"
 	var receiverNames []string
 	var exporterName string
@@ -43,7 +43,7 @@ func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string, dryRunMo
 			if tenant.Status.LogSourceNamespaces != nil || tenant.Spec.SelectFromAllNamespaces {
 				receiverNames = append(receiverNames, fmt.Sprintf("filelog/%s", tenantName))
 				// Add k8s_events receiver to tenant's pipeline if events-to-logs is enabled
-				if tenant.Spec.EventsToLogs {
+				if eventsToLogsEnabled {
 					receiverNames = append(receiverNames, fmt.Sprintf("k8s_events/%s", tenantName))
 				}
 			}

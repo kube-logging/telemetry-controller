@@ -111,20 +111,10 @@ type TenantSpec struct {
 
 	// If true, logs are collected from all namespaces.
 	// Cannot be used together with LogSourceNamespaceSelectors.
-	SelectFromAllNamespaces bool `json:"selectFromAllNamespaces,omitempty"`
-
-	// EventsToLogs enables collecting Kubernetes events as log records
-	// using the k8s_events receiver.
-	// Events are collected from the namespaces determined by
-	// LogSourceNamespaceSelectors, or from all namespaces
-	// if SelectFromAllNamespaces is true.
-	// NOTE: Since the collector runs as a DaemonSet, events are
-	// received by each collector instance, so they will be
-	// duplicated once per node.
-	EventsToLogs      bool              `json:"eventsToLogs,omitempty"`
-	Transform         Transform         `json:"transform,omitempty"`
-	RouteConfig       RouteConfig       `json:"routeConfig,omitempty"`
-	PersistenceConfig PersistenceConfig `json:"persistenceConfig,omitempty"`
+	SelectFromAllNamespaces bool              `json:"selectFromAllNamespaces,omitempty"`
+	Transform               Transform         `json:"transform,omitempty"`
+	RouteConfig             RouteConfig       `json:"routeConfig,omitempty"`
+	PersistenceConfig       PersistenceConfig `json:"persistenceConfig,omitempty"`
 }
 
 // TenantStatus defines the observed state of Tenant

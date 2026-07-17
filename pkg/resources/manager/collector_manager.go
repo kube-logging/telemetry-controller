@@ -139,6 +139,7 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 		Debug:                 utils.DerefOrZero(collector.Spec.Debug),
 		DryRunMode:            utils.DerefOrZero(collector.Spec.DryRunMode),
 		MemoryLimiter:         *collector.Spec.MemoryLimiter,
+		EventsToLogs:          collector.Spec.EventsToLogs,
 		IsAxoflowDistribution: isAxoflowDistribution(collectorImage),
 	}, nil
 }

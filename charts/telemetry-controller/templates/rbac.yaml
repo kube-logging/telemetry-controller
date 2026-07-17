@@ -47,6 +47,7 @@ rules:
       - ""
     resources:
       - endpoints
+      - events
       - namespaces
       - nodes
       - nodes/proxy
