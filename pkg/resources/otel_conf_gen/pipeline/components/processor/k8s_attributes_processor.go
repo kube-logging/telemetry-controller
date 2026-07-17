@@ -14,7 +14,7 @@
 
 package processor
 
-// NodeNameEnvVar is the downward API environment variable that the k8sattributes
+// NodeNameEnvVar is the downward API environment variable that the k8s_attributes
 // processor reads to scope its informers to a single node.
 const NodeNameEnvVar = "KUBE_NODE_NAME"
 

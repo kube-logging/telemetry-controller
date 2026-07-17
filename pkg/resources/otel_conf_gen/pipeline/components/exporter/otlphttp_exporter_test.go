@@ -127,7 +127,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 				},
 			},
 			expectedResult: map[string]any{
-				"otlphttp/default_output1": map[string]any{
+				"otlp_http/default_output1": map[string]any{
 					"endpoint": "http://example.com",
 					"auth": map[string]any{
 						"authenticator": "basicauth/default_output1",
@@ -234,7 +234,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 				},
 			},
 			expectedResult: map[string]any{
-				"otlphttp/default_output2": map[string]any{
+				"otlp_http/default_output2": map[string]any{
 					"endpoint": "http://example.com",
 					"auth": map[string]any{
 						"authenticator": "bearertokenauth/default_output2",
@@ -323,7 +323,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 				},
 			},
 			expectedResult: map[string]any{
-				"otlphttp/default_output3": map[string]any{
+				"otlp_http/default_output3": map[string]any{
 					"endpoint": "http://example.com",
 					"sending_queue": map[string]any{
 						"enabled":    true,
@@ -440,7 +440,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 				},
 			},
 			expectedResult: map[string]any{
-				"otlphttp/default_output4": map[string]any{
+				"otlp_http/default_output4": map[string]any{
 					"endpoint":  "http://example.com",
 					"proxy_url": "http://proxy.example.com",
 					"tls": map[string]any{

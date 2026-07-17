@@ -312,7 +312,7 @@ spec:
 
 When `dryRunMode` is enabled, the generated OpenTelemetry Collector pipeline is simplified:
 
-- Only data-modifying components are included (e.g., transform processors, k8sattributes processor)
+- Only data-modifying components are included (e.g., transform processors, k8s_attributes processor)
 - All exporters except the debug exporter are disabled
 - Persistence options are disabled
 
