@@ -139,6 +139,7 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 		Debug:                 utils.DerefOrZero(collector.Spec.Debug),
 		DryRunMode:            utils.DerefOrZero(collector.Spec.DryRunMode),
 		MemoryLimiter:         *collector.Spec.MemoryLimiter,
+		EventsToLogs:          collector.Spec.EventsToLogs,
 		IsAxoflowDistribution: isAxoflowDistribution(collectorImage),
 	}, nil
 }
@@ -372,7 +373,7 @@ func (c *CollectorManager) reconcileClusterRole(collector *v1alpha1.Collector, s
 			{
 				Verbs:     []string{"get", "watch", "list"},
 				APIGroups: []string{""},
-				Resources: []string{"pods", "namespaces", "nodes"},
+				Resources: []string{"pods", "namespaces", "nodes", "events"},
 			},
 			{
 				Verbs:     []string{"get", "watch", "list"},

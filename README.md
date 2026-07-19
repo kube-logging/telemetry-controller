@@ -289,6 +289,39 @@ Apply the provided example resource for telemetry-controller: [telemetry-control
 kubectl apply -f telemetry-controller.yaml
 ```
 
+## Collecting Kubernetes events
+
+The Collector can collect Kubernetes events (the objects behind `kubectl get events`) as log records via the [k8s_events receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/k8seventsreceiver). This is a Collector-level, cluster-admin setting: enabling it turns on event collection for every tenant the collector selects. Tenant users cannot enable it themselves.
+
+Set `eventsToLogs` on the Collector to enable it:
+
+```yaml
+apiVersion: telemetry.kube-logging.dev/v1alpha1
+kind: Collector
+metadata:
+  name: example-collector
+spec:
+  tenantSelector:
+    matchLabels:
+      example: "true"
+  eventsToLogs:
+    kube_api_qps: 10        # optional: client-side QPS limit to the API server
+    kube_api_burst: 20      # optional: client-side burst limit to the API server
+    dedup_interval: 5m      # optional: suppress repeated event updates within this window
+```
+
+All three fields are optional; omit `eventsToLogs` entirely to keep the feature off (it is off by default). When set:
+
+- A `k8s_events` receiver is generated per tenant, scoped to that tenant's `logSourceNamespaceSelectors` (or all namespaces if `selectFromAllNamespaces` is set).
+- Events are routed through the same tenant pipeline as container logs, so existing subscriptions and outputs pick them up with no extra configuration.
+- If the tenant enables persistence (`persistenceConfig.enableFileStorage`), the receiver's `resourceVersion` is checkpointed to the same file storage, so it resumes without re-reading events after a restart.
+
+Requirements and caveats:
+
+- **RBAC:** the operator grants the collector cluster-wide `get;list;watch` on core `events`. Even though each receiver is scoped to a tenant's namespaces, the underlying read permission is cluster-wide.
+- **Image:** the collector image must contain the `k8seventsreceiver`. The default distribution includes it; if you override `otelCommonFields.image` with an image that lacks it, the collector will fail to start with an `unknown receiver "k8s_events"` error.
+- **Duplication:** the collector runs as a DaemonSet, so each event is read once per node. Expect one log record per event per node until leader election is supported.
+
 ## Testing and Debugging
 
 ### Dry Run Mode

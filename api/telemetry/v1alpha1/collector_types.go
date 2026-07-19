@@ -50,6 +50,32 @@ type MemoryLimiter struct {
 	MemorySpikePercentage uint32 `json:"spike_limit_percentage"`
 }
 
+// EventsToLogs defines the configuration for collecting Kubernetes events
+// as log records using the k8s_events receiver.
+// A receiver is generated for each tenant of the collector, scoped to the
+// namespaces determined by the tenant's logSourceNamespaceSelectors,
+// or to all namespaces if selectFromAllNamespaces is true.
+// ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/k8seventsreceiver
+type EventsToLogs struct {
+	// +kubebuilder:validation:Minimum=1
+
+	// KubeAPIQPS is the maximum queries-per-second the receiver's Kubernetes
+	// client may issue to the API server. Uses the receiver's default when unset.
+	KubeAPIQPS *int32 `json:"kube_api_qps,omitempty"`
+
+	// +kubebuilder:validation:Minimum=1
+
+	// KubeAPIBurst is the maximum burst of queries the receiver's Kubernetes
+	// client may issue to the API server. Uses the receiver's default when unset.
+	KubeAPIBurst *int32 `json:"kube_api_burst,omitempty"`
+
+	// +kubebuilder:validation:Format=duration
+
+	// DedupInterval suppresses repeated MODIFIED notifications for the same
+	// event within the given interval. See time.ParseDuration for valid values.
+	DedupInterval *string `json:"dedup_interval,omitempty"`
+}
+
 // +kubebuilder:validation:XValidation:rule="!has(self.dryRunMode) || !self.dryRunMode || (has(self.debug) && self.debug)",message="dryRunMode can only be set to true when debug is explicitly set to true"
 
 // CollectorSpec defines the desired state of Collector
@@ -71,6 +97,14 @@ type CollectorSpec struct {
 	// DryRunMode disables all exporters except for the debug exporter, as well as persistence options configured for the collector.
 	// This can be useful for testing and debugging purposes.
 	DryRunMode *bool `json:"dryRunMode,omitempty"`
+
+	// EventsToLogs enables collecting Kubernetes events as log records
+	// for every tenant of this collector using the k8s_events receiver.
+	// NOTE: The collector runs as a DaemonSet, so events are received by
+	// each collector instance and duplicated once per node.
+	// NOTE: The collector reads events cluster-wide via a ClusterRole,
+	// even though each tenant's receiver is scoped to its own namespaces.
+	EventsToLogs *EventsToLogs `json:"eventsToLogs,omitempty"`
 
 	// Setting memory limits for the Collector using the memory limiter processor.
 	MemoryLimiter *MemoryLimiter `json:"memoryLimiter,omitempty"`

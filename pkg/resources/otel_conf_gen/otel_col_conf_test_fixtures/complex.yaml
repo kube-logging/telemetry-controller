@@ -317,6 +317,13 @@ receivers:
       max_elapsed_time: 0s
     start_at: end
     storage: file_storage/example-tenant-a
+  k8s_events/example-tenant-a:
+    dedup_interval: 5m
+    kube_api_burst: 20
+    kube_api_qps: 10
+    namespaces:
+    - example-tenant-a
+    storage: file_storage/example-tenant-a
   file_log/example-tenant-b:
     exclude:
     - /var/log/pods/*/otc-container/*.log
@@ -376,6 +383,13 @@ receivers:
       enabled: true
       max_elapsed_time: 0s
     start_at: end
+    storage: file_storage/example-tenant-b
+  k8s_events/example-tenant-b:
+    dedup_interval: 5m
+    kube_api_burst: 20
+    kube_api_qps: 10
+    namespaces:
+    - example-tenant-b
     storage: file_storage/example-tenant-b
 service:
   extensions:
@@ -446,6 +460,7 @@ service:
       - filter/exclude
       receivers:
       - file_log/example-tenant-a
+      - k8s_events/example-tenant-a
     logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1:
       exporters:
       - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
@@ -473,6 +488,7 @@ service:
       - filter/exclude
       receivers:
       - file_log/example-tenant-b
+      - k8s_events/example-tenant-b
     logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3:
       exporters:
       - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
