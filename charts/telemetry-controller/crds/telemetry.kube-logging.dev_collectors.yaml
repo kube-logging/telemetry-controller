@@ -62,6 +62,36 @@ spec:
                   DryRunMode disables all exporters except for the debug exporter, as well as persistence options configured for the collector.
                   This can be useful for testing and debugging purposes.
                 type: boolean
+              eventsToLogs:
+                description: |-
+                  EventsToLogs enables collecting Kubernetes events as log records
+                  for every tenant of this collector using the k8s_events receiver.
+                  NOTE: The collector runs as a DaemonSet, so events are received by
+                  each collector instance and duplicated once per node.
+                  NOTE: The collector reads events cluster-wide via a ClusterRole,
+                  even though each tenant's receiver is scoped to its own namespaces.
+                properties:
+                  dedup_interval:
+                    description: |-
+                      DedupInterval suppresses repeated MODIFIED notifications for the same
+                      event within the given interval. See time.ParseDuration for valid values.
+                    format: duration
+                    type: string
+                  kube_api_burst:
+                    description: |-
+                      KubeAPIBurst is the maximum burst of queries the receiver's Kubernetes
+                      client may issue to the API server. Uses the receiver's default when unset.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  kube_api_qps:
+                    description: |-
+                      KubeAPIQPS is the maximum queries-per-second the receiver's Kubernetes
+                      client may issue to the API server. Uses the receiver's default when unset.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                type: object
               memoryLimiter:
                 description: Setting memory limits for the Collector using the memory
                   limiter processor.
