@@ -25,7 +25,7 @@ ENVTEST_K8S_VERSION = 1.35.0
 ENVTEST_OTEL_OPERATOR_VERSION=0.150.0
 
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
-CERT_MANAGER_VERSION = 1.20.2
+CERT_MANAGER_VERSION = 1.21.1
 
 BIN := ${PWD}/bin
 

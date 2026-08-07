@@ -5,27 +5,27 @@ go 1.26.0
 require (
 	emperror.dev/errors v0.8.1
 	github.com/cisco-open/operator-tools v0.38.0
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/onsi/ginkgo/v2 v2.29.0
-	github.com/onsi/gomega v1.41.0
-	github.com/open-telemetry/opentelemetry-operator v0.152.0
-	github.com/prometheus/client_golang v1.23.2
+	github.com/onsi/ginkgo/v2 v2.32.0
+	github.com/onsi/gomega v1.42.1
+	github.com/open-telemetry/opentelemetry-operator v0.156.0
+	github.com/prometheus/client_golang v1.24.1
 	github.com/stretchr/testify v1.11.1
-	go.opentelemetry.io/collector/component v1.59.0
-	go.opentelemetry.io/collector/config/configauth v1.59.0
-	go.opentelemetry.io/collector/config/configcompression v1.59.0
-	go.opentelemetry.io/collector/config/configopaque v1.59.0
-	go.opentelemetry.io/collector/config/configtelemetry v0.153.0
-	go.opentelemetry.io/collector/otelcol v0.153.0
-	go.opentelemetry.io/collector/pipeline v1.59.0
-	go.opentelemetry.io/collector/service v0.153.0
+	go.opentelemetry.io/collector/component v1.64.0
+	go.opentelemetry.io/collector/config/configauth v1.64.0
+	go.opentelemetry.io/collector/config/configcompression v1.64.0
+	go.opentelemetry.io/collector/config/configopaque v1.64.0
+	go.opentelemetry.io/collector/config/configtelemetry v0.158.0
+	go.opentelemetry.io/collector/otelcol v0.158.0
+	go.opentelemetry.io/collector/pipeline v1.64.0
+	go.opentelemetry.io/collector/service v0.158.0
 	go.uber.org/zap v1.28.0
-	k8s.io/api v0.36.1
-	k8s.io/apimachinery v0.36.1
-	k8s.io/client-go v0.36.1
+	k8s.io/api v0.36.3
+	k8s.io/apimachinery v0.36.3
+	k8s.io/client-go v0.36.3
 	sigs.k8s.io/controller-runtime v0.24.1
 	sigs.k8s.io/yaml v1.6.0
 )
