@@ -20,7 +20,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"sort"
 	"strings"
 
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
@@ -155,7 +154,7 @@ func (cfgInput *OtelColConfigInput) generateExtensions() (map[string]any, []stri
 	} else {
 		extensionNames = nil
 	}
-	sort.Strings(extensionNames)
+	slices.Sort(extensionNames)
 
 	return extensions, extensionNames
 }
