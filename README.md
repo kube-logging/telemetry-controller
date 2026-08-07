@@ -48,7 +48,7 @@ To get started with the Telemetry Controller, complete the following steps. Alte
 
 ### Prerequisites
 
-- go version v1.22+
+- go version v1.26+
 - docker version 24+
 - kubectl version v1.26+
 - kubernetes v1.26+ with *containerd* as the container runtime
@@ -250,11 +250,11 @@ kubectl -n openobserve port-forward svc/openobserve 5080:5080
 Install dependencies (cert-manager and opentelemetry-operator):
 
 ```sh
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.21.1/cert-manager.yaml
 ```
 
 ```sh
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.112.0/opentelemetry-operator.yaml
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.156.0/opentelemetry-operator.yaml
 # Wait for the opentelemtry-operator to be running
 kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
 ```
@@ -268,7 +268,7 @@ kubectl apply -k github.com/kube-logging/telemetry-controller/config/default --s
 Install logging-operator
 
 ```sh
-helm upgrade --install logging-operator oci://ghcr.io/kube-logging/helm-charts/logging-operator --version=4.6.0 -n logging-operator --create-namespace
+helm upgrade --install logging-operator oci://ghcr.io/kube-logging/helm-charts/logging-operator --version=6.7.0 -n logging-operator --create-namespace
 ```
 
 Install log-generator
