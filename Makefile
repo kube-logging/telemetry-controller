@@ -15,19 +15,24 @@ GOLANGCI_LINT_VERSION := 2.12.2
 HELM_DOCS_VERSION = 1.14.2
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
-KIND_VERSION ?= 0.31.0
+KIND_VERSION ?= 0.32.0
 
 # renovate: datasource=go depName=github.com/goph/licensei versioning=semver
 LICENSEI_VERSION = 0.9.0
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.35.0
-ENVTEST_OTEL_OPERATOR_VERSION=0.150.0
+# Bump in lockstep with the k8s.io/* modules in go.mod. Not renovate-managed: the assets ship as
+# envtest-v* tags on controller-tools, whose depName is already claimed by CONTROLLER_TOOLS_VERSION.
+ENVTEST_K8S_VERSION = 1.36.2
+
+# renovate: datasource=github-releases depName=open-telemetry/opentelemetry-operator versioning=semver
+ENVTEST_OTEL_OPERATOR_VERSION = 0.156.0
 
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
-CERT_MANAGER_VERSION = 1.20.2
+CERT_MANAGER_VERSION = 1.21.1
 
 BIN := ${PWD}/bin
+OTEL_OPERATOR_CRD_DIR := crddir/github.com/open-telemetry/opentelemetry-operator
 
 export PATH := $(BIN):$(PATH)
 
@@ -40,7 +45,7 @@ CONTROLLER_GEN ?= $(BIN)/controller-gen
 ENVTEST ?= $(BIN)/setup-envtest
 
 KIND := ${BIN}/kind
-KIND_IMAGE ?= kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+KIND_IMAGE ?= kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
 KIND_CLUSTER := kind
 
 # Image URL to use all building/pushing image targets
@@ -237,12 +242,15 @@ $(CONTROLLER_GEN): $(BIN)
 	test -s $(BIN)/controller-gen && $(BIN)/controller-gen --version | grep -q v$(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(BIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CONTROLLER_TOOLS_VERSION)
 
-# Download CRDs for envtest
-crddir/github.com/open-telemetry/opentelemetry-operator:
-	git clone --depth 1 --branch v${ENVTEST_OTEL_OPERATOR_VERSION} https://github.com/open-telemetry/opentelemetry-operator.git crddir/github.com/open-telemetry/opentelemetry-operator
+# Download CRDs for envtest. The stamp file is version-scoped so bumping
+# ENVTEST_OTEL_OPERATOR_VERSION re-clones instead of reusing a stale checkout.
+${OTEL_OPERATOR_CRD_DIR}/.version-${ENVTEST_OTEL_OPERATOR_VERSION}:
+	rm -rf ${OTEL_OPERATOR_CRD_DIR}
+	git clone --depth 1 --branch v${ENVTEST_OTEL_OPERATOR_VERSION} https://github.com/open-telemetry/opentelemetry-operator.git ${OTEL_OPERATOR_CRD_DIR}
+	touch $@
 
 .PHONY: envtest
-envtest: $(ENVTEST) crddir/github.com/open-telemetry/opentelemetry-operator ## Download envtest-setup locally if necessary.
+envtest: $(ENVTEST) ${OTEL_OPERATOR_CRD_DIR}/.version-${ENVTEST_OTEL_OPERATOR_VERSION} ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(BIN)
 	test -s $(BIN)/setup-envtest || GOBIN=$(BIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
