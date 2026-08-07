@@ -45,9 +45,9 @@ func GetExporterNameForOutput(output v1alpha1.Output) string {
 	var exporterName string
 	switch {
 	case output.Spec.OTLPGRPC != nil:
-		exporterName = fmt.Sprintf("otlp/%s_%s", output.Namespace, output.Name)
+		exporterName = fmt.Sprintf("otlp_grpc/%s_%s", output.Namespace, output.Name)
 	case output.Spec.OTLPHTTP != nil:
-		exporterName = fmt.Sprintf("otlphttp/%s_%s", output.Namespace, output.Name)
+		exporterName = fmt.Sprintf("otlp_http/%s_%s", output.Namespace, output.Name)
 	case output.Spec.Fluentforward != nil:
 		exporterName = fmt.Sprintf("fluentforwardexporter/%s_%s", output.Namespace, output.Name)
 	case output.Spec.File != nil:

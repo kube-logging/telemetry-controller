@@ -73,7 +73,7 @@ exporters:
       storage: file_storage/example-tenant-b
     tls:
       insecure: true
-  otlp/collector_otlp-test-output:
+  otlp_grpc/collector_otlp-test-output:
     auth:
       authenticator: bearertokenauth/collector_otlp-test-output
     endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
@@ -86,7 +86,7 @@ exporters:
       storage: file_storage/example-tenant-a
     tls:
       insecure: true
-  otlp/collector_otlp-test-output-2:
+  otlp_grpc/collector_otlp-test-output-2:
     endpoint: receiver-collector.example-tenant-a-ns.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
@@ -97,7 +97,7 @@ exporters:
       storage: file_storage/example-tenant-a
     tls:
       insecure: true
-  otlp/collector_otlp-test-output-3:
+  otlp_grpc/collector_otlp-test-output-3:
     endpoint: receiver-collector.example-tenant-b-ns.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
@@ -108,7 +108,7 @@ exporters:
       storage: file_storage/example-tenant-b
     tls:
       insecure: true
-  otlphttp/collector_loki-test-output:
+  otlp_http/collector_loki-test-output:
     endpoint: loki.example-tenant-a-ns.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
@@ -142,22 +142,22 @@ processors:
     actions:
     - action: insert
       key: exporter
-      value: otlphttp/collector_loki-test-output
+      value: otlp_http/collector_loki-test-output
   attributes/exporter_name_otlp-test-output:
     actions:
     - action: insert
       key: exporter
-      value: otlp/collector_otlp-test-output
+      value: otlp_grpc/collector_otlp-test-output
   attributes/exporter_name_otlp-test-output-2:
     actions:
     - action: insert
       key: exporter
-      value: otlp/collector_otlp-test-output-2
+      value: otlp_grpc/collector_otlp-test-output-2
   attributes/exporter_name_otlp-test-output-3:
     actions:
     - action: insert
       key: exporter
-      value: otlp/collector_otlp-test-output-3
+      value: otlp_grpc/collector_otlp-test-output-3
   attributes/metricattributes:
     actions:
     - action: insert
@@ -215,7 +215,7 @@ processors:
       log_record:
       - resource.attributes["exclude-tc"] == "true"
       - resource.attributes["exclude-fluentbit"] == "true"
-  k8sattributes:
+  k8s_attributes:
     auth_type: serviceAccount
     extract:
       annotations:
@@ -257,7 +257,7 @@ processors:
     limit_percentage: 75
     spike_limit_percentage: 25
 receivers:
-  filelog/example-tenant-a:
+  file_log/example-tenant-a:
     exclude:
     - /var/log/pods/*/otc-container/*.log
     include:
@@ -317,7 +317,14 @@ receivers:
       max_elapsed_time: 0s
     start_at: end
     storage: file_storage/example-tenant-a
-  filelog/example-tenant-b:
+  k8s_events/example-tenant-a:
+    dedup_interval: 5m
+    kube_api_burst: 20
+    kube_api_qps: 10
+    namespaces:
+    - example-tenant-a
+    storage: file_storage/example-tenant-a
+  file_log/example-tenant-b:
     exclude:
     - /var/log/pods/*/otc-container/*.log
     include:
@@ -377,6 +384,13 @@ receivers:
       max_elapsed_time: 0s
     start_at: end
     storage: file_storage/example-tenant-b
+  k8s_events/example-tenant-b:
+    dedup_interval: 5m
+    kube_api_burst: 20
+    kube_api_qps: 10
+    namespaces:
+    - example-tenant-b
+    storage: file_storage/example-tenant-b
 service:
   extensions:
   - bearertokenauth/collector_otlp-test-output
@@ -386,7 +400,7 @@ service:
   pipelines:
     logs/output_example-tenant-a-ns_subscription-example-1_collector_loki-test-output:
       exporters:
-      - otlphttp/collector_loki-test-output
+      - otlp_http/collector_loki-test-output
       - count/output_metrics
       - bytes/exporter
       processors:
@@ -396,7 +410,7 @@ service:
       - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
     logs/output_example-tenant-a-ns_subscription-example-1_collector_otlp-test-output:
       exporters:
-      - otlp/collector_otlp-test-output
+      - otlp_grpc/collector_otlp-test-output
       - count/output_metrics
       - bytes/exporter
       processors:
@@ -407,7 +421,7 @@ service:
       - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
     logs/output_example-tenant-a-ns_subscription-example-2_collector_otlp-test-output-2:
       exporters:
-      - otlp/collector_otlp-test-output-2
+      - otlp_grpc/collector_otlp-test-output-2
       - count/output_metrics
       - bytes/exporter
       processors:
@@ -427,7 +441,7 @@ service:
       - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs
     logs/output_example-tenant-b-ns_subscription-example-3_collector_otlp-test-output-3:
       exporters:
-      - otlp/collector_otlp-test-output-3
+      - otlp_grpc/collector_otlp-test-output-3
       - count/output_metrics
       - bytes/exporter
       processors:
@@ -441,11 +455,12 @@ service:
       - count/tenant_metrics
       processors:
       - memory_limiter
-      - k8sattributes
+      - k8s_attributes
       - attributes/tenant_example-tenant-a
       - filter/exclude
       receivers:
-      - filelog/example-tenant-a
+      - file_log/example-tenant-a
+      - k8s_events/example-tenant-a
     logs/tenant_example-tenant-a_subscription_example-tenant-a-ns_subscription-example-1:
       exporters:
       - routing/subscription_example-tenant-a-ns_subscription-example-1_outputs
@@ -468,11 +483,12 @@ service:
       - count/tenant_metrics
       processors:
       - memory_limiter
-      - k8sattributes
+      - k8s_attributes
       - attributes/tenant_example-tenant-b
       - filter/exclude
       receivers:
-      - filelog/example-tenant-b
+      - file_log/example-tenant-b
+      - k8s_events/example-tenant-b
     logs/tenant_example-tenant-b_subscription_example-tenant-b-ns_subscription-example-3:
       exporters:
       - routing/subscription_example-tenant-b-ns_subscription-example-3_outputs

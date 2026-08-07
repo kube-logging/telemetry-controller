@@ -46,7 +46,7 @@ connectors:
         pipelines:
           - logs/tenant_tenant-web_subscription_web_sub-web
 exporters:
-  otlp/db_output-db:
+  otlp_grpc/db_output-db:
     endpoint: collector-receiver-db-collector.db.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
@@ -57,7 +57,7 @@ exporters:
       storage: file_storage/tenant-db
     tls:
       insecure: true
-  otlp/web_output-web:
+  otlp_grpc/web_output-web:
     endpoint: collector-receiver-web-collector.web.svc.cluster.local:4317
     retry_on_failure:
       enabled: true
@@ -84,12 +84,12 @@ processors:
     actions:
       - action: insert
         key: exporter
-        value: otlp/db_output-db
+        value: otlp_grpc/db_output-db
   attributes/exporter_name_output-web:
     actions:
       - action: insert
         key: exporter
-        value: otlp/web_output-web
+        value: otlp_grpc/web_output-web
   attributes/metricattributes:
     actions:
       - action: insert
@@ -128,7 +128,7 @@ processors:
         key: tenant
         value: tenant-web
   deltatocumulative: {}
-  k8sattributes:
+  k8s_attributes:
     auth_type: serviceAccount
     extract:
       deployment_name_from_replicaset: true
@@ -163,7 +163,7 @@ processors:
     limit_percentage: 75
     spike_limit_mib: 25
 receivers:
-  filelog/tenant-db:
+  file_log/tenant-db:
     exclude:
       - /var/log/pods/*/otc-container/*.log
     include:
@@ -223,7 +223,7 @@ receivers:
       max_elapsed_time: 0
     start_at: end
     storage: file_storage/tenant-db
-  filelog/tenant-web:
+  file_log/tenant-web:
     exclude:
       - /var/log/pods/*/otc-container/*.log
     include:
@@ -291,7 +291,7 @@ service:
   pipelines:
     logs/output_db_sub-db_db_output-db:
       exporters:
-        - otlp/db_output-db
+        - otlp_grpc/db_output-db
         - count/output_metrics
       processors:
         - memory_limiter
@@ -300,7 +300,7 @@ service:
         - routing/subscription_db_sub-db_outputs
     logs/output_web_sub-web_web_output-web:
       exporters:
-        - otlp/web_output-web
+        - otlp_grpc/web_output-web
         - count/output_metrics
       processors:
         - memory_limiter
@@ -313,10 +313,10 @@ service:
         - count/tenant_metrics
       processors:
         - memory_limiter
-        - k8sattributes
+        - k8s_attributes
         - attributes/tenant_tenant-db
       receivers:
-        - filelog/tenant-db
+        - file_log/tenant-db
     logs/tenant_tenant-db_subscription_db_sub-db:
       exporters:
         - routing/subscription_db_sub-db_outputs
@@ -331,10 +331,10 @@ service:
         - count/tenant_metrics
       processors:
         - memory_limiter
-        - k8sattributes
+        - k8s_attributes
         - attributes/tenant_tenant-web
       receivers:
-        - filelog/tenant-web
+        - file_log/tenant-web
     logs/tenant_tenant-web_subscription_web_sub-web:
       exporters:
         - routing/subscription_web_sub-web_outputs

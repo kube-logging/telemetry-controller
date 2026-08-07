@@ -39,6 +39,7 @@ import (
 type OtelColConfigInput struct {
 	components.ResourceRelations
 	MemoryLimiter v1alpha1.MemoryLimiter
+	EventsToLogs  *v1alpha1.EventsToLogs
 	Debug         bool
 	DryRunMode    bool
 
@@ -88,7 +89,7 @@ func (cfgInput *OtelColConfigInput) generateExporters(ctx context.Context) map[s
 
 func (cfgInput *OtelColConfigInput) generateProcessors() map[string]any {
 	processors := make(map[string]any)
-	processors["k8sattributes"] = processor.GenerateDefaultKubernetesProcessor()
+	processors["k8s_attributes"] = processor.GenerateDefaultKubernetesProcessor()
 	processors["memory_limiter"] = processor.GenerateProcessorMemoryLimiter(cfgInput.MemoryLimiter)
 	processors["filter/exclude"] = processor.GenerateFilterProcessor()
 	maps.Copy(processors, processor.GenerateMetricsProcessors())
@@ -165,9 +166,13 @@ func (cfgInput *OtelColConfigInput) generateReceivers() map[string]any {
 		if tenantIdx := slices.IndexFunc(cfgInput.Tenants, func(t v1alpha1.Tenant) bool {
 			return tenantName == t.Name
 		}); tenantIdx != -1 {
-			namespaces := cfgInput.Tenants[tenantIdx].Status.LogSourceNamespaces
-			if len(namespaces) > 0 || cfgInput.Tenants[tenantIdx].Spec.SelectFromAllNamespaces {
-				receivers[fmt.Sprintf("filelog/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces, cfgInput.DryRunMode, cfgInput.Tenants[tenantIdx])
+			tenant := cfgInput.Tenants[tenantIdx]
+			namespaces := tenant.Status.LogSourceNamespaces
+			if len(namespaces) > 0 || tenant.Spec.SelectFromAllNamespaces {
+				receivers[fmt.Sprintf("file_log/%s", tenantName)] = receiver.GenerateDefaultKubernetesReceiver(namespaces, cfgInput.DryRunMode, tenant)
+				if cfgInput.EventsToLogs != nil {
+					receivers[fmt.Sprintf("k8s_events/%s", tenantName)] = receiver.GenerateKubernetesEventsReceiver(namespaces, cfgInput.DryRunMode, tenant, *cfgInput.EventsToLogs)
+				}
 			}
 		}
 	}
@@ -216,7 +221,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 	namedPipelines := make(map[string]*otelv1beta1.Pipeline)
 	tenants := []string{}
 	for tenant := range cfgInput.TenantSubscriptionMap {
-		namedPipelines[fmt.Sprintf("logs/tenant_%s", tenant)] = pipeline.GenerateRootPipeline(cfgInput.Tenants, tenant, cfgInput.DryRunMode)
+		namedPipelines[fmt.Sprintf("logs/tenant_%s", tenant)] = pipeline.GenerateRootPipeline(cfgInput.Tenants, tenant, cfgInput.DryRunMode, cfgInput.EventsToLogs != nil)
 		tenants = append(tenants, tenant)
 	}
 
@@ -227,7 +232,7 @@ func (cfgInput *OtelColConfigInput) generateNamedPipelines() map[string]*otelv1b
 	for _, tenant := range tenants {
 		// Generate a pipeline for the tenant
 		tenantRootPipeline := fmt.Sprintf("logs/tenant_%s", tenant)
-		namedPipelines[tenantRootPipeline] = pipeline.GenerateRootPipeline(cfgInput.Tenants, tenant, cfgInput.DryRunMode)
+		namedPipelines[tenantRootPipeline] = pipeline.GenerateRootPipeline(cfgInput.Tenants, tenant, cfgInput.DryRunMode, cfgInput.EventsToLogs != nil)
 
 		connector.GenerateRoutingConnectorForBridgesTenantPipeline(tenant, namedPipelines[tenantRootPipeline], cfgInput.Bridges)
 		processor.GenerateTransformProcessorForTenantPipeline(tenant, namedPipelines[tenantRootPipeline], cfgInput.Tenants)

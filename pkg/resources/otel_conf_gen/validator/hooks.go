@@ -42,7 +42,7 @@ func decodeID(from reflect.Type, to reflect.Type, data any) (any, error) {
 		"debug":             true,
 		"deltatocumulative": true,
 		"memory_limiter":    true,
-		"k8sattributes":     true,
+		"k8s_attributes":    true,
 		"health_check":      true,
 	}
 

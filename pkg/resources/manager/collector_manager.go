@@ -48,7 +48,7 @@ import (
 const (
 	otelCollectorKind             = "OpenTelemetryCollector"
 	axoflowOtelCollectorImageRepo = "ghcr.io/axoflow/axoflow-otel-collector"
-	axoflowOtelCollectorImageRef  = axoflowOtelCollectorImageRepo + "/axoflow-otel-collector:0.152.0-axoflow.1"
+	axoflowOtelCollectorImageRef  = axoflowOtelCollectorImageRepo + "/axoflow-otel-collector:0.156.0-axoflow.0"
 )
 
 var (
@@ -139,6 +139,7 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 		Debug:                 utils.DerefOrZero(collector.Spec.Debug),
 		DryRunMode:            utils.DerefOrZero(collector.Spec.DryRunMode),
 		MemoryLimiter:         *collector.Spec.MemoryLimiter,
+		EventsToLogs:          collector.Spec.EventsToLogs,
 		IsAxoflowDistribution: isAxoflowDistribution(collectorImage),
 	}, nil
 }
@@ -190,7 +191,7 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 	if !utils.DerefOrZero(collector.Spec.DryRunMode) {
 		handleVolumes(&otelCollector.Spec.OpenTelemetryCommonFields, tenants, outputs)
 
-		// Inject the node name via the downward API so the k8sattributes
+		// Inject the node name via the downward API so the k8s_attributes
 		// processor can scope its informer to the local node
 		// (filter.node_from_env_var).
 		otelCollector.Spec.Env = append(otelCollector.Spec.Env, corev1.EnvVar{
@@ -372,7 +373,7 @@ func (c *CollectorManager) reconcileClusterRole(collector *v1alpha1.Collector, s
 			{
 				Verbs:     []string{"get", "watch", "list"},
 				APIGroups: []string{""},
-				Resources: []string{"pods", "namespaces", "nodes"},
+				Resources: []string{"pods", "namespaces", "nodes", "events"},
 			},
 			{
 				Verbs:     []string{"get", "watch", "list"},

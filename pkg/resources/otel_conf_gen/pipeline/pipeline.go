@@ -32,16 +32,20 @@ func GeneratePipeline(receivers, processors, exporters []string) *otelv1beta1.Pi
 	}
 }
 
-func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string, dryRunMode bool) *otelv1beta1.Pipeline {
+func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string, dryRunMode, eventsToLogsEnabled bool) *otelv1beta1.Pipeline {
 	const tenantCountConnectorName = "count/tenant_metrics"
-	var receiverName string
+	var receiverNames []string
 	var exporterName string
 	for _, tenant := range tenants {
 		if tenant.Name == tenantName {
-			// Add filelog receiver to tenant's pipeline if it has any logsource namespace selectors
+			// Add file_log receiver to tenant's pipeline if it has any logsource namespace selectors
 			// or if it selects from all namespaces
 			if tenant.Status.LogSourceNamespaces != nil || tenant.Spec.SelectFromAllNamespaces {
-				receiverName = fmt.Sprintf("filelog/%s", tenantName)
+				receiverNames = append(receiverNames, fmt.Sprintf("file_log/%s", tenantName))
+				// Add k8s_events receiver to tenant's pipeline if events-to-logs is enabled
+				if eventsToLogsEnabled {
+					receiverNames = append(receiverNames, fmt.Sprintf("k8s_events/%s", tenantName))
+				}
 			}
 			// Add routing connector to tenant's pipeline if it has any subscription namespace selectors
 			if tenant.Status.Subscriptions != nil {
@@ -51,10 +55,10 @@ func GenerateRootPipeline(tenants []v1alpha1.Tenant, tenantName string, dryRunMo
 	}
 
 	if dryRunMode {
-		return GeneratePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName), "filter/exclude"}, []string{exporterName})
+		return GeneratePipeline(receiverNames, []string{"k8s_attributes", fmt.Sprintf("attributes/tenant_%s", tenantName), "filter/exclude"}, []string{exporterName})
 	}
 
-	return GeneratePipeline([]string{receiverName}, []string{"k8sattributes", fmt.Sprintf("attributes/tenant_%s", tenantName), "filter/exclude"}, []string{exporterName, tenantCountConnectorName})
+	return GeneratePipeline(receiverNames, []string{"k8s_attributes", fmt.Sprintf("attributes/tenant_%s", tenantName), "filter/exclude"}, []string{exporterName, tenantCountConnectorName})
 }
 
 func GenerateMetricsPipelines(includeOutputBytes bool) map[string]*otelv1beta1.Pipeline {

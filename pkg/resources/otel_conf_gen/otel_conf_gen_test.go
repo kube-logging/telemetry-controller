@@ -105,6 +105,11 @@ func TestOtelColConfComplex(t *testing.T) {
 	}
 	inputCfg := OtelColConfigInput{
 		IsAxoflowDistribution: true,
+		EventsToLogs: &v1alpha1.EventsToLogs{
+			KubeAPIQPS:    new(int32(10)),
+			KubeAPIBurst:  new(int32(20)),
+			DedupInterval: new("5m"),
+		},
 		ResourceRelations: components.ResourceRelations{
 			Subscriptions: subscriptions,
 			Tenants: []v1alpha1.Tenant{
@@ -487,7 +492,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				},
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
-				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false),
+				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false, false),
 				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
 					[]string{"routing/tenant_tenant1_subscriptions"},
 					[]string{"attributes/subscription_sub1"},
@@ -535,7 +540,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				},
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
-				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false),
+				"logs/tenant_tenant1": pipeline.GenerateRootPipeline([]v1alpha1.Tenant{}, "tenant1", false, false),
 				"logs/tenant_tenant1_subscription_ns1_sub1": pipeline.GeneratePipeline(
 					[]string{"routing/tenant_tenant1_subscriptions"},
 					[]string{"attributes/subscription_sub1"},
@@ -729,13 +734,13 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 			},
 			expectedPipelines: map[string]*otelv1beta1.Pipeline{
 				"logs/tenant_tenant1": {
-					Receivers:  []string{"filelog/tenant1"},
-					Processors: []string{"k8sattributes", "attributes/tenant_tenant1", "filter/exclude"},
+					Receivers:  []string{"file_log/tenant1"},
+					Processors: []string{"k8s_attributes", "attributes/tenant_tenant1", "filter/exclude"},
 					Exporters:  []string{"count/tenant_metrics", "routing/bridge_bridge1", "routing/bridge_bridge2"},
 				},
 				"logs/tenant_tenant2": {
 					Receivers:  []string{"routing/bridge_bridge1"},
-					Processors: []string{"k8sattributes", "attributes/tenant_tenant2", "filter/exclude"},
+					Processors: []string{"k8s_attributes", "attributes/tenant_tenant2", "filter/exclude"},
 					Exporters:  []string{"routing/tenant_tenant2_subscriptions", "count/tenant_metrics"},
 				},
 				"logs/tenant_tenant2_subscription_ns2_sub2": {
@@ -745,7 +750,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				},
 				"logs/tenant_tenant3": {
 					Receivers:  []string{"routing/bridge_bridge2"},
-					Processors: []string{"k8sattributes", "attributes/tenant_tenant3", "filter/exclude"},
+					Processors: []string{"k8s_attributes", "attributes/tenant_tenant3", "filter/exclude"},
 					Exporters:  []string{"routing/tenant_tenant3_subscriptions", "count/tenant_metrics"},
 				},
 				"logs/tenant_tenant3_subscription_ns3_sub3": {
