@@ -3,13 +3,13 @@
 ####
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
-CONTROLLER_TOOLS_VERSION := 0.21.0
+CONTROLLER_TOOLS_VERSION := 0.22.0
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver
 KUSTOMIZE_VERSION := 5.8.1
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-GOLANGCI_LINT_VERSION := 2.12.2
+GOLANGCI_LINT_VERSION := 2.13.2
 
 # renovate: datasource=github-releases depName=norwoodj/helm-docs versioning=semver
 HELM_DOCS_VERSION = 1.14.2
@@ -26,7 +26,7 @@ LICENSEI_VERSION = 0.9.0
 ENVTEST_K8S_VERSION = 1.36.2
 
 # renovate: datasource=github-releases depName=open-telemetry/opentelemetry-operator versioning=semver
-ENVTEST_OTEL_OPERATOR_VERSION = 0.156.0
+ENVTEST_OTEL_OPERATOR_VERSION = 0.158.0
 
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
 CERT_MANAGER_VERSION = 1.21.1
