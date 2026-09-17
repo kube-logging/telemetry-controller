@@ -5,7 +5,7 @@ approved = [
   "bsd-3-clause",
   "bsd-2-clause",
   "mpl-2.0",
-  "isc"
+  "isc",
 ]
 
 ignored = [
@@ -15,11 +15,12 @@ ignored = [
   "sigs.k8s.io/yaml",
   "gomodules.xyz/jsonpatch/v2",
   "cloud.google.com/go",
+  "github.com/google/cel-go",
 ]
 
 [header]
 ignorePaths = ["vendor"]
-ignoreFiles = ["zz_generated.*.go", "generated.go","cache.go"]
+ignoreFiles = ["zz_generated.*.go", "generated.go", "cache.go"]
 authors = ["Kube logging authors"]
 template = """// Copyright © :YEAR: :AUTHOR:
 //
