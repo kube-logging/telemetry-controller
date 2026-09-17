@@ -15,7 +15,7 @@ GOLANGCI_LINT_VERSION := 2.13.2
 HELM_DOCS_VERSION = 1.14.2
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
-KIND_VERSION ?= 0.32.0
+KIND_VERSION ?= 0.33.0
 
 # renovate: datasource=go depName=github.com/goph/licensei versioning=semver
 LICENSEI_VERSION = 0.9.0
