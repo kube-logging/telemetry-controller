@@ -5,7 +5,7 @@ metadata:
   namespace: telemetry-controller-system
 spec:
   managementState: managed
-  image: otel/opentelemetry-collector-contrib:0.158.0
+  image: otel/opentelemetry-collector-contrib:0.161.0
   volumeMounts:
     - name: e2e
       mountPath: /tmp/otelcol-contrib/

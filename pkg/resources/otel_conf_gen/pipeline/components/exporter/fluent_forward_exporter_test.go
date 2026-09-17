@@ -41,9 +41,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -79,10 +77,8 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								Fluentforward: &v1alpha1.Fluentforward{
-									TCPClientSettings: v1alpha1.TCPClientSettings{
-										Endpoint: &v1alpha1.Endpoint{
-											TCPAddr: new("http://example.com"),
-										},
+									Endpoint: &v1alpha1.Endpoint{
+										TCPAddr: new("http://example.com"),
 									},
 								},
 							},
@@ -132,9 +128,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -170,13 +164,11 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								Fluentforward: &v1alpha1.Fluentforward{
-									TCPClientSettings: v1alpha1.TCPClientSettings{
-										Endpoint: &v1alpha1.Endpoint{
-											TCPAddr: new("http://example.com"),
-										},
-										ConnectionTimeout: new("30s"),
-										SharedKey:         new("shared-key"),
+									Endpoint: &v1alpha1.Endpoint{
+										TCPAddr: new("http://example.com"),
 									},
+									ConnectionTimeout:    new("30s"),
+									SharedKey:            new("shared-key"),
 									RequireAck:           new(true),
 									Tag:                  new("tag"),
 									CompressGzip:         new(true),
@@ -242,9 +234,7 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 					},
 				},
 				OutputsWithSecretData: []components.OutputWithSecretData{
@@ -256,10 +246,8 @@ func TestGenerateFluentforwardExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								Fluentforward: &v1alpha1.Fluentforward{
-									TCPClientSettings: v1alpha1.TCPClientSettings{
-										Endpoint: &v1alpha1.Endpoint{
-											TCPAddr: new("http://example.com"),
-										},
+									Endpoint: &v1alpha1.Endpoint{
+										TCPAddr: new("http://example.com"),
 									},
 									Kubernetes: &v1alpha1.KubernetesMetadata{Key: "key", IncludePodLabels: true},
 								},

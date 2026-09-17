@@ -27,8 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
-	//nolint: gci
-	// +kubebuilder:scaffold:imports
 )
 
 var _ = Describe("Telemetry controller integration test", func() {
@@ -41,24 +39,16 @@ var _ = Describe("Telemetry controller integration test", func() {
 		It("Namespace should exist beforehand ", func() {
 			namespaces := []v1.Namespace{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "tenant-1-workload",
-					},
+					Name: "tenant-1-workload",
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "tenant-1-ctrl",
-					},
+					Name: "tenant-1-ctrl",
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "tenant-2-all",
-					},
+					Name: "tenant-2-all",
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "collector",
-					},
+					Name: "collector",
 				},
 			}
 
@@ -72,10 +62,8 @@ var _ = Describe("Telemetry controller integration test", func() {
 
 			subscriptions := []v1alpha1.Subscription{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "subscription-example-1",
-						Namespace: "tenant-1-ctrl",
-					},
+					Name:      "subscription-example-1",
+					Namespace: "tenant-1-ctrl",
 					Spec: v1alpha1.SubscriptionSpec{
 						Condition: "true",
 						Outputs: []v1alpha1.NamespacedName{
@@ -87,10 +75,8 @@ var _ = Describe("Telemetry controller integration test", func() {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "subscription-example-2",
-						Namespace: "tenant-2-all",
-					},
+					Name:      "subscription-example-2",
+					Namespace: "tenant-2-all",
 					Spec: v1alpha1.SubscriptionSpec{
 						Condition: "true",
 						Outputs: []v1alpha1.NamespacedName{
@@ -111,9 +97,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 		It("Tenants should be created", func() {
 			tenants := []v1alpha1.Tenant{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "tenant-1",
-					},
+					Name: "tenant-1",
 					Spec: v1alpha1.TenantSpec{
 						SubscriptionNamespaceSelectors: []metav1.LabelSelector{
 							{
@@ -136,9 +120,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "tenant-2",
-					},
+					Name: "tenant-2",
 					Spec: v1alpha1.TenantSpec{
 						SubscriptionNamespaceSelectors: []metav1.LabelSelector{
 							{
@@ -170,33 +152,25 @@ var _ = Describe("Telemetry controller integration test", func() {
 		It("Outputs should be created", func() {
 			outputs := []v1alpha1.Output{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "otlp-test-output-1",
-						Namespace: "tenant-1-ctrl",
-					},
+					Name:      "otlp-test-output-1",
+					Namespace: "tenant-1-ctrl",
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{
-							GRPCClientConfig: v1alpha1.GRPCClientConfig{
-								Endpoint: new("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
-								TLSSetting: &v1alpha1.TLSClientSetting{
-									Insecure: true,
-								},
+							Endpoint: new("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
+							TLSSetting: &v1alpha1.TLSClientSetting{
+								Insecure: true,
 							},
 						},
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "otlp-test-output-2",
-						Namespace: "tenant-2-all",
-					},
+					Name:      "otlp-test-output-2",
+					Namespace: "tenant-2-all",
 					Spec: v1alpha1.OutputSpec{
 						OTLPGRPC: &v1alpha1.OTLPGRPC{
-							GRPCClientConfig: v1alpha1.GRPCClientConfig{
-								Endpoint: new("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
-								TLSSetting: &v1alpha1.TLSClientSetting{
-									Insecure: true,
-								},
+							Endpoint: new("receiver-collector.example-tenant-ns.svc.cluster.local:4317"),
+							TLSSetting: &v1alpha1.TLSClientSetting{
+								Insecure: true,
 							},
 						},
 					},
@@ -210,9 +184,7 @@ var _ = Describe("Telemetry controller integration test", func() {
 
 		It("Collector should be created", func() {
 			collector := v1alpha1.Collector{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-collector",
-				},
+				Name: "example-collector",
 				Spec: v1alpha1.CollectorSpec{
 					TenantSelector: metav1.LabelSelector{
 						MatchLabels:      map[string]string{},

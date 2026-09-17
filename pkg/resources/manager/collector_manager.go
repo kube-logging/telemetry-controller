@@ -48,7 +48,7 @@ import (
 const (
 	otelCollectorKind             = "OpenTelemetryCollector"
 	axoflowOtelCollectorImageRepo = "ghcr.io/axoflow/axoflow-otel-collector"
-	axoflowOtelCollectorImageRef  = axoflowOtelCollectorImageRepo + "/axoflow-otel-collector:0.156.0-axoflow.3"
+	axoflowOtelCollectorImageRef  = axoflowOtelCollectorImageRepo + "/axoflow-otel-collector:0.156.0-axoflow.5"
 )
 
 var (
@@ -128,14 +128,12 @@ func (c *CollectorManager) BuildConfigInputForCollector(ctx context.Context, col
 	}
 
 	return otelcolconfgen.OtelColConfigInput{
-		ResourceRelations: components.ResourceRelations{
-			Tenants:               tenants,
-			Subscriptions:         subscriptions,
-			Bridges:               bridgesReferencedByTenant,
-			OutputsWithSecretData: outputs,
-			TenantSubscriptionMap: tenantSubscriptionMap,
-			SubscriptionOutputMap: subscriptionOutputMap,
-		},
+		Tenants:               tenants,
+		Subscriptions:         subscriptions,
+		Bridges:               bridgesReferencedByTenant,
+		OutputsWithSecretData: outputs,
+		TenantSubscriptionMap: tenantSubscriptionMap,
+		SubscriptionOutputMap: subscriptionOutputMap,
 		Debug:                 utils.DerefOrZero(collector.Spec.Debug),
 		DryRunMode:            utils.DerefOrZero(collector.Spec.DryRunMode),
 		MemoryLimiter:         *collector.Spec.MemoryLimiter,
@@ -173,14 +171,10 @@ func (c *CollectorManager) ReconcileRBAC(collector *v1alpha1.Collector, scheme *
 
 func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConfig otelv1beta1.Config, additionalArgs map[string]string, tenants []v1alpha1.Tenant, outputs []components.OutputWithSecretData, saName string) (*otelv1beta1.OpenTelemetryCollector, reconciler.DesiredState) {
 	otelCollector := otelv1beta1.OpenTelemetryCollector{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: otelv1beta1.GroupVersion.String(),
-			Kind:       otelCollectorKind,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("otelcollector-%s", collector.Name),
-			Namespace: collector.Spec.ControlNamespace,
-		},
+		APIVersion: otelv1beta1.GroupVersion.String(),
+		Kind:       otelCollectorKind,
+		Name:       fmt.Sprintf("otelcollector-%s", collector.Name),
+		Namespace:  collector.Spec.ControlNamespace,
 		Spec: otelv1beta1.OpenTelemetryCollectorSpec{
 			UpgradeStrategy:           "none",
 			Config:                    otelConfig,
@@ -228,8 +222,8 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 					Name: userVar,
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
-							Key:                  userKey,
+							Name: secretName,
+							Key:  userKey,
 						},
 					},
 				},
@@ -237,8 +231,8 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 					Name: passVar,
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
-							Key:                  passKey,
+							Name: secretName,
+							Key:  passKey,
 						},
 					},
 				},
@@ -249,8 +243,8 @@ func (c *CollectorManager) OtelCollector(collector *v1alpha1.Collector, otelConf
 				Name: extension.BearerAuthEnvVarName(outputNamespacedName),
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
-						Key:                  extension.BearerAuthSecretKey(outputNamespacedName),
+						Name: secretName,
+						Key:  extension.BearerAuthSecretKey(outputNamespacedName),
 					},
 				},
 			})
@@ -288,15 +282,11 @@ func (c *CollectorManager) AuthSecret(collector *v1alpha1.Collector, outputs []c
 	}
 
 	return &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Secret",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      authSecretName(collector.Name),
-			Namespace: collector.Spec.ControlNamespace,
-		},
-		Data: data,
+		APIVersion: "v1",
+		Kind:       "Secret",
+		Name:       authSecretName(collector.Name),
+		Namespace:  collector.Spec.ControlNamespace,
+		Data:       data,
 	}
 }
 
@@ -320,11 +310,9 @@ func (c *CollectorManager) getTenantsMatchingSelectors(ctx context.Context, labe
 
 func (c *CollectorManager) reconcileServiceAccount(collector *v1alpha1.Collector, scheme *runtime.Scheme) (v1alpha1.NamespacedName, error) {
 	serviceAccount := corev1.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-sa", collector.Name),
-			Namespace: collector.Spec.ControlNamespace,
-		},
+		TypeMeta:  metav1.TypeMeta{},
+		Name:      fmt.Sprintf("%s-sa", collector.Name),
+		Namespace: collector.Spec.ControlNamespace,
 	}
 	if err := ctrl.SetControllerReference(collector, &serviceAccount, scheme); err != nil {
 		return v1alpha1.NamespacedName{}, err
@@ -342,9 +330,7 @@ func (c *CollectorManager) reconcileServiceAccount(collector *v1alpha1.Collector
 func (c *CollectorManager) reconcileClusterRoleBinding(collector *v1alpha1.Collector, scheme *runtime.Scheme) error {
 	clusterRoleBinding := rbacv1.ClusterRoleBinding{
 		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-crb", collector.Name),
-		},
+		Name:     fmt.Sprintf("%s-crb", collector.Name),
 		Subjects: []rbacv1.Subject{{
 			Kind:      "ServiceAccount",
 			Name:      fmt.Sprintf("%s-sa", collector.Name),
@@ -366,9 +352,7 @@ func (c *CollectorManager) reconcileClusterRoleBinding(collector *v1alpha1.Colle
 func (c *CollectorManager) reconcileClusterRole(collector *v1alpha1.Collector, scheme *runtime.Scheme) error {
 	clusterRole := rbacv1.ClusterRole{
 		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-pod-association-reader", collector.Name),
-		},
+		Name:     fmt.Sprintf("%s-pod-association-reader", collector.Name),
 		Rules: []rbacv1.PolicyRule{
 			{
 				Verbs:     []string{"get", "watch", "list"},
@@ -487,11 +471,9 @@ func appendAdditionalVolumesForTenantsFileStorage(otelCommonFields *otelv1beta1.
 		otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, volumeMount)
 		otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
 			Name: bufferVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: mountPath,
-					Type: new(corev1.HostPathDirectoryOrCreate),
-				},
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: mountPath,
+				Type: new(corev1.HostPathDirectoryOrCreate),
 			},
 		})
 	}
@@ -529,11 +511,9 @@ func appendFileExporterVolume(otelCommonFields *otelv1beta1.OpenTelemetryCommonF
 		otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, volumeMount)
 		otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
 			Name: fileExporterVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: mountPath,
-					Type: new(corev1.HostPathDirectoryOrCreate),
-				},
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: mountPath,
+				Type: new(corev1.HostPathDirectoryOrCreate),
 			},
 		})
 		processedMountPaths[mountPath] = true
@@ -583,10 +563,8 @@ func setOtelCommonFieldsDefaults(otelCommonFields *otelv1beta1.OpenTelemetryComm
 		if !volumeExists(otelCommonFields.Volumes, config.name) {
 			otelCommonFields.Volumes = append(otelCommonFields.Volumes, corev1.Volume{
 				Name: config.name,
-				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: config.path,
-					},
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: config.path,
 				},
 			})
 			otelCommonFields.VolumeMounts = append(otelCommonFields.VolumeMounts, corev1.VolumeMount{

@@ -110,198 +110,182 @@ func TestOtelColConfComplex(t *testing.T) {
 			KubeAPIBurst:  new(int32(20)),
 			DedupInterval: new("5m"),
 		},
-		ResourceRelations: components.ResourceRelations{
-			Subscriptions: subscriptions,
-			Tenants: []v1alpha1.Tenant{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "example-tenant-a",
-					},
-					Spec: v1alpha1.TenantSpec{
-						SubscriptionNamespaceSelectors: []metav1.LabelSelector{
-							{
-								MatchLabels: map[string]string{
-									"nsSelector": "example-tenant-a",
-								},
+		Subscriptions: subscriptions,
+		Tenants: []v1alpha1.Tenant{
+			{
+				Name: "example-tenant-a",
+				Spec: v1alpha1.TenantSpec{
+					SubscriptionNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-a",
 							},
-						},
-						LogSourceNamespaceSelectors: []metav1.LabelSelector{
-							{
-								MatchLabels: map[string]string{
-									"nsSelector": "example-tenant-a",
-								},
-							},
-						},
-						PersistenceConfig: v1alpha1.PersistenceConfig{
-							EnableFileStorage: true,
 						},
 					},
-					Status: v1alpha1.TenantStatus{
-						LogSourceNamespaces: []string{
-							"example-tenant-a",
+					LogSourceNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-a",
+							},
 						},
-						Subscriptions: []v1alpha1.NamespacedName{
-							{
-								Namespace: "example-tenant-a-ns",
-								Name:      "subscription-example-1",
-							},
-							{
-								Namespace: "example-tenant-a-ns",
-								Name:      "subscription-example-2",
-							},
+					},
+					PersistenceConfig: v1alpha1.PersistenceConfig{
+						EnableFileStorage: true,
+					},
+				},
+				Status: v1alpha1.TenantStatus{
+					LogSourceNamespaces: []string{
+						"example-tenant-a",
+					},
+					Subscriptions: []v1alpha1.NamespacedName{
+						{
+							Namespace: "example-tenant-a-ns",
+							Name:      "subscription-example-1",
+						},
+						{
+							Namespace: "example-tenant-a-ns",
+							Name:      "subscription-example-2",
 						},
 					},
 				},
-				{
+			},
+			{
+				Name: "example-tenant-b",
+				Spec: v1alpha1.TenantSpec{
+					SubscriptionNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-b",
+							},
+						},
+					},
+					LogSourceNamespaceSelectors: []metav1.LabelSelector{
+						{
+							MatchLabels: map[string]string{
+								"nsSelector": "example-tenant-b",
+							},
+						},
+					},
+					PersistenceConfig: v1alpha1.PersistenceConfig{
+						EnableFileStorage: true,
+					},
+				},
+				Status: v1alpha1.TenantStatus{
+					LogSourceNamespaces: []string{
+						"example-tenant-b",
+					},
+					Subscriptions: []v1alpha1.NamespacedName{
+						{
+							Namespace: "example-tenant-b-ns",
+							Name:      "subscription-example-3",
+						},
+					},
+				},
+			},
+		},
+		OutputsWithSecretData: []components.OutputWithSecretData{
+			{
+				Secret: corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "example-tenant-b",
+						Name:      "bearer-test-secret",
+						Namespace: "collector",
 					},
-					Spec: v1alpha1.TenantSpec{
-						SubscriptionNamespaceSelectors: []metav1.LabelSelector{
-							{
-								MatchLabels: map[string]string{
-									"nsSelector": "example-tenant-b",
+					Data: map[string][]byte{
+						"token": []byte("testtoken"),
+					},
+					Type: "Opaque",
+				},
+				Output: v1alpha1.Output{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "otlp-test-output",
+						Namespace: "collector",
+					},
+					Spec: v1alpha1.OutputSpec{
+						OTLPGRPC: &v1alpha1.OTLPGRPC{
+							Endpoint: new("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
+							TLSSetting: &v1alpha1.TLSClientSetting{
+								Insecure: true,
+							},
+						},
+						Authentication: &v1alpha1.OutputAuth{
+							BearerAuth: &v1alpha1.BearerAuthConfig{
+								SecretRef: &corev1.SecretReference{
+									Name:      "bearer-test-secret",
+									Namespace: "collector",
 								},
 							},
 						},
-						LogSourceNamespaceSelectors: []metav1.LabelSelector{
-							{
-								MatchLabels: map[string]string{
-									"nsSelector": "example-tenant-b",
-								},
-							},
-						},
-						PersistenceConfig: v1alpha1.PersistenceConfig{
-							EnableFileStorage: true,
+						Batch: &v1alpha1.Batch{
+							Timeout:                  "5s",
+							SendBatchSize:            512,
+							SendBatchMaxSize:         4096,
+							MetadataKeys:             []string{"key1", "key2"},
+							MetadataCardinalityLimit: 100,
 						},
 					},
-					Status: v1alpha1.TenantStatus{
-						LogSourceNamespaces: []string{
-							"example-tenant-b",
-						},
-						Subscriptions: []v1alpha1.NamespacedName{
-							{
-								Namespace: "example-tenant-b-ns",
-								Name:      "subscription-example-3",
+				},
+			},
+			{
+				Output: v1alpha1.Output{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "otlp-test-output-2",
+						Namespace: "collector",
+					},
+					Spec: v1alpha1.OutputSpec{
+						OTLPGRPC: &v1alpha1.OTLPGRPC{
+							Endpoint: new("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
+							TLSSetting: &v1alpha1.TLSClientSetting{
+								Insecure: true,
 							},
 						},
 					},
 				},
 			},
-			OutputsWithSecretData: []components.OutputWithSecretData{
-				{
-					Secret: corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "bearer-test-secret",
-							Namespace: "collector",
-						},
-						Data: map[string][]byte{
-							"token": []byte("testtoken"),
-						},
-						Type: "Opaque",
+			{
+				Output: v1alpha1.Output{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "otlp-test-output-3",
+						Namespace: "collector",
 					},
-					Output: v1alpha1.Output{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "otlp-test-output",
-							Namespace: "collector",
-						},
-						Spec: v1alpha1.OutputSpec{
-							OTLPGRPC: &v1alpha1.OTLPGRPC{
-								GRPCClientConfig: v1alpha1.GRPCClientConfig{
-									Endpoint: new("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
-									TLSSetting: &v1alpha1.TLSClientSetting{
-										Insecure: true,
-									},
-								},
-							},
-							Authentication: &v1alpha1.OutputAuth{
-								BearerAuth: &v1alpha1.BearerAuthConfig{
-									SecretRef: &corev1.SecretReference{
-										Name:      "bearer-test-secret",
-										Namespace: "collector",
-									},
-								},
-							},
-							Batch: &v1alpha1.Batch{
-								Timeout:                  "5s",
-								SendBatchSize:            512,
-								SendBatchMaxSize:         4096,
-								MetadataKeys:             []string{"key1", "key2"},
-								MetadataCardinalityLimit: 100,
+					Spec: v1alpha1.OutputSpec{
+						OTLPGRPC: &v1alpha1.OTLPGRPC{
+							Endpoint: new("receiver-collector.example-tenant-b-ns.svc.cluster.local:4317"),
+							TLSSetting: &v1alpha1.TLSClientSetting{
+								Insecure: true,
 							},
 						},
 					},
 				},
-				{
-					Output: v1alpha1.Output{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "otlp-test-output-2",
-							Namespace: "collector",
-						},
-						Spec: v1alpha1.OutputSpec{
-							OTLPGRPC: &v1alpha1.OTLPGRPC{
-								GRPCClientConfig: v1alpha1.GRPCClientConfig{
-									Endpoint: new("receiver-collector.example-tenant-a-ns.svc.cluster.local:4317"),
-									TLSSetting: &v1alpha1.TLSClientSetting{
-										Insecure: true,
-									},
-								},
+			},
+			{
+				Output: v1alpha1.Output{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "loki-test-output",
+						Namespace: "collector",
+					},
+					Spec: v1alpha1.OutputSpec{
+						OTLPHTTP: &v1alpha1.OTLPHTTP{
+							Endpoint: new("loki.example-tenant-a-ns.svc.cluster.local:4317"),
+							TLSSetting: &v1alpha1.TLSClientSetting{
+								Insecure: true,
 							},
 						},
 					},
 				},
-				{
-					Output: v1alpha1.Output{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "otlp-test-output-3",
-							Namespace: "collector",
-						},
-						Spec: v1alpha1.OutputSpec{
-							OTLPGRPC: &v1alpha1.OTLPGRPC{
-								GRPCClientConfig: v1alpha1.GRPCClientConfig{
-									Endpoint: new("receiver-collector.example-tenant-b-ns.svc.cluster.local:4317"),
-									TLSSetting: &v1alpha1.TLSClientSetting{
-										Insecure: true,
-									},
-								},
-							},
-						},
+			},
+			{
+				Output: v1alpha1.Output{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "fluentforward-test-output",
+						Namespace: "collector",
 					},
-				},
-				{
-					Output: v1alpha1.Output{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "loki-test-output",
-							Namespace: "collector",
-						},
-						Spec: v1alpha1.OutputSpec{
-							OTLPHTTP: &v1alpha1.OTLPHTTP{
-								HTTPClientConfig: v1alpha1.HTTPClientConfig{
-									Endpoint: new("loki.example-tenant-a-ns.svc.cluster.local:4317"),
-									TLSSetting: &v1alpha1.TLSClientSetting{
-										Insecure: true,
-									},
-								},
+					Spec: v1alpha1.OutputSpec{
+						Fluentforward: &v1alpha1.Fluentforward{
+							Endpoint: &v1alpha1.Endpoint{
+								TCPAddr: new("fluentd.example-tenant-b-ns.svc.cluster.local:24224"),
 							},
-						},
-					},
-				},
-				{
-					Output: v1alpha1.Output{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "fluentforward-test-output",
-							Namespace: "collector",
-						},
-						Spec: v1alpha1.OutputSpec{
-							Fluentforward: &v1alpha1.Fluentforward{
-								TCPClientSettings: v1alpha1.TCPClientSettings{
-									Endpoint: &v1alpha1.Endpoint{
-										TCPAddr: new("fluentd.example-tenant-b-ns.svc.cluster.local:24224"),
-									},
-									TLSSetting: &v1alpha1.TLSClientSetting{
-										Insecure: true,
-									},
-								},
+							TLSSetting: &v1alpha1.TLSClientSetting{
+								Insecure: true,
 							},
 						},
 					},
@@ -313,9 +297,9 @@ func TestOtelColConfComplex(t *testing.T) {
 			MemoryLimitPercentage: 75,
 			MemorySpikePercentage: 25,
 		},
-	}
 
-	inputCfg.SubscriptionOutputMap = make(map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName)
+		SubscriptionOutputMap: make(map[v1alpha1.NamespacedName][]v1alpha1.NamespacedName),
+	}
 	for _, subscription := range inputCfg.Subscriptions {
 		inputCfg.SubscriptionOutputMap[subscription.NamespacedName()] = subscription.Spec.Outputs
 	}
@@ -451,9 +435,7 @@ func TestOtelColConfigInput_generateRoutingConnectorForTenantsSubscription(t *te
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfgInput := &OtelColConfigInput{
-				ResourceRelations: components.ResourceRelations{
-					Subscriptions: tt.fields.Subscriptions,
-				},
+				Subscriptions: tt.fields.Subscriptions,
 			}
 			got := connector.GenerateRoutingConnectorForTenantsSubscriptions(tt.args.tenantName, v1alpha1.RouteConfig{}, tt.args.subscriptionNames, cfgInput.Subscriptions)
 			assert.Equal(t, got, tt.want)
@@ -565,9 +547,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 				ResourceRelations: components.ResourceRelations{
 					Tenants: []v1alpha1.Tenant{
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "tenant1",
-							},
+							Name: "tenant1",
 							Spec: v1alpha1.TenantSpec{
 								LogSourceNamespaceSelectors: []metav1.LabelSelector{
 									{
@@ -582,9 +562,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 							},
 						},
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "tenant2",
-							},
+							Name: "tenant2",
 							Spec: v1alpha1.TenantSpec{
 								SubscriptionNamespaceSelectors: []metav1.LabelSelector{
 									{
@@ -604,9 +582,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 							},
 						},
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "tenant3",
-							},
+							Name: "tenant3",
 							Spec: v1alpha1.TenantSpec{
 								SubscriptionNamespaceSelectors: []metav1.LabelSelector{
 									{
@@ -674,9 +650,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 					},
 					Bridges: []v1alpha1.Bridge{
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "bridge1",
-							},
+							Name: "bridge1",
 							Spec: v1alpha1.BridgeSpec{
 								SourceTenant: "tenant1",
 								TargetTenant: "tenant2",
@@ -684,9 +658,7 @@ func TestOtelColConfigInput_generateNamedPipelines(t *testing.T) {
 							},
 						},
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "bridge2",
-							},
+							Name: "bridge2",
 							Spec: v1alpha1.BridgeSpec{
 								SourceTenant: "tenant1",
 								TargetTenant: "tenant3",

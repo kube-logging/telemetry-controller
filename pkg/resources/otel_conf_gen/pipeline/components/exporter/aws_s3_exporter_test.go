@@ -36,7 +36,7 @@ func TestGenerateAWSS3Exporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{Name: testTenantName},
+						Name: testTenantName,
 					},
 				},
 				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{
@@ -95,7 +95,7 @@ func TestGenerateAWSS3Exporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{Name: testTenantName},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -160,7 +160,7 @@ func TestGenerateAWSS3Exporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{Name: testTenantName},
+						Name: testTenantName,
 					},
 				},
 				Subscriptions: map[v1alpha1.NamespacedName]v1alpha1.Subscription{

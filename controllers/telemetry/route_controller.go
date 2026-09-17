@@ -24,7 +24,6 @@ import (
 	"emperror.dev/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -128,9 +127,7 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		requests := make([]reconcile.Request, 0, len(tenants.Items))
 		for _, tenant := range tenants.Items {
 			requests = append(requests, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name: tenant.Name,
-				},
+				Name: tenant.Name,
 			})
 		}
 

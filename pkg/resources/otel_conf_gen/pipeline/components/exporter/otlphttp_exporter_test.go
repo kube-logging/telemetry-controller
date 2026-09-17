@@ -40,9 +40,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -78,9 +76,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								OTLPHTTP: &v1alpha1.OTLPHTTP{
-									HTTPClientConfig: v1alpha1.HTTPClientConfig{
-										Endpoint: new("http://example.com"),
-									},
+									Endpoint: new("http://example.com"),
 								},
 								Authentication: &v1alpha1.OutputAuth{
 									BasicAuth: &v1alpha1.BasicAuthConfig{
@@ -149,9 +145,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -187,9 +181,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								OTLPHTTP: &v1alpha1.OTLPHTTP{
-									HTTPClientConfig: v1alpha1.HTTPClientConfig{
-										Endpoint: new("http://example.com"),
-									},
+									Endpoint: new("http://example.com"),
 								},
 								Authentication: &v1alpha1.OutputAuth{
 									BearerAuth: &v1alpha1.BearerAuthConfig{
@@ -256,9 +248,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -294,9 +284,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								OTLPHTTP: &v1alpha1.OTLPHTTP{
-									HTTPClientConfig: v1alpha1.HTTPClientConfig{
-										Endpoint: new("http://example.com"),
-									},
+									Endpoint: new("http://example.com"),
 								},
 							},
 						},
@@ -342,9 +330,7 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -391,29 +377,27 @@ func TestGenerateOTLPHTTPExporters(t *testing.T) {
 										MaxInterval:         new("10s"),
 										MaxElapsedTime:      new("1m0s"),
 									},
-									HTTPClientConfig: v1alpha1.HTTPClientConfig{
-										Endpoint: new("http://example.com"),
-										ProxyURL: new("http://proxy.example.com"),
-										TLSSetting: &v1alpha1.TLSClientSetting{
-											Insecure:           true,
-											InsecureSkipVerify: true,
-											ServerName:         "server-name",
-										},
-										ReadBufferSize:  new(1024),
-										WriteBufferSize: new(1024),
-										Timeout:         new("5s"),
-										Headers: &map[string]configopaque.String{
-											"header1": configopaque.String("value1"),
-										},
-										Compression:          new(configcompression.Type("gzip")),
-										MaxIdleConns:         new(10),
-										MaxIdleConnsPerHost:  new(10),
-										MaxConnsPerHost:      new(10),
-										IdleConnTimeout:      new("5s"),
-										DisableKeepAlives:    new(true),
-										HTTP2ReadIdleTimeout: new("5s"),
-										HTTP2PingTimeout:     new("5s"),
+									Endpoint: new("http://example.com"),
+									ProxyURL: new("http://proxy.example.com"),
+									TLSSetting: &v1alpha1.TLSClientSetting{
+										Insecure:           true,
+										InsecureSkipVerify: true,
+										ServerName:         "server-name",
 									},
+									ReadBufferSize:  new(1024),
+									WriteBufferSize: new(1024),
+									Timeout:         new("5s"),
+									Headers: &map[string]configopaque.String{
+										"header1": configopaque.String("value1"),
+									},
+									Compression:          new(configcompression.Type("gzip")),
+									MaxIdleConns:         new(10),
+									MaxIdleConnsPerHost:  new(10),
+									MaxConnsPerHost:      new(10),
+									IdleConnTimeout:      new("5s"),
+									DisableKeepAlives:    new(true),
+									HTTP2ReadIdleTimeout: new("5s"),
+									HTTP2PingTimeout:     new("5s"),
 								},
 							},
 						},

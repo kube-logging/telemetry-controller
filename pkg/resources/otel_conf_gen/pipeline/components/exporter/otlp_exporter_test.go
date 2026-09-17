@@ -39,9 +39,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -77,9 +75,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
-									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: new("http://example.com"),
-									},
+									Endpoint: new("http://example.com"),
 								},
 								Authentication: &v1alpha1.OutputAuth{
 									BasicAuth: &v1alpha1.BasicAuthConfig{
@@ -148,9 +144,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -186,9 +180,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
-									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: new("http://example.com"),
-									},
+									Endpoint: new("http://example.com"),
 								},
 								Authentication: &v1alpha1.OutputAuth{
 									BearerAuth: &v1alpha1.BearerAuthConfig{
@@ -255,9 +247,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -293,9 +283,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
-									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: new("http://example.com"),
-									},
+									Endpoint: new("http://example.com"),
 								},
 							},
 						},
@@ -341,9 +329,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -379,9 +365,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
-									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: new("http://example.com"),
-									},
+									Endpoint: new("http://example.com"),
 									QueueConfig: &v1alpha1.QueueSettings{
 										Batch: &v1alpha1.QueueBatch{
 											FlushTimeout: "200ms",
@@ -445,9 +429,7 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 			resourceRelations: components.ResourceRelations{
 				Tenants: []v1alpha1.Tenant{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: testTenantName,
-						},
+						Name: testTenantName,
 						Spec: v1alpha1.TenantSpec{
 							PersistenceConfig: v1alpha1.PersistenceConfig{
 								EnableFileStorage: true,
@@ -494,31 +476,27 @@ func TestGenerateOTLPGRPCExporters(t *testing.T) {
 										MaxInterval:         new("10s"),
 										MaxElapsedTime:      new("1m0s"),
 									},
-									TimeoutSettings: v1alpha1.TimeoutSettings{
-										Timeout: new("5s"),
+									Timeout:     new("5s"),
+									Endpoint:    new("http://example.com"),
+									Compression: new(configcompression.Type("gzip")),
+									TLSSetting: &v1alpha1.TLSClientSetting{
+										Insecure:           true,
+										InsecureSkipVerify: true,
+										ServerName:         "server-name",
 									},
-									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint:    new("http://example.com"),
-										Compression: new(configcompression.Type("gzip")),
-										TLSSetting: &v1alpha1.TLSClientSetting{
-											Insecure:           true,
-											InsecureSkipVerify: true,
-											ServerName:         "server-name",
-										},
-										Keepalive: &v1alpha1.KeepaliveClientConfig{
-											Time:                new("5s"),
-											Timeout:             new("5s"),
-											PermitWithoutStream: true,
-										},
-										ReadBufferSize:  new(1024),
-										WriteBufferSize: new(1024),
-										WaitForReady:    new(true),
-										Headers: &map[string]string{
-											"header1": "value1",
-										},
-										BalancerName: new("round_robin"),
-										Authority:    new("authority"),
+									Keepalive: &v1alpha1.KeepaliveClientConfig{
+										Time:                new("5s"),
+										Timeout:             new("5s"),
+										PermitWithoutStream: true,
 									},
+									ReadBufferSize:  new(1024),
+									WriteBufferSize: new(1024),
+									WaitForReady:    new(true),
+									Headers: &map[string]string{
+										"header1": "value1",
+									},
+									BalancerName: new("round_robin"),
+									Authority:    new("authority"),
 								},
 							},
 						},
