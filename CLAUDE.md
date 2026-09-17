@@ -186,8 +186,8 @@ Collector CR → BuildConfigInputForCollector() → GetOtelColConfig()
 
 ## Requirements
 
-- Go 1.26.0 (see `.go-version`)
-- envtest uses Kubernetes 1.36.2 (set via `ENVTEST_K8S_VERSION` in Makefile)
+- Go 1.27.1 (see `.go-version`)
+- envtest uses Kubernetes 1.37.0 (set via `ENVTEST_K8S_VERSION` in Makefile)
 
 ## Key Configuration
 

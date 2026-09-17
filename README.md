@@ -48,7 +48,7 @@ To get started with the Telemetry Controller, complete the following steps. Alte
 
 ### Prerequisites
 
-- go version v1.26+
+- go version v1.27+
 - docker version 24+
 - kubectl version v1.26+
 - kubernetes v1.26+ with *containerd* as the container runtime
