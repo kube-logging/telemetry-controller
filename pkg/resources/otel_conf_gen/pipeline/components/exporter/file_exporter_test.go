@@ -339,9 +339,7 @@ func TestGenerateFileExporter(t *testing.T) {
 							},
 							Spec: v1alpha1.OutputSpec{
 								OTLPGRPC: &v1alpha1.OTLPGRPC{
-									GRPCClientConfig: v1alpha1.GRPCClientConfig{
-										Endpoint: new("http://example.com"),
-									},
+									Endpoint: new("http://example.com"),
 								},
 							},
 						},

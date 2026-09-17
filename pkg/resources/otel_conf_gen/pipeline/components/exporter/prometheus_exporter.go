@@ -123,9 +123,7 @@ type PrometheusExporterConfig struct {
 
 func GenerateMetricsExporters() map[string]any {
 	defaultPrometheusExporterConfig := PrometheusExporterConfig{
-		HTTPServerConfig: HTTPServerConfig{
-			Endpoint: ":9999",
-		},
+		Endpoint: ":9999",
 	}
 
 	metricsExporters := make(map[string]any)

@@ -59,18 +59,14 @@ func TestSetOtelCommonFieldsDefaults(t *testing.T) {
 				Volumes: []corev1.Volume{
 					{
 						Name: "varlog",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/log",
-							},
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/log",
 						},
 					},
 					{
 						Name: "varlibdockercontainers",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/lib/docker/containers",
-							},
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/lib/docker/containers",
 						},
 					},
 				},
@@ -109,18 +105,14 @@ func TestSetOtelCommonFieldsDefaults(t *testing.T) {
 				Volumes: []corev1.Volume{
 					{
 						Name: "varlog",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/log",
-							},
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/log",
 						},
 					},
 					{
 						Name: "varlibdockercontainers",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/lib/docker/containers",
-							},
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/lib/docker/containers",
 						},
 					},
 				},
@@ -163,18 +155,14 @@ func TestSetOtelCommonFieldsDefaults(t *testing.T) {
 				Volumes: []corev1.Volume{
 					{
 						Name: "varlog",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/log",
-							},
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/log",
 						},
 					},
 					{
 						Name: "varlibdockercontainers",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/lib/docker/containers",
-							},
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/lib/docker/containers",
 						},
 					},
 				},

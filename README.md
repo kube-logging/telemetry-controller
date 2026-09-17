@@ -250,11 +250,11 @@ kubectl -n openobserve port-forward svc/openobserve 5080:5080
 Install dependencies (cert-manager and opentelemetry-operator):
 
 ```sh
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.21.1/cert-manager.yaml
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.21.2/cert-manager.yaml
 ```
 
 ```sh
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.156.0/opentelemetry-operator.yaml
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.159.0/opentelemetry-operator.yaml
 # Wait for the opentelemtry-operator to be running
 kubectl wait --namespace opentelemetry-operator-system --for=condition=available deployment/opentelemetry-operator-controller-manager --timeout=300s
 ```

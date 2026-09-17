@@ -19,7 +19,6 @@ import (
 
 	otelv1beta1 "github.com/open-telemetry/opentelemetry-operator/apis/v1beta1"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kube-logging/telemetry-controller/api/telemetry/v1alpha1"
 )
@@ -122,9 +121,7 @@ func TestGenerateRoutingConnectorForBridgesTenantPipeline(t *testing.T) {
 			},
 			bridges: []v1alpha1.Bridge{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "bridge1",
-					},
+					Name: "bridge1",
 					Spec: v1alpha1.BridgeSpec{
 						SourceTenant: "tenant",
 					},
@@ -144,9 +141,7 @@ func TestGenerateRoutingConnectorForBridgesTenantPipeline(t *testing.T) {
 			},
 			bridges: []v1alpha1.Bridge{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "bridge2",
-					},
+					Name: "bridge2",
 					Spec: v1alpha1.BridgeSpec{
 						TargetTenant: "tenant",
 					},

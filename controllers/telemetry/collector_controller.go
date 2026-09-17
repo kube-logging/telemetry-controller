@@ -25,7 +25,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -105,9 +104,7 @@ func (r *CollectorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		requests := make([]reconcile.Request, 0, len(collectors.Items))
 		for _, collector := range collectors.Items {
 			requests = append(requests, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name: collector.Name,
-				},
+				Name: collector.Name,
 			})
 		}
 
