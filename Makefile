@@ -23,7 +23,7 @@ LICENSEI_VERSION = 0.9.0
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 # Bump in lockstep with the k8s.io/* modules in go.mod. Not renovate-managed: the assets ship as
 # envtest-v* tags on controller-tools, whose depName is already claimed by CONTROLLER_TOOLS_VERSION.
-ENVTEST_K8S_VERSION = 1.36.2
+ENVTEST_K8S_VERSION = 1.37.0
 
 # renovate: datasource=github-releases depName=open-telemetry/opentelemetry-operator versioning=semver
 ENVTEST_OTEL_OPERATOR_VERSION = 0.159.0
@@ -45,7 +45,7 @@ CONTROLLER_GEN ?= $(BIN)/controller-gen
 ENVTEST ?= $(BIN)/setup-envtest
 
 KIND := ${BIN}/kind
-KIND_IMAGE ?= kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+KIND_IMAGE ?= kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
 KIND_CLUSTER := kind
 
 # Image URL to use all building/pushing image targets
