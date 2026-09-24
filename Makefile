@@ -9,7 +9,7 @@ CONTROLLER_TOOLS_VERSION := 0.22.0
 KUSTOMIZE_VERSION := 5.8.1
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-GOLANGCI_LINT_VERSION := 2.13.2
+GOLANGCI_LINT_VERSION := 2.14.0
 
 # renovate: datasource=github-releases depName=norwoodj/helm-docs versioning=semver
 HELM_DOCS_VERSION = 1.14.2
