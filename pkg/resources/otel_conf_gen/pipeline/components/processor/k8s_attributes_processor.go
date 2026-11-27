@@ -79,12 +79,11 @@ func GenerateDefaultKubernetesProcessor() map[string]any {
 			"node_from_env_var": NodeNameEnvVar,
 		},
 		"extract": map[string]any{
+			// The collector derives `k8s.deployment.name` from the owning
+			// ReplicaSet name (no Deployment informer); the former
+			// `deployment_name_from_replicaset` toggle was removed upstream.
 			"metadata": defaultMetadata,
-			// Derive `k8s.deployment.name` from the owning ReplicaSet name
-			// instead of watching Deployment resources. Cuts API server load
-			// and informer memory.
-			"deployment_name_from_replicaset": true,
-			"labels":                          defaultLabels,
+			"labels":   defaultLabels,
 			"annotations": []FieldExtract{
 				{
 					TagName: new("exclude-tc"),

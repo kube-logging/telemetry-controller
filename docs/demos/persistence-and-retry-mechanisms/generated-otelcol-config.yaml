@@ -131,7 +131,6 @@ processors:
   k8s_attributes:
     auth_type: serviceAccount
     extract:
-      deployment_name_from_replicaset: true
       labels:
         - from: pod
           key_regex: .*
