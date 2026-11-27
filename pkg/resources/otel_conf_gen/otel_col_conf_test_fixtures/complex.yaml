@@ -225,7 +225,6 @@ processors:
       - from: pod
         key: fluentbit.io/exclude
         tag_name: exclude-fluentbit
-      deployment_name_from_replicaset: true
       labels:
       - from: pod
         key_regex: .*
